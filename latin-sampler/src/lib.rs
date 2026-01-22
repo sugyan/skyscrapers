@@ -1,14 +1,23 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! # latin-sampler
+//!
+//! MCMC sampler for generating approximately uniform Latin squares.
+//!
+//! ## Example
+//!
+//! ```
+//! use latin_sampler::{sample, SamplerParams};
+//! use rand_chacha::ChaCha20Rng;
+//! use rand::SeedableRng;
+//!
+//! let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
+//! let params = SamplerParams::default();
+//! let sq = sample(8, &mut rng, &params);
+//! assert!(sq.is_latin());
+//! ```
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod moves;
+mod sampler;
+mod square;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use sampler::{sample, SamplerParams};
+pub use square::LatinSquare;
