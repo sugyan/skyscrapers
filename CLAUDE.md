@@ -49,8 +49,9 @@ Indexing:
     - returns the cyclic Latin square: `L[r][c] = (r + c) mod n`
   - `pub fn n(&self) -> usize`
   - `pub fn get(&self, r: usize, c: usize) -> u8`
-  - `pub fn set_unchecked(&mut self, r: usize, c: usize, v: u8)` (crate-private OR `pub(crate)`)
-  - `pub fn is_latin(&self) -> bool` (public but documented as O(n^2), debug/validation)
+  - `pub(crate) fn set_unchecked(&mut self, r: usize, c: usize, v: u8)`
+
+Note: `is_latin` is NOT part of the public API. The Latin property is an invariant enforced by construction and moves. A test-only helper `is_latin()` exists for validation.
 
 ### 2.3 Sampler parameters
 
@@ -170,6 +171,8 @@ To reduce allocations:
 
 ### 5.1 Unit tests
 
+Use a test-only `is_latin(square: &LatinSquare) -> bool` helper for validation.
+
 1) `cyclic_is_latin`
 - `LatinSquare::new_cyclic(n)` is Latin for `n=2..10`.
 
@@ -177,7 +180,7 @@ To reduce allocations:
 - For `n=7` and `n=8`:
   - start from cyclic square
   - apply 50_000 random moves with fixed seed
-  - assert always `is_latin()`
+  - assert `is_latin()` after each move
 
 3) `reproducibility_same_seed_same_output`
 - For fixed params and seed:
@@ -215,7 +218,7 @@ fn main() {
     let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
     let params = SamplerParams::default();
     let sq = sample(8, &mut rng, &params);
-    assert!(sq.is_latin());
+    println!("Cell (0,0) = {}", sq.get(0, 0));
 }
 ```
 
@@ -233,7 +236,8 @@ println!("{}", v);
 - `src/lib.rs`
   - re-export `LatinSquare`, `SamplerParams`, `sample`
 - `src/square.rs`
-  - `LatinSquare` definition, constructors, accessors, `is_latin`
+  - `LatinSquare` definition, constructors, accessors
+  - test-only `is_latin()` helper for validation
 - `src/moves.rs`
   - `row_cycle_move`, `col_cycle_move`, `random_nontrivial_cycle`
 - `src/sampler.rs`

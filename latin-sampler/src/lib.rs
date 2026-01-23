@@ -12,7 +12,7 @@
 //! let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
 //! let params = SamplerParams::default();
 //! let sq = sample(8, &mut rng, &params);
-//! assert!(sq.is_latin());
+//! println!("Cell (0,0) = {}", sq.get(0, 0));
 //! ```
 
 mod moves;
