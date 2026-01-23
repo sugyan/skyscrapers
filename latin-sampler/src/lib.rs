@@ -19,5 +19,5 @@ mod moves;
 mod sampler;
 mod square;
 
-pub use sampler::{sample, SamplerParams};
+pub use sampler::{SamplerParams, sample};
 pub use square::LatinSquare;
