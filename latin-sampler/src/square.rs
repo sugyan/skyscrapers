@@ -39,20 +39,20 @@ impl LatinSquare {
     pub(crate) fn set_unchecked(&mut self, r: usize, c: usize, v: u8) {
         self.cells[r * self.n + c] = v;
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn is_latin(square: &LatinSquare) -> bool {
-        let n = square.n();
+    /// Returns true if this is a valid Latin square.
+    ///
+    /// This is a test-only helper for validation. The Latin property is an
+    /// invariant enforced by construction and moves.
+    #[cfg(test)]
+    pub(crate) fn is_latin(&self) -> bool {
+        let n = self.n;
         let mut seen = vec![false; n];
         // Check rows
         for r in 0..n {
             seen.fill(false);
             for c in 0..n {
-                let v = square.get(r, c) as usize;
+                let v = self.get(r, c) as usize;
                 if v >= n || seen[v] {
                     return false;
                 }
@@ -63,7 +63,7 @@ mod tests {
         for c in 0..n {
             seen.fill(false);
             for r in 0..n {
-                let v = square.get(r, c) as usize;
+                let v = self.get(r, c) as usize;
                 if v >= n || seen[v] {
                     return false;
                 }
@@ -72,13 +72,18 @@ mod tests {
         }
         true
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
 
     #[test]
     fn cyclic_is_latin() {
         for n in 2..=10 {
             let sq = LatinSquare::new_cyclic(n);
             assert!(
-                is_latin(&sq),
+                sq.is_latin(),
                 "cyclic square of order {} should be Latin",
                 n
             );

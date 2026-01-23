@@ -137,34 +137,6 @@ mod tests {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
-    fn is_latin(square: &LatinSquare) -> bool {
-        let n = square.n();
-        let mut seen = vec![false; n];
-        // Check rows
-        for r in 0..n {
-            seen.fill(false);
-            for c in 0..n {
-                let v = square.get(r, c) as usize;
-                if v >= n || seen[v] {
-                    return false;
-                }
-                seen[v] = true;
-            }
-        }
-        // Check columns
-        for c in 0..n {
-            seen.fill(false);
-            for r in 0..n {
-                let v = square.get(r, c) as usize;
-                if v >= n || seen[v] {
-                    return false;
-                }
-                seen[v] = true;
-            }
-        }
-        true
-    }
-
     #[test]
     fn move_preserves_latin() {
         for n in [7, 8] {
@@ -178,7 +150,7 @@ mod tests {
                     col_cycle_move(&mut sq, &mut rng);
                 }
                 assert!(
-                    is_latin(&sq),
+                    sq.is_latin(),
                     "Latin property violated at step {} for n={}",
                     i,
                     n
