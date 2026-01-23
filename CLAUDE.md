@@ -171,7 +171,7 @@ To reduce allocations:
 
 ### 5.1 Unit tests
 
-Use a test-only `is_latin(square: &LatinSquare) -> bool` helper for validation.
+Use the test-only `LatinSquare::is_latin(&self) -> bool` method for validation.
 
 1) `cyclic_is_latin`
 - `LatinSquare::new_cyclic(n)` is Latin for `n=2..10`.
@@ -180,7 +180,7 @@ Use a test-only `is_latin(square: &LatinSquare) -> bool` helper for validation.
 - For `n=7` and `n=8`:
   - start from cyclic square
   - apply 50_000 random moves with fixed seed
-  - assert `is_latin()` after each move
+  - assert `sq.is_latin()` after each move
 
 3) `reproducibility_same_seed_same_output`
 - For fixed params and seed:
