@@ -1,6 +1,5 @@
-use rand::Rng;
-
 use crate::LatinSquare;
+use rand::Rng;
 
 const MAX_CYCLE_RETRIES: usize = 8;
 

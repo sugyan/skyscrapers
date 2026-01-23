@@ -1,7 +1,6 @@
-use rand::Rng;
-
 use crate::LatinSquare;
 use crate::moves::{col_cycle_move, row_cycle_move};
+use rand::Rng;
 
 /// Parameters for the MCMC sampler.
 #[derive(Debug, Clone)]
