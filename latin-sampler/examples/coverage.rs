@@ -44,8 +44,10 @@ fn main() {
     let mut unique_squares: HashSet<Vec<u8>> = HashSet::new();
     let start = Instant::now();
     let mut last_new_at = 0;
+    let mut actual_samples = 0;
 
     for seed_idx in 0..max_samples {
+        actual_samples = seed_idx + 1;
         let mut seed = [0u8; 32];
         seed[0] = (seed_idx & 0xff) as u8;
         seed[1] = ((seed_idx >> 8) & 0xff) as u8;
@@ -108,10 +110,7 @@ fn main() {
             100.0 * unique_squares.len() as f64 / total as f64
         );
     }
-    println!(
-        "Total samples: {}",
-        max_samples.min(last_new_at + (max_samples - last_new_at))
-    );
+    println!("Total samples: {}", actual_samples);
     println!("Last new square found at sample: {}", last_new_at);
     println!("Elapsed time: {:.2}s", elapsed);
 }
