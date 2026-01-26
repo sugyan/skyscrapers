@@ -1,5 +1,5 @@
 use crate::LatinSquare;
-use crate::moves::{col_cycle_move, row_cycle_move};
+use crate::jacobson_matthews::JMState;
 use rand::Rng;
 
 /// Parameters for the MCMC sampler.
@@ -11,8 +11,6 @@ pub struct SamplerParams {
     pub steps: u64,
     /// Thinning factor (for iterator mode, v0.2+).
     pub thinning: u64,
-    /// Probability of choosing a row move (vs column move).
-    pub p_row_move: f64,
     /// Probability of doing nothing (for aperiodicity).
     pub p_do_nothing: f64,
 }
@@ -23,7 +21,6 @@ impl Default for SamplerParams {
             burn_in: 300_000,
             steps: 80_000,
             thinning: 1,
-            p_row_move: 0.5,
             p_do_nothing: 0.01,
         }
     }
@@ -31,48 +28,43 @@ impl Default for SamplerParams {
 
 /// Generates an approximately uniform Latin square of order `n`.
 ///
-/// Uses MCMC sampling with the given RNG and parameters.
+/// Uses MCMC sampling with the Jacobson-Matthews algorithm for ergodicity.
 /// The output is deterministic given the same seed and parameters.
 ///
 /// # Panics
 /// Panics if:
 /// - `n < 2` or `n > 255`
-/// - `p_row_move` is not in `[0.0, 1.0]`
 /// - `p_do_nothing` is not in `[0.0, 1.0]`
 pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) -> LatinSquare {
     assert!((2..=255).contains(&n), "n must be in range 2..=255");
-    assert!(
-        (0.0..=1.0).contains(&params.p_row_move),
-        "p_row_move must be in [0.0, 1.0]"
-    );
     assert!(
         (0.0..=1.0).contains(&params.p_do_nothing),
         "p_do_nothing must be in [0.0, 1.0]"
     );
 
-    let mut sq = LatinSquare::new_cyclic(n);
+    let mut state = JMState::new_cyclic(n);
     let total_steps = params.burn_in + params.steps;
 
     for _ in 0..total_steps {
-        step(&mut sq, rng, params);
+        step(&mut state, rng, params);
     }
 
-    sq
+    // Ensure we end in a proper state
+    while !state.is_proper() {
+        state.step(rng);
+    }
+
+    state.to_latin_square()
 }
 
-/// Performs a single MCMC step.
-fn step<R: Rng + ?Sized>(sq: &mut LatinSquare, rng: &mut R, params: &SamplerParams) {
+/// Performs a single MCMC step using Jacobson-Matthews.
+fn step<R: Rng + ?Sized>(state: &mut JMState, rng: &mut R, params: &SamplerParams) {
     // With probability p_do_nothing: do nothing (for aperiodicity)
     if rng.random::<f64>() < params.p_do_nothing {
         return;
     }
 
-    // Choose move type
-    if rng.random::<f64>() < params.p_row_move {
-        row_cycle_move(sq, rng);
-    } else {
-        col_cycle_move(sq, rng);
-    }
+    state.step(rng);
 }
 
 #[cfg(test)]
@@ -86,7 +78,6 @@ mod tests {
             burn_in: 1000,
             steps: 500,
             thinning: 1,
-            p_row_move: 0.5,
             p_do_nothing: 0.01,
         }
     }
