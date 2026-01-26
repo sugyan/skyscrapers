@@ -10,7 +10,6 @@ fn main() {
     let n: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(4);
     let num_samples: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(100);
     let burn_in: u64 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(5000);
-    let steps: u64 = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(2000);
 
     println!("=== Latin Square Sampling Statistics ===");
     println!("n = {}, samples = {}", n, num_samples);
@@ -18,12 +17,10 @@ fn main() {
 
     let params = SamplerParams {
         burn_in,
-        steps,
         ..Default::default()
     };
     println!("SamplerParams:");
     println!("  burn_in: {}", params.burn_in);
-    println!("  steps: {}", params.steps);
     println!("  p_do_nothing: {}", params.p_do_nothing);
     println!();
 

@@ -5,9 +5,11 @@ use rand::Rng;
 /// Parameters for the MCMC sampler.
 #[derive(Debug, Clone)]
 pub struct SamplerParams {
-    /// Number of steps discarded (burn-in phase).
+    /// Number of steps to reach equilibrium from initial state.
+    /// Used by `sample()` for one-shot sampling.
     pub burn_in: u64,
-    /// Number of steps after burn-in before returning.
+    /// Number of steps between successive samples (for iterator mode, v0.2+).
+    /// Not used by one-shot `sample()`.
     pub steps: u64,
     /// Thinning factor (for iterator mode, v0.2+).
     pub thinning: u64,
@@ -18,8 +20,8 @@ pub struct SamplerParams {
 impl Default for SamplerParams {
     fn default() -> Self {
         Self {
-            burn_in: 300_000,
-            steps: 80_000,
+            burn_in: 5_000,
+            steps: 1_000,
             thinning: 1,
             p_do_nothing: 0.01,
         }
@@ -43,9 +45,10 @@ pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) ->
     );
 
     let mut state = JMState::new_cyclic(n);
-    let total_steps = params.burn_in + params.steps;
 
-    for _ in 0..total_steps {
+    // burn_in: steps to reach equilibrium from initial cyclic state
+    // (steps is reserved for iterator mode, not used in one-shot sampling)
+    for _ in 0..params.burn_in {
         step(&mut state, rng, params);
     }
 

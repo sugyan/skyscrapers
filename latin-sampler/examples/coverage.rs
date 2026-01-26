@@ -18,7 +18,6 @@ fn main() {
     let n: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(3);
     let max_samples: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(10000);
     let burn_in: u64 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(1000);
-    let steps: u64 = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(500);
 
     let known_counts: &[(usize, usize)] = &[(3, 12), (4, 576), (5, 161_280)];
     let expected = known_counts
@@ -32,12 +31,11 @@ fn main() {
         println!("Known total: {}", total);
     }
     println!("max_samples = {}", max_samples);
-    println!("burn_in = {}, steps = {}", burn_in, steps);
+    println!("burn_in = {}", burn_in);
     println!();
 
     let params = SamplerParams {
         burn_in,
-        steps,
         ..Default::default()
     };
 
