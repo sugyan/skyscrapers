@@ -11,13 +11,14 @@
 
 ### Design constraints
 - Deterministic output given the same seed and parameters.
-- Always maintain the Latin property (no rejection / no invalid intermediate state).
+- Ergodic MCMC: must be able to reach any Latin square from any starting state.
 - Simple, testable, auditable core move set.
 - Reasonable performance for `n <= 10`, especially `7/8`.
 
-### v0.1 scope (minimal)
+### v0.1 scope (revised)
 - `LatinSquare` struct with basic operations
 - `SamplerParams` and `sample()` function
+- **Jacobson-Matthews algorithm** for ergodic sampling
 - Essential unit tests only
 - Deferred to v0.2+: `Sampler<R>` iterator, `serde` feature, `proptest`
 
@@ -27,11 +28,76 @@ A Latin square of order `n` is an `n x n` array with symbols `{0..n-1}` such tha
 - each row is a permutation of `{0..n-1}`
 - each column is a permutation of `{0..n-1}`
 
+An **improper Latin square** (used in Jacobson-Matthews) allows one cell to have value `-1` and another to have a duplicate, with compensating `+1/-1` structure.
+
 We treat the sampler distribution as "approximately uniform" after sufficient burn-in and mixing.
 
-## 2. Public API (v0.1 target)
+## 2. Known Issues with Previous Design
 
-### 2.1 Types
+### 2.1 Problem: Ergodicity failure with row/col cycle moves
+
+The original design used only `row_cycle_move` and `col_cycle_move`. Testing revealed:
+
+| n | Prime? | Reduced forms reached | Total reduced forms | Coverage |
+|---|--------|----------------------|---------------------|----------|
+| 3 | Yes | 1 | 1 | 100% |
+| 4 | No | 4 | 4 | 100% |
+| 5 | Yes | **1** | 56 | **1.8%** |
+| 6 | No | 8,243 | 9,408 | 87.6% |
+| 7 | Yes | **1** | 16,942,080 | **~0%** |
+
+**For prime n, the sampler was trapped in a single equivalence class.**
+
+### 2.2 Root cause: Cyclic Latin square structure
+
+- Cyclic square `L[r][c] = (r+c) mod n` has no intercalates when n is odd
+- `row_cycle_move` and `col_cycle_move` preserve the algebraic structure
+- Cannot escape to other reduced forms without additional moves
+
+### 2.3 Solution: Jacobson-Matthews algorithm
+
+The Jacobson-Matthews algorithm (1996) is proven to be ergodic for all n. It uses "improper" Latin squares as intermediate states, guaranteeing that any Latin square can be reached from any other.
+
+## 3. Core Algorithm: Jacobson-Matthews
+
+### 3.1 Overview
+
+The algorithm operates on a 3-dimensional {0,1}-array representation and occasionally passes through "improper" states where one position has value -1.
+
+Reference: Jacobson, M. T., & Matthews, P. (1996). "Generating uniformly distributed random Latin squares." *Journal of Combinatorial Designs*, 4(6), 405-437.
+
+### 3.2 Proper Latin Square Representation
+
+A proper Latin square can be represented as a 3D array `A[r][c][s]` where:
+- `A[r][c][s] = 1` if cell (r,c) contains symbol s
+- `A[r][c][s] = 0` otherwise
+- For each (r,c): exactly one s has `A[r][c][s] = 1`
+- For each (r,s): exactly one c has `A[r][c][s] = 1`
+- For each (c,s): exactly one r has `A[r][c][s] = 1`
+
+### 3.3 Improper Latin Square
+
+An improper Latin square has exactly one cell (r0, c0, s0) with `A[r0][c0][s0] = -1`, and compensating `+1` entries that maintain row/column/symbol sum invariants.
+
+### 3.4 Move Description
+
+From a proper state:
+1. Choose random (r, c, s) where `A[r][c][s] = 0`
+2. Set `A[r][c][s] = +1`
+3. This creates violations; find the unique (r', c', s') that restores balance
+4. Set `A[r'][c'][s'] = -1`
+5. If the result is proper (the -1 entry coincides with a +1), done
+6. Otherwise, in improper state: choose how to resolve and iterate
+
+### 3.5 Implementation Notes
+
+- Can use a more compact representation (n×n array + tracking of improper state)
+- Each move is O(1) average time
+- Improper states are transient; algorithm quickly returns to proper states
+
+## 4. Public API (v0.1 target)
+
+### 4.1 Types
 
 - `pub struct LatinSquare { n: usize, cells: Vec<u8> }`
 
@@ -42,7 +108,7 @@ Constraints:
 Indexing:
 - linear index `idx = r*n + c`
 
-### 2.2 Constructors / accessors
+### 4.2 Constructors / accessors
 
 - `impl LatinSquare`
   - `pub fn new_cyclic(n: usize) -> Self`
@@ -51,15 +117,14 @@ Indexing:
   - `pub fn get(&self, r: usize, c: usize) -> u8`
   - `pub(crate) fn set_unchecked(&mut self, r: usize, c: usize, v: u8)`
 
-Note: `is_latin` is NOT part of the public API. The Latin property is an invariant enforced by construction and moves. A test-only helper `is_latin()` exists for validation.
+Note: `is_latin` is NOT part of the public API. A test-only helper `is_latin()` exists for validation.
 
-### 2.3 Sampler parameters
+### 4.3 Sampler parameters
 
 - `pub struct SamplerParams`
   - `pub burn_in: u64`  // number of steps discarded
   - `pub steps: u64`    // number of steps after burn-in before returning
   - `pub thinning: u64` // optional; if >1, only return every k steps in iterator mode
-  - `pub p_row_move: f64` // in [0,1]
   - `pub p_do_nothing: f64` // in [0,1], for aperiodicity
 
 Provide:
@@ -67,10 +132,11 @@ Provide:
   - `burn_in = 300_000`
   - `steps = 80_000`
   - `thinning = 1`
-  - `p_row_move = 0.5`
   - `p_do_nothing = 0.01`
 
-### 2.4 Sampling entry point (seedable via RNG injection)
+Note: `p_row_move` is removed as Jacobson-Matthews does not distinguish row/col moves.
+
+### 4.4 Sampling entry point (seedable via RNG injection)
 
 - `pub fn sample<R: rand::Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) -> LatinSquare`
 
@@ -83,95 +149,101 @@ RNG guidance (docs/examples):
   - created by `Sampler::new(n, rng, params)`
   - yields successive samples separated by `params.thinning`
 
-## 3. Core algorithm
+## 5. Implementation Details (Rust)
 
-### 3.1 Overview
+### 5.1 Internal state representation
 
-Use an MCMC random walk over the space of valid Latin squares using **always-valid** local moves:
-- `row_cycle_move` (2-row cycle swap trade)
-- `col_cycle_move` (2-column cycle swap trade)
-plus occasional no-op to ensure aperiodicity.
+**Current implementation (v0.1): Full 3D array (Option A)**
+- `sigma: Vec<i8>` of size `n*n*n`
+- Direct implementation of the paper
+- Simple and correct, but has O(n³) memory and O(n³) `is_proper()` check
 
-Each step:
-- With probability `p_do_nothing`: do nothing
-- Else choose move type:
-  - with probability `p_row_move`: apply `row_cycle_move`
-  - else: apply `col_cycle_move`
+Option B: Compact representation (v0.2+ optimization candidate)
+- `cells: Vec<u8>` for proper state (n×n)
+- `improper: Option<ImproperState>` tracking the -1 position and related info
+- More memory efficient, O(1) `is_proper()` check
+- Would improve performance significantly for large n
 
-### 3.2 Row-cycle move (always preserves Latin property)
-
-Given square `L`:
-
-1) Choose distinct rows `r1 != r2` uniformly.
-
-2) Build inverse map for row `r1`:
-- `pos[s] = c` where `L[r1][c] == s` for all `s`.
-
-3) Define a permutation on symbols:
-- `perm[s] = L[r2][pos[s]]`
-This is a permutation of `{0..n-1}`.
-
-4) Select a random non-trivial cycle (length >= 2) from `perm`.
-- If only fixed points are encountered after a small number of retries, treat as no-op.
-
-5) For each symbol `s` in the selected cycle:
-- let `c = pos[s]`
-- swap `L[r1][c]` and `L[r2][c]`
-
-Why it works:
-- In each affected column `c`, we only swap two entries, so the column remains a permutation.
-- In each affected row, the swap is structured by a cycle of `perm`, preventing duplicates and preserving permutation property.
-
-### 3.3 Column-cycle move
-
-Symmetric to row-cycle move, swapping columns `c1, c2` using inverse mapping on column `c1`.
-
-### 3.4 Random cycle selection details
-
-Implement helper:
-- `fn random_nontrivial_cycle<R: Rng + ?Sized>(perm: &[u8], rng: &mut R) -> Option<Vec<u8>>`
-  - Choose random start `s0`
-  - Follow `perm` until repeats to identify cycle
-  - If cycle length == 1, retry up to `max_retries` (e.g. 8)
-  - Return `None` if not found (treat as no-op)
-
-Note:
-- `perm` can be stored as `Vec<u8>` length `n`.
-
-## 4. Implementation details (Rust)
-
-### 4.1 Memory / performance
+### 5.2 Memory / performance
 
 - Use `Vec<u8>` for `cells`, and small stack buffers where possible.
-- For each move, allocate scratch buffers:
-  - `pos: Vec<usize>` length `n`
-  - `perm: Vec<u8>` length `n`
-  - `cycle: Vec<u8>` length up to `n`
-To reduce allocations:
-- Prefer `Sampler` struct holding reusable buffers (`pos`, `perm`, `visited`, etc.) if implementing iterator.
+- Track improper state with minimal overhead.
+- Each Jacobson-Matthews move is O(1) on average.
 
-### 4.2 Index safety
+### 5.3 Index safety
 
 - Validate `n >= 2` and `n <= 255` in public entry points.
-- Use checked indexing in public methods; internal hot paths may use `get_unchecked` if well-audited (optional).
+- Use checked indexing in public methods.
 
-### 4.3 Floating-point probabilities
-
-- Validate:
-  - `0.0 <= p_row_move <= 1.0`
-  - `0.0 <= p_do_nothing <= 1.0`
-- Use `rng.gen::<f64>()` comparisons.
-
-### 4.4 Feature flags (v0.2+)
+### 5.4 Feature flags (v0.2+)
 
 - `serde` feature for `LatinSquare` serialization.
 - `proptest` in dev-dependencies only.
 
-## 5. Testing requirements
+### 5.5 Performance optimization plan (v0.2+)
 
-### 5.1 Unit tests
+Current v0.1 implementation has O(n³) overhead for `is_proper()` and `find_minus_one()` due to full 3D array scan. Two optimization approaches are available:
 
-Use the test-only `LatinSquare::is_latin(&self) -> bool` method for validation.
+#### Approach 1: Track improper position (recommended first step)
+
+The Jacobson-Matthews algorithm maintains at most one improper cell at any time. By tracking this position explicitly, both operations become O(1):
+
+```rust
+pub(crate) struct JMState {
+    n: usize,
+    sigma: Vec<i8>,  // keep 3D array
+    improper_pos: Option<(usize, usize, usize)>,  // track -1 position
+}
+
+impl JMState {
+    fn is_proper(&self) -> bool {
+        self.improper_pos.is_none()  // O(1)
+    }
+
+    fn find_minus_one(&self) -> Option<(usize, usize, usize)> {
+        self.improper_pos  // O(1)
+    }
+}
+```
+
+Update `apply_move()` to maintain `improper_pos`:
+- When setting a cell to -1: `self.improper_pos = Some((r, c, s))`
+- When the -1 cell becomes 0 or 1: `self.improper_pos = None`
+
+This is a minimal change with significant performance gain.
+
+#### Approach 2: Compact representation (optional further optimization)
+
+Replace 3D array with n×n cells + improper state tracking for O(n²) memory instead of O(n³):
+
+```rust
+pub(crate) struct JMState {
+    n: usize,
+    cells: Vec<u8>,  // n×n proper representation
+    improper: Option<ImproperState>,
+}
+
+struct ImproperState {
+    // Position with two symbols
+    dup_row: usize,
+    dup_col: usize,
+    symbols: (u8, u8),  // (original, added)
+    // Position with missing symbol
+    missing_row: usize,
+    missing_col: usize,
+    missing_symbol: u8,
+}
+```
+
+This requires more complex move logic but reduces memory from n³ to n² bytes.
+
+#### Recommendation
+
+Implement Approach 1 first (minimal change, significant gain), then evaluate if Approach 2 is needed based on profiling.
+
+## 6. Testing Requirements
+
+### 6.1 Unit tests
 
 1) `cyclic_is_latin`
 - `LatinSquare::new_cyclic(n)` is Latin for `n=2..10`.
@@ -179,8 +251,8 @@ Use the test-only `LatinSquare::is_latin(&self) -> bool` method for validation.
 2) `move_preserves_latin`
 - For `n=7` and `n=8`:
   - start from cyclic square
-  - apply 50_000 random moves with fixed seed
-  - assert `sq.is_latin()` after each move
+  - apply 50_000 random Jacobson-Matthews moves with fixed seed
+  - assert result `is_latin()` (proper state check)
 
 3) `reproducibility_same_seed_same_output`
 - For fixed params and seed:
@@ -188,26 +260,31 @@ Use the test-only `LatinSquare::is_latin(&self) -> bool` method for validation.
   - assert squares identical (cells equal)
 
 4) `different_seed_different_output_smoke`
-- Not a strict guarantee, but a smoke check:
-  - two different seeds produce different squares (likely). If equal, allow retry with another seed.
+- Smoke check: two different seeds produce different squares (likely).
 
-### 5.2 Property tests (v0.2+)
+5) `ergodicity_reaches_multiple_reduced_forms` (new)
+- For `n=5` and `n=7`:
+  - sample many squares with different seeds
+  - compute reduced forms
+  - assert multiple distinct reduced forms are reached
+
+### 6.2 Property tests (v0.2+)
 
 Using `proptest`:
 - random seeds and small `n` (2..10), random step counts (0..5000):
-  - apply moves and assert `is_latin()` always true.
+  - apply moves and assert proper state at end.
 
-### 5.3 Statistical sanity checks (non-blocking / ignored tests)
+### 6.3 Statistical sanity checks (non-blocking / ignored tests)
 
 Provide an ignored test (run manually):
 - sample e.g. 500 squares for `n=7` with different seeds
-- compute a simple statistic (e.g., count of 2x2 intercalates)
+- compute statistics (e.g., distribution of cell values)
 - print summary (mean/variance)
 This is for human inspection only; do not fail CI.
 
-## 6. Examples (README snippets)
+## 7. Examples (README snippets)
 
-### 6.1 One-shot sampling with seed
+### 7.1 One-shot sampling with seed
 
 ```rust
 use latin_sampler::{sample, SamplerParams};
@@ -222,14 +299,14 @@ fn main() {
 }
 ```
 
-### 6.2 Accessing cells
+### 7.2 Accessing cells
 
 ```rust
 let v = sq.get(0, 0);
 println!("{}", v);
 ```
 
-## 7. Crate structure
+## 8. Crate Structure
 
 ### v0.1 module layout
 
@@ -238,22 +315,24 @@ println!("{}", v);
 - `src/square.rs`
   - `LatinSquare` definition, constructors, accessors
   - test-only `is_latin()` helper for validation
-- `src/moves.rs`
-  - `row_cycle_move`, `col_cycle_move`, `random_nontrivial_cycle`
+- `src/jacobson_matthews.rs` (new)
+  - Jacobson-Matthews move implementation
+  - Internal state management for improper states
 - `src/sampler.rs`
   - `SamplerParams`, `sample`
 
 ### v0.2+ additions
 - `Sampler<R>` iterator in `src/sampler.rs`
+- Performance optimization (see Section 5.5 for implementation plan)
 
-## 8. Documentation expectations
+## 9. Documentation Expectations
 
 Clearly state that output is "approximately uniform" and depends on mixing.
 Document reproducibility guarantees (same seed + same params => same output).
 Provide guidance for `n=7/8` and default params.
-Warn that defaults are heuristic and may require adjustment for different `n` or strict statistical needs.
+Note that Jacobson-Matthews is used for ergodicity.
 
-## 9. Licensing
+## 10. Licensing
 
 Default recommendation for broad reuse:
 
@@ -261,12 +340,18 @@ Default recommendation for broad reuse:
 
 Ensure dependencies (`rand`, `rand_chacha`) are compatible.
 
-## 10. Acceptance criteria (v0.1)
+## 11. Acceptance Criteria (v0.1)
 
-- [ ] `cargo test` passes
-- [ ] `cargo fmt --check` clean
-- [ ] `cargo clippy` clean (no warnings)
-- [ ] Reproducible sampling demonstrated in tests
-- [ ] README includes the seedable example
-- [ ] Public API matches Section 2.1–2.4 (excluding v0.2+ items)
-- [ ] All moves preserve Latin property (no invalid intermediate states)
+- [x] `cargo test` passes
+- [x] `cargo fmt --check` clean
+- [x] `cargo clippy` clean (no warnings)
+- [x] Reproducible sampling demonstrated in tests
+- [x] README includes the seedable example
+- [x] Public API matches Section 4.1–4.4 (excluding v0.2+ items)
+- [x] Jacobson-Matthews algorithm correctly implemented
+- [x] Ergodicity test passes (multiple reduced forms reached for n=5, n=7)
+
+## 12. References
+
+- Jacobson, M. T., & Matthews, P. (1996). "Generating uniformly distributed random Latin squares." *Journal of Combinatorial Designs*, 4(6), 405-437.
+- McKay, B. D., & Wanless, I. M. (2005). "On the number of Latin squares." *Annals of Combinatorics*, 9(3), 335-344.

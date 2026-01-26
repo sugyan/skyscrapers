@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-mod moves;
+mod jacobson_matthews;
 mod sampler;
 mod square;
 
