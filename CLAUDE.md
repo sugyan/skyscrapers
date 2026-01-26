@@ -180,6 +180,67 @@ Option B: Compact representation (v0.2+ optimization candidate)
 - `serde` feature for `LatinSquare` serialization.
 - `proptest` in dev-dependencies only.
 
+### 5.5 Performance optimization plan (v0.2+)
+
+Current v0.1 implementation has O(n³) overhead for `is_proper()` and `find_minus_one()` due to full 3D array scan. Two optimization approaches are available:
+
+#### Approach 1: Track improper position (recommended first step)
+
+The Jacobson-Matthews algorithm maintains at most one improper cell at any time. By tracking this position explicitly, both operations become O(1):
+
+```rust
+pub(crate) struct JMState {
+    n: usize,
+    sigma: Vec<i8>,  // keep 3D array
+    improper_pos: Option<(usize, usize, usize)>,  // track -1 position
+}
+
+impl JMState {
+    fn is_proper(&self) -> bool {
+        self.improper_pos.is_none()  // O(1)
+    }
+
+    fn find_minus_one(&self) -> Option<(usize, usize, usize)> {
+        self.improper_pos  // O(1)
+    }
+}
+```
+
+Update `apply_move()` to maintain `improper_pos`:
+- When setting a cell to -1: `self.improper_pos = Some((r, c, s))`
+- When the -1 cell becomes 0 or 1: `self.improper_pos = None`
+
+This is a minimal change with significant performance gain.
+
+#### Approach 2: Compact representation (optional further optimization)
+
+Replace 3D array with n×n cells + improper state tracking for O(n²) memory instead of O(n³):
+
+```rust
+pub(crate) struct JMState {
+    n: usize,
+    cells: Vec<u8>,  // n×n proper representation
+    improper: Option<ImproperState>,
+}
+
+struct ImproperState {
+    // Position with two symbols
+    dup_row: usize,
+    dup_col: usize,
+    symbols: (u8, u8),  // (original, added)
+    // Position with missing symbol
+    missing_row: usize,
+    missing_col: usize,
+    missing_symbol: u8,
+}
+```
+
+This requires more complex move logic but reduces memory from n³ to n² bytes.
+
+#### Recommendation
+
+Implement Approach 1 first (minimal change, significant gain), then evaluate if Approach 2 is needed based on profiling.
+
 ## 6. Testing Requirements
 
 ### 6.1 Unit tests
@@ -262,9 +323,7 @@ println!("{}", v);
 
 ### v0.2+ additions
 - `Sampler<R>` iterator in `src/sampler.rs`
-- Performance optimization: compact representation (Option B in Section 5.1)
-  - Replace 3D array with n×n cells + improper state tracking
-  - O(1) `is_proper()` instead of O(n³) scan
+- Performance optimization (see Section 5.5 for implementation plan)
 
 ## 9. Documentation Expectations
 
