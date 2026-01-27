@@ -58,6 +58,32 @@ The original design used only `row_cycle_move` and `col_cycle_move`. Testing rev
 
 The Jacobson-Matthews algorithm (1996) is proven to be ergodic for all n. It uses "improper" Latin squares as intermediate states, guaranteeing that any Latin square can be reached from any other.
 
+### 2.4 Open Issue: Uniformity deviation for small n
+
+Statistical testing revealed that for small n (especially n=4), the sampler may not produce perfectly uniform distribution:
+
+| n | Test | χ²/df | Status |
+|---|------|-------|--------|
+| 4 | Direct count (576 squares, 10k samples) | 2.42 | Non-uniform |
+| 5 | Hash bucket | 1.05 | OK |
+| 6 | Hash bucket | 0.88 | OK |
+| 7 | Hash bucket | 0.90 | OK |
+
+For n=4, with burn_in=5,000 (the current default), the distribution shows χ²/df ≈ 2.4 (expected ~1.0 for uniform); increasing burn_in to 50,000 did not materially change this result.
+
+**Possible causes (not yet determined):**
+- Mixing time may be longer than expected for small n
+- Initial state (cyclic square) may bias toward certain squares
+- Unknown algorithmic issue
+
+**Note:** For the primary use case (n=7, 8), the hash bucket test shows good uniformity. The n=4 issue may be acceptable given the project's non-goal of mathematical rigor.
+
+**Verification tools available:**
+- `examples/stats.rs`: Cell-by-cell frequency analysis
+- `examples/coverage.rs`: Coverage of all Latin squares for small n
+- `examples/uniformity.rs`: Hash bucket chi-square test
+- `examples/square_counts.rs`: Direct count for small n
+
 ## 3. Core Algorithm: Jacobson-Matthews
 
 ### 3.1 Overview
@@ -129,8 +155,8 @@ Note: `is_latin` is NOT part of the public API. A test-only helper `is_latin()` 
 
 Provide:
 - `impl Default for SamplerParams` with safe defaults for `n=7/8`:
-  - `burn_in = 300_000`
-  - `steps = 80_000`
+  - `burn_in = 5_000` (reduced from 300k after statistical validation)
+  - `steps = 1_000` (reserved for iterator mode, not used in one-shot `sample()`)
   - `thinning = 1`
   - `p_do_nothing = 0.01`
 
@@ -180,11 +206,9 @@ Option B: Compact representation (v0.2+ optimization candidate)
 - `serde` feature for `LatinSquare` serialization.
 - `proptest` in dev-dependencies only.
 
-### 5.5 Performance optimization plan (v0.2+)
+### 5.5 Performance optimization plan
 
-Current v0.1 implementation has O(n³) overhead for `is_proper()` and `find_minus_one()` due to full 3D array scan. Two optimization approaches are available:
-
-#### Approach 1: Track improper position (recommended first step)
+#### Approach 1: Track improper position ✅ IMPLEMENTED
 
 The Jacobson-Matthews algorithm maintains at most one improper cell at any time. By tracking this position explicitly, both operations become O(1):
 
@@ -206,7 +230,7 @@ impl JMState {
 }
 ```
 
-Update `apply_move()` to maintain `improper_pos`:
+`apply_move()` maintains `improper_pos`:
 - When setting a cell to -1: `self.improper_pos = Some((r, c, s))`
 - When the -1 cell becomes 0 or 1: `self.improper_pos = None`
 

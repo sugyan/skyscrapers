@@ -20,6 +20,8 @@ pub(crate) struct JMState {
     n: usize,
     /// Flattened 3D array: sigma[r * n * n + c * n + s]
     sigma: Vec<i8>,
+    /// Tracks the position of the -1 entry (if any) for O(1) lookup.
+    improper_pos: Option<(usize, usize, usize)>,
 }
 
 impl JMState {
@@ -32,12 +34,17 @@ impl JMState {
                 sigma[r * n * n + c * n + s] = 1;
             }
         }
-        Self { n, sigma }
+        Self {
+            n,
+            sigma,
+            improper_pos: None,
+        }
     }
 
-    /// Check if the state is proper (no -1 entries).
+    /// Check if the state is proper (no -1 entries). O(1).
+    #[inline]
     pub fn is_proper(&self) -> bool {
-        !self.sigma.contains(&-1)
+        self.improper_pos.is_none()
     }
 
     /// Convert to a LatinSquare. Only valid if proper.
@@ -134,6 +141,21 @@ impl JMState {
         self.add(r_prime, c, s, -1);
         self.add(r, c, s_prime, -1);
         self.add(r_prime, c_prime, s_prime, -1);
+
+        // Update improper_pos: exactly one of the decremented positions may become -1.
+        // We check all four to find which one (if any) became -1.
+        self.improper_pos = None;
+        for &(ri, ci, si) in &[
+            (r, c_prime, s),
+            (r_prime, c, s),
+            (r, c, s_prime),
+            (r_prime, c_prime, s_prime),
+        ] {
+            if self.get(ri, ci, si) == -1 {
+                self.improper_pos = Some((ri, ci, si));
+                break;
+            }
+        }
     }
 
     #[inline]
@@ -161,19 +183,10 @@ impl JMState {
         (0..self.n).find(|&r| self.get(r, c, s) == 1).unwrap()
     }
 
-    /// Find the position of the -1 entry.
+    /// Find the position of the -1 entry. O(1).
+    #[inline]
     fn find_minus_one(&self) -> Option<(usize, usize, usize)> {
-        let n = self.n;
-        for r in 0..n {
-            for c in 0..n {
-                for s in 0..n {
-                    if self.get(r, c, s) == -1 {
-                        return Some((r, c, s));
-                    }
-                }
-            }
-        }
-        None
+        self.improper_pos
     }
 }
 
