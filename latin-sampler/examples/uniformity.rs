@@ -101,14 +101,19 @@ fn main() {
     let mut histogram = vec![0usize; 10];
     let bucket_min = (expected * 0.5) as usize;
     let bucket_max = (expected * 1.5) as usize;
-    let range = (bucket_max - bucket_min) / 10;
+    // Ensure a non-zero range; if bucket_max <= bucket_min, fall back to 1.
+    let range = if bucket_max > bucket_min {
+        (bucket_max - bucket_min + 9) / 10
+    } else {
+        1
+    };
     for &count in &bucket_counts {
         let idx = if count < bucket_min {
             0
         } else if count >= bucket_max {
             9
         } else {
-            ((count - bucket_min) / range.max(1)).min(9)
+            ((count - bucket_min) / range).min(9)
         };
         histogram[idx] += 1;
     }

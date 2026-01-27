@@ -142,7 +142,8 @@ impl JMState {
         self.add(r, c, s_prime, -1);
         self.add(r_prime, c_prime, s_prime, -1);
 
-        // Update improper_pos: check which decremented position became -1
+        // Update improper_pos: exactly one of the decremented positions may become -1.
+        // We check all four to find which one (if any) became -1.
         self.improper_pos = None;
         for &(ri, ci, si) in &[
             (r, c_prime, s),

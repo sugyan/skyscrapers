@@ -73,10 +73,18 @@ fn main() {
     
     let min_count = *count_values.first().unwrap();
     let max_count = *count_values.last().unwrap();
-    let median = count_values[count_values.len() / 2];
-    
+    let median: f64 = {
+        let len = count_values.len();
+        let mid = len / 2;
+        if len % 2 == 1 {
+            count_values[mid] as f64
+        } else {
+            (count_values[mid - 1] as f64 + count_values[mid] as f64) / 2.0
+        }
+    };
+
     println!("  Min occurrences: {}", min_count);
-    println!("  Median occurrences: {}", median);
+    println!("  Median occurrences: {:.1}", median);
     println!("  Max occurrences: {}", max_count);
     println!();
 

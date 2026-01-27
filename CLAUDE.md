@@ -69,7 +69,7 @@ Statistical testing revealed that for small n (especially n=4), the sampler may 
 | 6 | Hash bucket | 0.88 | OK |
 | 7 | Hash bucket | 0.90 | OK |
 
-For n=4, even with burn_in=50,000, the distribution shows χ²/df ≈ 2.4 (expected ~1.0 for uniform).
+For n=4, with burn_in=5,000 (the current default), the distribution shows χ²/df ≈ 2.4 (expected ~1.0 for uniform); increasing burn_in to 50,000 did not materially change this result.
 
 **Possible causes (not yet determined):**
 - Mixing time may be longer than expected for small n
