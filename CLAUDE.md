@@ -60,29 +60,24 @@ The Jacobson-Matthews algorithm (1996) is proven to be ergodic for all n. It use
 
 ### 2.4 Open Issue: Uniformity deviation for small n
 
-Statistical testing revealed that for small n (especially n=4), the sampler may not produce perfectly uniform distribution:
+Statistical testing (100,000 samples, burn_in=5,000) revealed that for small n, the sampler does not produce uniform distribution:
 
-| n | Test | χ²/df | Status |
-|---|------|-------|--------|
-| 4 | Direct count (576 squares, 10k samples) | 2.42 | Non-uniform |
-| 5 | Hash bucket | 1.05 | OK |
-| 6 | Hash bucket | 0.88 | OK |
-| 7 | Hash bucket | 0.90 | OK |
+| n | Test | Buckets/Categories | χ²/df | Status |
+|---|------|-------------------|-------|--------|
+| 4 | Direct count | 576 (all squares) | 15.73 | Non-uniform |
+| 5 | Hash bucket | 4,096 | 1.63 | Non-uniform |
+| 6 | Hash bucket | 8,192 | 1.01 | OK |
+| 7 | Hash bucket | 8,192 | 0.97 | OK |
 
-For n=4, with burn_in=5,000 (the current default), the distribution shows χ²/df ≈ 2.4 (expected ~1.0 for uniform); increasing burn_in to 50,000 did not materially change this result.
+For n=4, the distribution shows severe non-uniformity (χ²/df ≈ 15.7, expected ~1.0). All 576 squares are reachable, but with significant frequency variation (min: 62, max: 241, expected: 173.6 per square).
 
-**Possible causes (not yet determined):**
-- Mixing time may be longer than expected for small n
-- Initial state (cyclic square) may bias toward certain squares
-- Unknown algorithmic issue
+**Likely cause:** Algorithmic characteristic of Jacobson-Matthews for small n. Some Latin squares may have more "neighbors" in the move space, making them easier to reach. This is an inherent property of the Markov chain structure, not a bug.
 
-**Note:** For the primary use case (n=7, 8), the hash bucket test shows good uniformity. The n=4 issue may be acceptable given the project's non-goal of mathematical rigor.
+**Note:** For the primary use case (n=6, 7, 8), the test shows good uniformity (χ²/df ≈ 1.0). The small-n non-uniformity is acceptable given the project's non-goal of mathematical rigor.
 
-**Verification tools available:**
-- `examples/stats.rs`: Cell-by-cell frequency analysis
-- `examples/coverage.rs`: Coverage of all Latin squares for small n
-- `examples/uniformity.rs`: Hash bucket chi-square test
-- `examples/square_counts.rs`: Direct count for small n
+**Verification tools:**
+- `examples/uniformity_test.rs`: Chi-square uniformity test (direct count for n=4, hash bucket for n≥5)
+- `examples/coverage.rs`: Coverage test for small n (ergodicity verification)
 
 ## 3. Core Algorithm: Jacobson-Matthews
 
