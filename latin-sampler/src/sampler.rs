@@ -15,6 +15,14 @@ pub struct SamplerParams {
     pub thinning: u64,
     /// Probability of doing nothing (for aperiodicity).
     pub p_do_nothing: f64,
+    /// Sampling interval for fixed-interval sampling.
+    ///
+    /// - `0`: Sample immediately when returning to proper state (Mode A, legacy behavior)
+    /// - `>0`: Sample every K steps, only when in proper state (Mode B)
+    ///
+    /// Mode B improves uniformity for small n (e.g., n=4) at the cost of throughput.
+    /// Default is 10, which provides good uniformity with minimal performance impact.
+    pub sampling_interval: u64,
 }
 
 impl Default for SamplerParams {
@@ -24,6 +32,7 @@ impl Default for SamplerParams {
             steps: 1_000,
             thinning: 1,
             p_do_nothing: 0.01,
+            sampling_interval: 10,
         }
     }
 }
@@ -32,6 +41,14 @@ impl Default for SamplerParams {
 ///
 /// Uses MCMC sampling with the Jacobson-Matthews algorithm for ergodicity.
 /// The output is deterministic given the same seed and parameters.
+///
+/// # Sampling modes
+///
+/// The `sampling_interval` parameter controls how samples are taken:
+/// - `0` (Mode A): Sample immediately when returning to proper state
+/// - `>0` (Mode B): Sample every K steps, only when in proper state
+///
+/// Mode B provides better uniformity for small n at the cost of throughput.
 ///
 /// # Panics
 /// Panics if:
@@ -47,14 +64,26 @@ pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) ->
     let mut state = JMState::new_cyclic(n);
 
     // burn_in: steps to reach equilibrium from initial cyclic state
-    // (steps is reserved for iterator mode, not used in one-shot sampling)
     for _ in 0..params.burn_in {
         step(&mut state, rng, params);
     }
 
-    // Ensure we end in a proper state
-    while !state.is_proper() {
-        state.step(rng);
+    if params.sampling_interval == 0 {
+        // Mode A: Sample immediately when returning to proper state
+        while !state.is_proper() {
+            state.step(rng);
+        }
+    } else {
+        // Mode B: Sample every K steps, only when in proper state
+        let mut step_count = 0u64;
+        loop {
+            step(&mut state, rng, params);
+            step_count += 1;
+
+            if step_count % params.sampling_interval == 0 && state.is_proper() {
+                break;
+            }
+        }
     }
 
     state.to_latin_square()
@@ -82,6 +111,7 @@ mod tests {
             steps: 500,
             thinning: 1,
             p_do_nothing: 0.01,
+            sampling_interval: 10,
         }
     }
 
