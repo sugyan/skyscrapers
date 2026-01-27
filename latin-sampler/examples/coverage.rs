@@ -46,13 +46,7 @@ fn main() {
 
     for seed_idx in 0..max_samples {
         actual_samples = seed_idx + 1;
-        let mut seed = [0u8; 32];
-        seed[0] = (seed_idx & 0xff) as u8;
-        seed[1] = ((seed_idx >> 8) & 0xff) as u8;
-        seed[2] = ((seed_idx >> 16) & 0xff) as u8;
-        seed[3] = ((seed_idx >> 24) & 0xff) as u8;
-
-        let mut rng = ChaCha20Rng::from_seed(seed);
+        let mut rng = ChaCha20Rng::seed_from_u64(seed_idx as u64);
         let sq = sample(n, &mut rng, &params);
 
         let mut cells = Vec::with_capacity(n * n);
