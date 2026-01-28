@@ -2,7 +2,7 @@
 
 extern crate test;
 
-use latin_sampler::{sample, SamplerParams};
+use latin_sampler::{SamplerParams, sample};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use test::Bencher;

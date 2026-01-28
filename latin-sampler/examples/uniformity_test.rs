@@ -31,7 +31,7 @@ fn main() {
     println!();
 
     let params = SamplerParams {
-        burn_in,
+        burn_in: Some(burn_in),
         ..Default::default()
     };
 
