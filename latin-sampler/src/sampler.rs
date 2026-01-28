@@ -75,13 +75,17 @@ pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) ->
         }
     } else {
         // Mode B: Sample every K steps, only when in proper state
-        let mut step_count = 0u64;
+        // Use countdown instead of modulo for better performance
+        let mut steps_until_check = params.sampling_interval;
         loop {
             step(&mut state, rng, params);
-            step_count += 1;
+            steps_until_check -= 1;
 
-            if step_count % params.sampling_interval == 0 && state.is_proper() {
-                break;
+            if steps_until_check == 0 {
+                steps_until_check = params.sampling_interval;
+                if state.is_proper() {
+                    break;
+                }
             }
         }
     }
