@@ -102,19 +102,49 @@ impl JMState {
             // Improper state: find the -1 position
             let (r, c, s) = self.find_minus_one().unwrap();
 
-            // In improper state, there are 2 columns with s in row r,
-            // 2 rows with s in column c, and possibly 2 symbols at the intersection.
-            let cols: Vec<usize> = (0..n).filter(|&c2| self.get(r, c2, s) == 1).collect();
-            let rows: Vec<usize> = (0..n).filter(|&r2| self.get(r2, c, s) == 1).collect();
+            // In improper state, there are exactly 2 columns with s in row r,
+            // 2 rows with s in column c, and 1-2 symbols at the intersection.
+            // Use stack-allocated arrays instead of Vec to avoid allocation.
+            let mut cols = [0usize; 2];
+            let mut col_count = 0;
+            for c2 in 0..n {
+                if self.get(r, c2, s) == 1 {
+                    cols[col_count] = c2;
+                    col_count += 1;
+                    if col_count == 2 {
+                        break;
+                    }
+                }
+            }
 
-            let c_prime = cols[rng.random_range(0..cols.len())];
-            let r_prime = rows[rng.random_range(0..rows.len())];
+            let mut rows = [0usize; 2];
+            let mut row_count = 0;
+            for r2 in 0..n {
+                if self.get(r2, c, s) == 1 {
+                    rows[row_count] = r2;
+                    row_count += 1;
+                    if row_count == 2 {
+                        break;
+                    }
+                }
+            }
+
+            let c_prime = cols[rng.random_range(0..col_count)];
+            let r_prime = rows[rng.random_range(0..row_count)];
 
             // At (r', c'), there may be 1 or 2 symbols with value 1
-            let symbols: Vec<usize> = (0..n)
-                .filter(|&s2| self.get(r_prime, c_prime, s2) == 1)
-                .collect();
-            let s_prime = symbols[rng.random_range(0..symbols.len())];
+            let mut symbols = [0usize; 2];
+            let mut symbol_count = 0;
+            for s2 in 0..n {
+                if self.get(r_prime, c_prime, s2) == 1 {
+                    symbols[symbol_count] = s2;
+                    symbol_count += 1;
+                    if symbol_count == 2 {
+                        break;
+                    }
+                }
+            }
+            let s_prime = symbols[rng.random_range(0..symbol_count)];
 
             self.apply_move(r, c, s, r_prime, c_prime, s_prime);
         }

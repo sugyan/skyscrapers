@@ -5,9 +5,13 @@ use rand::Rng;
 /// Parameters for the MCMC sampler.
 #[derive(Debug, Clone)]
 pub struct SamplerParams {
-    /// Number of steps to reach equilibrium from initial state.
-    /// Used by `sample()` for one-shot sampling.
-    pub burn_in: u64,
+    /// Burn-in steps to reach equilibrium from initial cyclic state.
+    ///
+    /// If `None`, uses n³ as the burn-in value. The mixing time of
+    /// Jacobson-Matthews is empirically observed to be O(n³ log n),
+    /// though not rigorously proven. Using n³ provides good uniformity
+    /// in practice.
+    pub burn_in: Option<u64>,
     /// Number of steps between successive samples (for iterator mode, v0.2+).
     /// Not used by one-shot `sample()`.
     pub steps: u64,
@@ -28,7 +32,7 @@ pub struct SamplerParams {
 impl Default for SamplerParams {
     fn default() -> Self {
         Self {
-            burn_in: 5_000,
+            burn_in: None, // auto: n³
             steps: 1_000,
             thinning: 1,
             p_do_nothing: 0.01,
@@ -64,7 +68,9 @@ pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) ->
     let mut state = JMState::new_cyclic(n);
 
     // burn_in: steps to reach equilibrium from initial cyclic state
-    for _ in 0..params.burn_in {
+    // Default to n³ if not specified
+    let burn_in = params.burn_in.unwrap_or((n * n * n) as u64);
+    for _ in 0..burn_in {
         step(&mut state, rng, params);
     }
 
@@ -75,13 +81,17 @@ pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) ->
         }
     } else {
         // Mode B: Sample every K steps, only when in proper state
-        let mut step_count = 0u64;
+        // Use countdown instead of modulo for better performance
+        let mut steps_until_check = params.sampling_interval;
         loop {
             step(&mut state, rng, params);
-            step_count += 1;
+            steps_until_check -= 1;
 
-            if step_count % params.sampling_interval == 0 && state.is_proper() {
-                break;
+            if steps_until_check == 0 {
+                steps_until_check = params.sampling_interval;
+                if state.is_proper() {
+                    break;
+                }
             }
         }
     }
@@ -107,7 +117,7 @@ mod tests {
 
     fn quick_params() -> SamplerParams {
         SamplerParams {
-            burn_in: 1000,
+            burn_in: Some(1000),
             steps: 500,
             thinning: 1,
             p_do_nothing: 0.01,
