@@ -21,19 +21,17 @@ fn main() {
 
     let n: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(4);
     let num_samples: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(100_000);
-    let burn_in: u64 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(5000);
 
     println!("=== Improved Uniformity Test ===");
     println!(
-        "n = {}, samples = {}, burn_in = {}",
-        n, num_samples, burn_in
+        "n = {}, samples = {}, burn_in = n³ = {} (auto)",
+        n,
+        num_samples,
+        n * n * n
     );
     println!();
 
-    let params = SamplerParams {
-        burn_in: Some(burn_in),
-        ..Default::default()
-    };
+    let params = SamplerParams::default();
 
     if n == 4 {
         run_n4_direct_test(n, num_samples, &params);

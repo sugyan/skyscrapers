@@ -91,7 +91,6 @@ Benchmark results (n=4, 100k samples, continuous chain):
 **Verification tools:**
 - `examples/uniformity_test.rs`: Chi-square uniformity test (direct count for n=4, hash bucket for n≥5)
 - `examples/coverage.rs`: Coverage test for small n (ergodicity verification)
-- `examples/benchmark_interval.rs`: Interval parameter evaluation benchmark
 
 ## 3. Core Algorithm: Jacobson-Matthews
 
@@ -157,15 +156,15 @@ Note: `is_latin` is NOT part of the public API. A test-only helper `is_latin()` 
 ### 4.3 Sampler parameters
 
 - `pub struct SamplerParams`
-  - `pub burn_in: u64`  // number of steps discarded
+  - `pub burn_in: Option<u64>`  // burn-in steps; `None` auto-scales to n³
   - `pub steps: u64`    // number of steps after burn-in before returning
   - `pub thinning: u64` // optional; if >1, only return every k steps in iterator mode
   - `pub p_do_nothing: f64` // in [0,1], for aperiodicity
   - `pub sampling_interval: u64` // 0 = Mode A (return-event), >0 = Mode B (fixed-interval)
 
 Provide:
-- `impl Default for SamplerParams` with safe defaults for `n=7/8`:
-  - `burn_in = 5_000` (reduced from 300k after statistical validation)
+- `impl Default for SamplerParams` with safe defaults:
+  - `burn_in = None` (auto-scales to n³; mixing time is empirically O(n³ log n))
   - `steps = 1_000` (reserved for iterator mode, not used in one-shot `sample()`)
   - `thinning = 1`
   - `p_do_nothing = 0.01`

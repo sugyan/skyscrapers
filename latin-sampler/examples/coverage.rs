@@ -17,7 +17,6 @@ fn main() {
 
     let n: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(3);
     let max_samples: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(10000);
-    let burn_in: u64 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(1000);
 
     let known_counts: &[(usize, usize)] = &[(3, 12), (4, 576), (5, 161_280)];
     let expected = known_counts
@@ -31,13 +30,10 @@ fn main() {
         println!("Known total: {}", total);
     }
     println!("max_samples = {}", max_samples);
-    println!("burn_in = {}", burn_in);
+    println!("burn_in = n³ = {} (auto)", n * n * n);
     println!();
 
-    let params = SamplerParams {
-        burn_in: Some(burn_in),
-        ..Default::default()
-    };
+    let params = SamplerParams::default();
 
     let mut unique_squares: HashSet<Vec<u8>> = HashSet::new();
     let start = Instant::now();
