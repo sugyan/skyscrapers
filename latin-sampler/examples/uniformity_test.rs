@@ -22,7 +22,6 @@
 use latin_sampler::{SamplerParams, sample};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
 use std::env;
 use std::hash::{Hash, Hasher};
@@ -103,18 +102,14 @@ fn run_pilot_bucket_test(
         pilot_samples
     );
     let mut pilot_counts = vec![0usize; num_buckets];
-    let mut unique_samples: HashSet<Vec<u8>> = HashSet::new();
 
     for seed_idx in 0..pilot_samples {
         let mut rng = ChaCha20Rng::seed_from_u64(seed_idx as u64);
         let sq = sample(n, &mut rng, params);
-        unique_samples.insert(sq.cells().to_vec());
         let bucket = hash_cells(sq.cells()) as usize % num_buckets;
         pilot_counts[bucket] += 1;
     }
-    let num_unique = unique_samples.len();
-    drop(unique_samples); // Free memory before test phase
-    println!("Done. (unique samples: {})\n", num_unique);
+    println!("Done.\n");
 
     // Compute estimated probabilities π_b
     let pi: Vec<f64> = pilot_counts
@@ -154,7 +149,6 @@ fn run_pilot_bucket_test(
     let normalized = chi_square / df as f64;
 
     println!("Results:");
-    println!("  Unique samples in pilot: {}", num_unique);
     println!("  Non-empty buckets: {}", non_empty_buckets);
     println!("  Chi-square: {:.2}", chi_square);
     println!("  Degrees of freedom: {}", df);
