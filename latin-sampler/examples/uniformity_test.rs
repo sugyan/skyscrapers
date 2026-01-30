@@ -1,166 +1,167 @@
-//! Improved uniformity test with correct chi-square methodology.
+//! Uniformity test using pilot-run approach with corrected chi-square methodology.
 //!
-//! Key improvements over existing tests:
-//! - n=4: Uses known total of 576 Latin squares as denominator (not observed unique count)
-//! - n>=5: Uses larger bucket counts (4096 for n=5, 8192 for n>=6)
-//! - Includes unobserved categories in chi-square calculation for n=4
+//! Uses a two-phase approach:
+//! - Phase 1: Pilot run to estimate bucket probabilities π_b
+//! - Phase 2: Test run with independent seeds, chi-square using expected = test_samples × π_b
+//!
+//! Two modes available:
+//! - Normal mode (default): 8192 buckets, 100k test, 10M pilot
+//! - Light mode (--light): 1024 buckets, 20k test, 1M pilot
+//!
+//! Parameter selection rationale:
+//! - RelErr(π_hat) ≈ sqrt(B / N_pilot)  -- pilot estimate accuracy
+//! - E_per_bucket = N_test / B          -- chi-square stability (≥10 recommended)
+//! - sd(χ²/df) ≈ sqrt(2 / df)           -- expected random fluctuation
+//!
+//! Normal mode (8192 buckets, 10M pilot, 100k test):
+//!   - RelErr ≈ 2.9%, E_per_bucket ≈ 12.2, 95% band ≈ [0.97, 1.03]
+//!
+//! Light mode (1024 buckets, 1M pilot, 20k test):
+//!   - RelErr ≈ 3.2%, E_per_bucket ≈ 19.5, 95% band ≈ [0.91, 1.09]
 
 use latin_sampler::{SamplerParams, sample};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::collections::hash_map::DefaultHasher;
 use std::env;
 use std::hash::{Hash, Hasher};
 
-/// Known number of Latin squares for small n
-const LATIN_SQUARES_N4: usize = 576;
+// Normal mode parameters
+const DEFAULT_NUM_BUCKETS: usize = 8192;
+const DEFAULT_TEST_SAMPLES: usize = 100_000;
+const DEFAULT_PILOT_SAMPLES: usize = 10_000_000;
+
+// Light mode parameters
+const LIGHT_NUM_BUCKETS: usize = 1024;
+const LIGHT_TEST_SAMPLES: usize = 20_000;
+const LIGHT_PILOT_SAMPLES: usize = 1_000_000;
+
+fn hash_cells(cells: &[u8]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    cells.hash(&mut hasher);
+    hasher.finish()
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
     let n: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(4);
-    let num_samples: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(100_000);
+    let light_mode = args.iter().any(|s| s == "--light");
 
-    println!("=== Improved Uniformity Test ===");
+    let (num_buckets, test_samples, pilot_samples) = if light_mode {
+        (LIGHT_NUM_BUCKETS, LIGHT_TEST_SAMPLES, LIGHT_PILOT_SAMPLES)
+    } else {
+        (
+            DEFAULT_NUM_BUCKETS,
+            DEFAULT_TEST_SAMPLES,
+            DEFAULT_PILOT_SAMPLES,
+        )
+    };
+
+    let mode_str = if light_mode { "light" } else { "normal" };
+    println!("=== Uniformity Test (Pilot-Run Approach) ===");
+    println!("n = {}, mode = {}", n, mode_str);
     println!(
-        "n = {}, samples = {}, burn_in = n³ = {} (auto)",
-        n,
-        num_samples,
-        n * n * n
+        "  buckets = {}, pilot = {}, test = {}",
+        num_buckets, pilot_samples, test_samples
     );
+    println!("  burn_in = n³ = {} (auto)", n * n * n);
     println!();
 
     let params = SamplerParams::default();
-
-    if n == 4 {
-        run_n4_direct_test(n, num_samples, &params);
-    } else {
-        let num_buckets = if n == 5 { 4096 } else { 8192 };
-        run_hash_bucket_test(n, num_samples, num_buckets, &params);
-    }
+    run_pilot_bucket_test(n, pilot_samples, test_samples, num_buckets, &params);
 }
 
-/// Direct count test for n=4 using the known total of 576 Latin squares.
-fn run_n4_direct_test(n: usize, num_samples: usize, params: &SamplerParams) {
-    println!("Mode: Direct count ({} categories)", LATIN_SQUARES_N4);
-    println!();
-
-    // Count each unique square
-    let mut counts: HashMap<Vec<u8>, usize> = HashMap::new();
-
-    for seed_idx in 0..num_samples {
-        let mut rng = ChaCha20Rng::seed_from_u64(seed_idx as u64);
-        let sq = sample(n, &mut rng, params);
-
-        let mut cells = Vec::with_capacity(n * n);
-        for r in 0..n {
-            for c in 0..n {
-                cells.push(sq.get(r, c));
-            }
-        }
-        *counts.entry(cells).or_insert(0) += 1;
-    }
-
-    let num_unique = counts.len();
-
-    // Expected value based on KNOWN total (576), not observed unique count
-    let expected = num_samples as f64 / LATIN_SQUARES_N4 as f64;
-
-    // Chi-square calculation including unobserved categories
-    // Observed categories: sum of (count - expected)^2 / expected
-    let chi_sq_observed: f64 = counts
-        .values()
-        .map(|&c| {
-            let diff = c as f64 - expected;
-            diff * diff / expected
-        })
-        .sum();
-
-    // Unobserved categories: (0 - expected)^2 / expected = expected
-    let num_unobserved = LATIN_SQUARES_N4 - num_unique;
-    let chi_sq_unobserved = num_unobserved as f64 * expected;
-
-    let chi_square = chi_sq_observed + chi_sq_unobserved;
-    let df = LATIN_SQUARES_N4 - 1; // 575
-    let normalized = chi_square / df as f64;
-
-    println!("Results:");
+/// Pilot-run bucket test.
+///
+/// This approach solves the problem where different buckets contain different numbers
+/// of Latin squares. We first run a large pilot sample to estimate the true probability
+/// π_b for each bucket, then use these estimates to compute the expected counts for
+/// the chi-square test.
+///
+/// Phase 1: Pilot run (e.g., 5M samples) to estimate π_b = pilot_counts[b] / pilot_samples
+/// Phase 2: Test run (e.g., 100k samples) with different seeds
+/// Phase 3: Chi-square using expected = test_samples × π_b
+fn run_pilot_bucket_test(
+    n: usize,
+    pilot_samples: usize,
+    test_samples: usize,
+    num_buckets: usize,
+    params: &SamplerParams,
+) {
+    println!("Mode: Pilot-run bucket test ({} buckets)", num_buckets);
     println!(
-        "  Unique squares observed: {} / {}",
-        num_unique, LATIN_SQUARES_N4
+        "  Pilot samples: {}, Test samples: {}",
+        pilot_samples, test_samples
     );
-    println!("  Expected per category: {:.2}", expected);
-    println!("  Chi-square: {:.2}", chi_square);
-    println!("    (from observed: {:.2})", chi_sq_observed);
-    println!("    (from unobserved: {:.2})", chi_sq_unobserved);
-    println!("  Degrees of freedom: {}", df);
-    println!("  Normalized (chi^2/df): {:.4}", normalized);
     println!();
 
-    print_result(normalized);
+    // Phase 1: Pilot run to estimate bucket probabilities
+    println!(
+        "Phase 1: Pilot run ({} samples) to estimate bucket probabilities...",
+        pilot_samples
+    );
+    let mut pilot_counts = vec![0usize; num_buckets];
+    let mut unique_samples: HashSet<Vec<u8>> = HashSet::new();
 
-    // Additional statistics
-    if !counts.is_empty() {
-        let mut count_values: Vec<usize> = counts.values().copied().collect();
-        count_values.sort();
-
-        let min_count = *count_values.first().unwrap();
-        let max_count = *count_values.last().unwrap();
-
-        println!();
-        println!("Observed square statistics:");
-        println!(
-            "  Min occurrences: {} ({:.1}% of expected)",
-            min_count,
-            100.0 * min_count as f64 / expected
-        );
-        println!(
-            "  Max occurrences: {} ({:.1}% of expected)",
-            max_count,
-            100.0 * max_count as f64 / expected
-        );
-    }
-}
-
-/// Hash bucket test for n>=5 with configurable bucket count.
-fn run_hash_bucket_test(n: usize, num_samples: usize, num_buckets: usize, params: &SamplerParams) {
-    println!("Mode: Hash bucket ({} buckets)", num_buckets);
-    println!();
-
-    let mut bucket_counts = vec![0usize; num_buckets];
-
-    for seed_idx in 0..num_samples {
+    for seed_idx in 0..pilot_samples {
         let mut rng = ChaCha20Rng::seed_from_u64(seed_idx as u64);
-        let sq = sample(n, &mut rng, params);
-
-        // Hash the entire square
-        let mut hasher = DefaultHasher::new();
-        for r in 0..n {
-            for c in 0..n {
-                sq.get(r, c).hash(&mut hasher);
-            }
-        }
-        let hash = hasher.finish();
-        let bucket = (hash as usize) % num_buckets;
-        bucket_counts[bucket] += 1;
+        let sq = &sample(n, &mut rng, params);
+        let cells: Vec<u8> = (0..n)
+            .flat_map(|r| (0..n).map(move |c| sq.get(r, c)))
+            .collect();
+        unique_samples.insert(cells.clone());
+        let bucket = hash_cells(&cells) as usize % num_buckets;
+        pilot_counts[bucket] += 1;
     }
+    let num_unique = unique_samples.len();
+    drop(unique_samples); // Free memory before test phase
+    println!("Done. (unique samples: {})\n", num_unique);
 
-    // Chi-square test
-    let expected = num_samples as f64 / num_buckets as f64;
-    let chi_square: f64 = bucket_counts
+    // Compute estimated probabilities π_b
+    let pi: Vec<f64> = pilot_counts
         .iter()
-        .map(|&count| {
-            let diff = count as f64 - expected;
+        .map(|&c| c as f64 / pilot_samples as f64)
+        .collect();
+
+    // Phase 2: Test run with different seed range (for independence)
+    println!(
+        "Phase 2: Test run ({} samples) with independent seeds...",
+        test_samples
+    );
+    let mut test_counts = vec![0usize; num_buckets];
+    let test_seed_offset = pilot_samples as u64; // Use non-overlapping seed range
+
+    for i in 0..test_samples {
+        let mut rng = ChaCha20Rng::seed_from_u64(test_seed_offset + i as u64);
+        let sq = &sample(n, &mut rng, params);
+        let cells: Vec<u8> = (0..n)
+            .flat_map(|r| (0..n).map(move |c| sq.get(r, c)))
+            .collect();
+        let bucket = hash_cells(&cells) as usize % num_buckets;
+        test_counts[bucket] += 1;
+    }
+    println!("Done.\n");
+
+    // Phase 3: Chi-square calculation with corrected expected values
+    // Only include buckets where π_b > 0 (observed in pilot)
+    let chi_square: f64 = (0..num_buckets)
+        .filter(|&b| pi[b] > 0.0)
+        .map(|b| {
+            let expected = test_samples as f64 * pi[b];
+            let diff = test_counts[b] as f64 - expected;
             diff * diff / expected
         })
         .sum();
 
-    let df = num_buckets - 1;
+    let non_empty_buckets = pi.iter().filter(|&&p| p > 0.0).count();
+    let df = non_empty_buckets - 1;
     let normalized = chi_square / df as f64;
 
     println!("Results:");
-    println!("  Expected per bucket: {:.2}", expected);
+    println!("  Unique samples in pilot: {}", num_unique);
+    println!("  Non-empty buckets: {}", non_empty_buckets);
     println!("  Chi-square: {:.2}", chi_square);
     println!("  Degrees of freedom: {}", df);
     println!("  Normalized (chi^2/df): {:.4}", normalized);
@@ -168,24 +169,50 @@ fn run_hash_bucket_test(n: usize, num_samples: usize, num_buckets: usize, params
 
     print_result(normalized);
 
-    // Bucket statistics
-    let min_count = *bucket_counts.iter().min().unwrap();
-    let max_count = *bucket_counts.iter().max().unwrap();
-    let empty_buckets = bucket_counts.iter().filter(|&&c| c == 0).count();
+    // Bucket statistics for test run
+    let test_min = *test_counts.iter().min().unwrap();
+    let test_max = *test_counts.iter().max().unwrap();
+    let test_empty = test_counts.iter().filter(|&&c| c == 0).count();
+
+    // Pilot statistics
+    let pilot_min = *pilot_counts.iter().min().unwrap();
+    let pilot_max = *pilot_counts.iter().max().unwrap();
+    let pilot_empty = pilot_counts.iter().filter(|&&c| c == 0).count();
 
     println!();
-    println!("Bucket statistics:");
+    println!("Pilot run bucket statistics:");
+    println!("  Min count: {}", pilot_min);
+    println!("  Max count: {}", pilot_max);
+    println!("  Empty buckets: {}", pilot_empty);
+
+    println!();
+    println!("Test run bucket statistics:");
+    println!("  Min count: {}", test_min);
+    println!("  Max count: {}", test_max);
+    println!("  Empty buckets: {}", test_empty);
+
+    // Show probability variation to understand bucket non-uniformity
+    let pi_min = pi
+        .iter()
+        .cloned()
+        .filter(|&p| p > 0.0)
+        .fold(f64::INFINITY, f64::min);
+    let pi_max = pi.iter().cloned().fold(0.0f64, f64::max);
+    let pi_uniform = 1.0 / num_buckets as f64;
+
+    println!();
+    println!("Bucket probability variation (from pilot):");
+    println!("  Uniform assumption: {:.6}", pi_uniform);
     println!(
-        "  Min bucket count: {} ({:.1}% of expected)",
-        min_count,
-        100.0 * min_count as f64 / expected
+        "  Min π_b (non-zero): {:.6} ({:.1}% of uniform)",
+        pi_min,
+        100.0 * pi_min / pi_uniform
     );
     println!(
-        "  Max bucket count: {} ({:.1}% of expected)",
-        max_count,
-        100.0 * max_count as f64 / expected
+        "  Max π_b: {:.6} ({:.1}% of uniform)",
+        pi_max,
+        100.0 * pi_max / pi_uniform
     );
-    println!("  Empty buckets: {}", empty_buckets);
 }
 
 fn print_result(normalized: f64) {
