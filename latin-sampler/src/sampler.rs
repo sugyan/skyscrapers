@@ -7,6 +7,10 @@ use rand::Rng;
 pub struct SamplerParams {
     /// Burn-in steps to reach equilibrium from initial cyclic state.
     ///
+    /// This is the number of MCMC steps (including do-nothing steps with
+    /// probability `p_do_nothing`). The expected number of actual Jacobson-Matthews
+    /// moves is `burn_in * (1 - p_do_nothing)`.
+    ///
     /// If `None`, uses n³ as the burn-in value. The mixing time of
     /// Jacobson-Matthews is empirically observed to be O(n³ log n),
     /// though not rigorously proven. Using n³ provides good uniformity
@@ -59,7 +63,7 @@ pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) ->
 
     // Ensure we return a proper Latin square
     while !state.is_proper() {
-        state.step(rng);
+        step(&mut state, rng, params);
     }
 
     state.to_latin_square()
