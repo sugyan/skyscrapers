@@ -58,40 +58,22 @@ The original design used only `row_cycle_move` and `col_cycle_move`. Testing rev
 
 The Jacobson-Matthews algorithm (1996) is proven to be ergodic for all n. It uses "improper" Latin squares as intermediate states, guaranteeing that any Latin square can be reached from any other.
 
-### 2.4 Uniformity improvement with fixed-interval sampling
+### 2.4 Uniformity verification
 
-#### Problem: Mode A (return-event sampling) bias
+Re-testing with the corrected pilot-run methodology (which accounts for non-uniform bucket probabilities) confirmed that Mode A (return-event sampling) produces uniform results for all n:
 
-Initial testing with Mode A (sampling immediately when returning to proper state) showed non-uniform distribution for small n:
+| n | χ²/df (Mode A) | Status |
+|---|----------------|--------|
+| 4 | 1.09 | Uniform |
+| 5 | 1.02 | Uniform |
+| 6 | 1.05 | Uniform |
+| 7 | 0.95 | Uniform |
 
-| n | Test | Buckets/Categories | χ²/df (Mode A) | Status |
-|---|------|-------------------|----------------|--------|
-| 4 | Direct count | 576 (all squares) | 1.41 | Marginal |
-| 5 | Hash bucket | 4,096 | 1.62 | Non-uniform |
-| 6 | Hash bucket | 8,192 | 0.96 | OK |
-| 7 | Hash bucket | 8,192 | 0.99 | OK |
-
-#### Solution: Mode B (fixed-interval sampling)
-
-Fixed-interval sampling (Mode B) significantly improves uniformity for small n. Instead of sampling immediately upon return to proper state, we sample at fixed intervals and only accept if proper.
-
-Benchmark results (n=4, 100k samples, continuous chain):
-
-| Interval | χ²/df (576) | χ²/df (4 RF) | Samples/sec |
-|----------|-------------|--------------|-------------|
-| 0 (Mode A) | 1.41 | 1.24 | 2,801,886 |
-| 10 | 1.00 | 0.27 | 613,408 |
-| 20 | 0.94 | 0.17 | 321,879 |
-| 50 | 0.94 | 1.21 | 131,348 |
-
-**Conclusion:** `sampling_interval=10` provides excellent uniformity with minimal performance impact. This is now the default.
-
-**Note:** For n≥6, Mode A already produces uniform results. The fixed-interval sampling provides no benefit but also no harm for these cases.
+Earlier measurements showing non-uniformity for small n (χ²/df = 1.41 for n=4, 1.62 for n=5) were artifacts of an incorrect chi-square methodology that assumed equal bucket probabilities.
 
 **Verification tools:**
-- `examples/uniformity_test.rs`: Chi-square uniformity test (direct count for n=4, hash bucket for n≥5)
+- `examples/uniformity_test.rs`: Chi-square uniformity test with pilot-run approach
 - `examples/coverage.rs`: Coverage test for small n (ergodicity verification)
-- `examples/benchmark_interval.rs`: Interval parameter evaluation benchmark
 
 ## 3. Core Algorithm: Jacobson-Matthews
 
@@ -157,19 +139,17 @@ Note: `is_latin` is NOT part of the public API. A test-only helper `is_latin()` 
 ### 4.3 Sampler parameters
 
 - `pub struct SamplerParams`
-  - `pub burn_in: u64`  // number of steps discarded
+  - `pub burn_in: Option<u64>`  // burn-in steps; `None` auto-scales to n³
   - `pub steps: u64`    // number of steps after burn-in before returning
   - `pub thinning: u64` // optional; if >1, only return every k steps in iterator mode
   - `pub p_do_nothing: f64` // in [0,1], for aperiodicity
-  - `pub sampling_interval: u64` // 0 = Mode A (return-event), >0 = Mode B (fixed-interval)
 
 Provide:
-- `impl Default for SamplerParams` with safe defaults for `n=7/8`:
-  - `burn_in = 5_000` (reduced from 300k after statistical validation)
+- `impl Default for SamplerParams` with safe defaults:
+  - `burn_in = None` (auto-scales to n³; mixing time is empirically O(n³ log n))
   - `steps = 1_000` (reserved for iterator mode, not used in one-shot `sample()`)
   - `thinning = 1`
   - `p_do_nothing = 0.01`
-  - `sampling_interval = 10` (improves uniformity for small n)
 
 Note: `p_row_move` is removed as Jacobson-Matthews does not distinguish row/col moves.
 
