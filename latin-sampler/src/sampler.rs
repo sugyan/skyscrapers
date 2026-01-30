@@ -19,14 +19,6 @@ pub struct SamplerParams {
     pub thinning: u64,
     /// Probability of doing nothing (for aperiodicity).
     pub p_do_nothing: f64,
-    /// Sampling interval for fixed-interval sampling.
-    ///
-    /// - `0`: Sample immediately when returning to proper state (Mode A, legacy behavior)
-    /// - `>0`: Sample every K steps, only when in proper state (Mode B)
-    ///
-    /// Mode B improves uniformity for small n (e.g., n=4) at the cost of throughput.
-    /// Default is 10, which provides good uniformity with minimal performance impact.
-    pub sampling_interval: u64,
 }
 
 impl Default for SamplerParams {
@@ -36,7 +28,6 @@ impl Default for SamplerParams {
             steps: 1_000,
             thinning: 1,
             p_do_nothing: 0.01,
-            sampling_interval: 10, // Mode B default
         }
     }
 }
@@ -45,14 +36,6 @@ impl Default for SamplerParams {
 ///
 /// Uses MCMC sampling with the Jacobson-Matthews algorithm for ergodicity.
 /// The output is deterministic given the same seed and parameters.
-///
-/// # Sampling modes
-///
-/// The `sampling_interval` parameter controls how samples are taken:
-/// - Mode A (`sampling_interval = 0`): Sample immediately when returning to proper state
-/// - Mode B (`sampling_interval > 0`): Sample every K steps, only when in proper state
-///
-/// Mode B improves uniformity for small n at the cost of throughput.
 ///
 /// # Panics
 /// Panics if:
@@ -74,26 +57,9 @@ pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) ->
         step(&mut state, rng, params);
     }
 
-    if params.sampling_interval == 0 {
-        // Mode A: Sample immediately when returning to proper state
-        while !state.is_proper() {
-            state.step(rng);
-        }
-    } else {
-        // Mode B: Sample every K steps, only when in proper state
-        // Use countdown instead of modulo for better performance
-        let mut steps_until_check = params.sampling_interval;
-        loop {
-            step(&mut state, rng, params);
-            steps_until_check -= 1;
-
-            if steps_until_check == 0 {
-                steps_until_check = params.sampling_interval;
-                if state.is_proper() {
-                    break;
-                }
-            }
-        }
+    // Ensure we return a proper Latin square
+    while !state.is_proper() {
+        state.step(rng);
     }
 
     state.to_latin_square()
@@ -121,7 +87,6 @@ mod tests {
             steps: 500,
             thinning: 1,
             p_do_nothing: 0.01,
-            sampling_interval: 10,
         }
     }
 
