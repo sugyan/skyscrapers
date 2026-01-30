@@ -40,6 +40,13 @@ impl LatinSquare {
         self.cells[r * self.n + c] = v;
     }
 
+    /// Returns the cells as a flat slice in row-major order.
+    ///
+    /// The cell at position (r, c) is at index `r * n + c`.
+    pub fn cells(&self) -> &[u8] {
+        &self.cells
+    }
+
     /// Returns true if this is a valid Latin square.
     ///
     /// This is a test-only helper for validation. The Latin property is an

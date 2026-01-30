@@ -107,12 +107,9 @@ fn run_pilot_bucket_test(
 
     for seed_idx in 0..pilot_samples {
         let mut rng = ChaCha20Rng::seed_from_u64(seed_idx as u64);
-        let sq = &sample(n, &mut rng, params);
-        let cells: Vec<u8> = (0..n)
-            .flat_map(|r| (0..n).map(move |c| sq.get(r, c)))
-            .collect();
-        unique_samples.insert(cells.clone());
-        let bucket = hash_cells(&cells) as usize % num_buckets;
+        let sq = sample(n, &mut rng, params);
+        unique_samples.insert(sq.cells().to_vec());
+        let bucket = hash_cells(sq.cells()) as usize % num_buckets;
         pilot_counts[bucket] += 1;
     }
     let num_unique = unique_samples.len();
@@ -135,11 +132,8 @@ fn run_pilot_bucket_test(
 
     for i in 0..test_samples {
         let mut rng = ChaCha20Rng::seed_from_u64(test_seed_offset + i as u64);
-        let sq = &sample(n, &mut rng, params);
-        let cells: Vec<u8> = (0..n)
-            .flat_map(|r| (0..n).map(move |c| sq.get(r, c)))
-            .collect();
-        let bucket = hash_cells(&cells) as usize % num_buckets;
+        let sq = sample(n, &mut rng, params);
+        let bucket = hash_cells(sq.cells()) as usize % num_buckets;
         test_counts[bucket] += 1;
     }
     println!("Done.\n");

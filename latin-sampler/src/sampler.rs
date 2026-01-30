@@ -26,18 +26,7 @@ pub struct SamplerParams {
     ///
     /// Mode B improves uniformity for small n (e.g., n=4) at the cost of throughput.
     /// Default is 10, which provides good uniformity with minimal performance impact.
-    ///
-    /// Note: This parameter is ignored if `observation_prob` is set (Mode C).
     pub sampling_interval: u64,
-    /// Probability of observation check at each step (Mode C).
-    ///
-    /// - `None`: Use Mode A or Mode B based on `sampling_interval`
-    /// - `Some(q)`: At each step, with probability q, check if proper and sample if so
-    ///
-    /// Mode C uses a probabilistic "observation clock" independent of the chain dynamics,
-    /// which provides better uniformity for small n compared to fixed-interval sampling.
-    /// Default is `Some(0.02)`. Recommended values: 0.01 to 0.02 (1/100 to 1/50).
-    pub observation_prob: Option<f64>,
 }
 
 impl Default for SamplerParams {
@@ -47,8 +36,7 @@ impl Default for SamplerParams {
             steps: 1_000,
             thinning: 1,
             p_do_nothing: 0.01,
-            sampling_interval: 10, // ignored when observation_prob is set
-            observation_prob: Some(0.02), // Mode C default for best uniformity
+            sampling_interval: 10, // Mode B default
         }
     }
 }
@@ -60,34 +48,22 @@ impl Default for SamplerParams {
 ///
 /// # Sampling modes
 ///
-/// The `observation_prob` and `sampling_interval` parameters control how samples are taken:
-/// - Mode A (`observation_prob = None`, `sampling_interval = 0`):
-///   Sample immediately when returning to proper state
-/// - Mode B (`observation_prob = None`, `sampling_interval > 0`):
-///   Sample every K steps, only when in proper state
-/// - Mode C (`observation_prob = Some(q)`):
-///   At each step, with probability q, check if proper and sample if so.
-///   This uses a probabilistic "observation clock" independent of chain dynamics.
+/// The `sampling_interval` parameter controls how samples are taken:
+/// - Mode A (`sampling_interval = 0`): Sample immediately when returning to proper state
+/// - Mode B (`sampling_interval > 0`): Sample every K steps, only when in proper state
 ///
-/// Mode B and C provide better uniformity for small n at the cost of throughput.
+/// Mode B improves uniformity for small n at the cost of throughput.
 ///
 /// # Panics
 /// Panics if:
 /// - `n < 2` or `n > 255`
 /// - `p_do_nothing` is not in `[0.0, 1.0]`
-/// - `observation_prob` is `Some(q)` where `q` is not in `(0.0, 1.0]`
 pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) -> LatinSquare {
     assert!((2..=255).contains(&n), "n must be in range 2..=255");
     assert!(
         (0.0..=1.0).contains(&params.p_do_nothing),
         "p_do_nothing must be in [0.0, 1.0]"
     );
-    if let Some(q) = params.observation_prob {
-        assert!(
-            q > 0.0 && q <= 1.0,
-            "observation_prob must be in (0.0, 1.0]"
-        );
-    }
 
     let mut state = JMState::new_cyclic(n);
 
@@ -98,18 +74,7 @@ pub fn sample<R: Rng + ?Sized>(n: usize, rng: &mut R, params: &SamplerParams) ->
         step(&mut state, rng, params);
     }
 
-    if let Some(q) = params.observation_prob {
-        // Mode C: Probabilistic observation
-        // At each step, with probability q, check if proper and sample if so
-        loop {
-            step(&mut state, rng, params);
-
-            // Probabilistic observation check
-            if rng.random::<f64>() < q && state.is_proper() {
-                break;
-            }
-        }
-    } else if params.sampling_interval == 0 {
+    if params.sampling_interval == 0 {
         // Mode A: Sample immediately when returning to proper state
         while !state.is_proper() {
             state.step(rng);
@@ -157,7 +122,6 @@ mod tests {
             thinning: 1,
             p_do_nothing: 0.01,
             sampling_interval: 10,
-            observation_prob: None,
         }
     }
 
