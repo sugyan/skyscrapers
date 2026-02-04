@@ -19,7 +19,7 @@
 //! Light mode (1024 buckets, 1M pilot, 20k test):
 //!   - RelErr ≈ 3.2%, E_per_bucket ≈ 19.5, 95% band ≈ [0.91, 1.09]
 
-use latin_sampler::{SamplerParams, sample};
+use latin_sampler::{Sampler, SamplerParams, sample};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::collections::hash_map::DefaultHasher;
@@ -47,6 +47,7 @@ fn main() {
 
     let n: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(4);
     let light_mode = args.iter().any(|s| s == "--light");
+    let oneshot_mode = args.iter().any(|s| s == "--oneshot");
 
     let (num_buckets, test_samples, pilot_samples) = if light_mode {
         (LIGHT_NUM_BUCKETS, LIGHT_TEST_SAMPLES, LIGHT_PILOT_SAMPLES)
@@ -59,8 +60,12 @@ fn main() {
     };
 
     let mode_str = if light_mode { "light" } else { "normal" };
+    let sampling_mode = if oneshot_mode { "oneshot" } else { "iterator" };
     println!("=== Uniformity Test (Pilot-Run Approach) ===");
-    println!("n = {}, mode = {}", n, mode_str);
+    println!(
+        "n = {}, mode = {}, sampling = {}",
+        n, mode_str, sampling_mode
+    );
     println!(
         "  buckets = {}, pilot = {}, test = {}",
         num_buckets, pilot_samples, test_samples
@@ -68,8 +73,20 @@ fn main() {
     println!("  burn_in = n³ = {} (auto)", n * n * n);
     println!();
 
-    let params = SamplerParams::default();
-    run_pilot_bucket_test(n, pilot_samples, test_samples, num_buckets, &params);
+    // Use higher thinning to reduce correlation between consecutive samples
+    // in a single MCMC chain. n³ steps between samples ensures near-independence.
+    let params = SamplerParams {
+        thinning: Some((2 * n) as u64),
+        ..Default::default()
+    };
+    run_pilot_bucket_test(
+        n,
+        pilot_samples,
+        test_samples,
+        num_buckets,
+        &params,
+        oneshot_mode,
+    );
 }
 
 /// Pilot-run bucket test.
@@ -88,6 +105,7 @@ fn run_pilot_bucket_test(
     test_samples: usize,
     num_buckets: usize,
     params: &SamplerParams,
+    oneshot_mode: bool,
 ) {
     println!("Mode: Pilot-run bucket test ({} buckets)", num_buckets);
     println!(
@@ -103,11 +121,22 @@ fn run_pilot_bucket_test(
     );
     let mut pilot_counts = vec![0usize; num_buckets];
 
-    for seed_idx in 0..pilot_samples {
-        let mut rng = ChaCha20Rng::seed_from_u64(seed_idx as u64);
-        let sq = sample(n, &mut rng, params);
-        let bucket = hash_cells(sq.cells()) as usize % num_buckets;
-        pilot_counts[bucket] += 1;
+    if oneshot_mode {
+        // One-shot mode: call sample() with different seeds for each sample
+        for i in 0..pilot_samples {
+            let mut rng = ChaCha20Rng::seed_from_u64(i as u64);
+            let sq = sample(n, &mut rng, params);
+            let bucket = hash_cells(sq.cells()) as usize % num_buckets;
+            pilot_counts[bucket] += 1;
+        }
+    } else {
+        // Iterator mode: use Sampler for continuous sampling
+        let pilot_rng = ChaCha20Rng::seed_from_u64(0);
+        let pilot_sampler = Sampler::new(n, pilot_rng, params.clone());
+        for sq in pilot_sampler.take(pilot_samples) {
+            let bucket = hash_cells(sq.cells()) as usize % num_buckets;
+            pilot_counts[bucket] += 1;
+        }
     }
     println!("Done.\n");
 
@@ -117,19 +146,30 @@ fn run_pilot_bucket_test(
         .map(|&c| c as f64 / pilot_samples as f64)
         .collect();
 
-    // Phase 2: Test run with different seed range (for independence)
+    // Phase 2: Test run with different seed (for independence)
     println!(
-        "Phase 2: Test run ({} samples) with independent seeds...",
+        "Phase 2: Test run ({} samples) with independent seed...",
         test_samples
     );
     let mut test_counts = vec![0usize; num_buckets];
-    let test_seed_offset = pilot_samples as u64; // Use non-overlapping seed range
 
-    for i in 0..test_samples {
-        let mut rng = ChaCha20Rng::seed_from_u64(test_seed_offset + i as u64);
-        let sq = sample(n, &mut rng, params);
-        let bucket = hash_cells(sq.cells()) as usize % num_buckets;
-        test_counts[bucket] += 1;
+    if oneshot_mode {
+        // One-shot mode: use different seed range for test samples
+        let seed_offset = pilot_samples as u64 + 1_000_000;
+        for i in 0..test_samples {
+            let mut rng = ChaCha20Rng::seed_from_u64(seed_offset + i as u64);
+            let sq = sample(n, &mut rng, params);
+            let bucket = hash_cells(sq.cells()) as usize % num_buckets;
+            test_counts[bucket] += 1;
+        }
+    } else {
+        // Iterator mode: use Sampler with different seed for independence
+        let test_rng = ChaCha20Rng::seed_from_u64(12345);
+        let test_sampler = Sampler::new(n, test_rng, params.clone());
+        for sq in test_sampler.take(test_samples) {
+            let bucket = hash_cells(sq.cells()) as usize % num_buckets;
+            test_counts[bucket] += 1;
+        }
     }
     println!("Done.\n");
 

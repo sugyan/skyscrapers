@@ -4,5 +4,5 @@ mod jacobson_matthews;
 mod sampler;
 mod square;
 
-pub use sampler::{SamplerParams, sample};
+pub use sampler::{Sampler, SamplerParams, sample};
 pub use square::LatinSquare;
