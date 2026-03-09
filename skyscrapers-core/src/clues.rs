@@ -163,14 +163,11 @@ mod tests {
         assert_eq!(clues.left(2), Some(1));
         assert_eq!(clues.left(3), Some(4));
 
-        // Right (looking left each row):
-        // row 0: [3,4,1,2] → 2 visible (3,4)
-        // row 1: [2,1,4,3] → 2 visible (2,4)  wait...
-        // Actually right means looking from right side, so reversed:
-        // row 0: [3,4,1,2] → 2 visible (3,4)
-        // row 1: [2,1,4,3] → 2 visible (2,4)
-        // row 2: [1,2,3,4] → 4 visible
-        // row 3: [4,3,2,1] → 1 visible
+        // Right (viewing each row from the right, i.e., reversed):
+        // row 0 reversed: [3,4,1,2] → 2 visible (3,4)
+        // row 1 reversed: [2,1,4,3] → 2 visible (2,4)
+        // row 2 reversed: [1,2,3,4] → 4 visible (1,2,3,4)
+        // row 3 reversed: [4,3,2,1] → 1 visible (4)
         assert_eq!(clues.right(0), Some(2));
         assert_eq!(clues.right(1), Some(2));
         assert_eq!(clues.right(2), Some(4));

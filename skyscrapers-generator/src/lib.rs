@@ -100,8 +100,7 @@ mod tests {
 
         // Left clue for row 3: [1,2,3,4] → 4 visible
         assert_eq!(clues.left(3), Some(4));
-        // Right clue for row 2: [1,2,3,4] reversed → 4 visible... no
-        // row 2 reversed: [1,2,3,4] → 4 visible
+        // Right clue for row 2: row is [4,3,2,1], viewed from the right as [1,2,3,4] → 4 visible
         assert_eq!(clues.right(2), Some(4));
         // Left clue for row 2: [4,3,2,1] → 1 visible
         assert_eq!(clues.left(2), Some(1));
