@@ -1,0 +1,9 @@
+[package]
+name = "skyscrapers-solver"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+skyscrapers-core = { path = "../skyscrapers-core" }

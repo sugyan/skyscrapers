@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["skyscrapers-core", "skyscrapers-generator"]
+members = ["skyscrapers-core", "skyscrapers-generator", "skyscrapers-solver"]
 
 [workspace.package]
 edition = "2024"
