@@ -37,16 +37,20 @@ struct SolveState {
     right: Vec<Option<u8>>,
 }
 
-/// An undo entry recording the previous candidate set at an index.
+/// An undo entry recording the previous state at an index.
 struct UndoEntry {
     idx: usize,
-    prev: Candidates,
+    prev_candidates: Candidates,
+    prev_grid: Option<u8>,
 }
 
 impl SolveState {
     /// Builds the initial state from a puzzle. Returns None if contradictory.
     fn new(puzzle: &Puzzle) -> Option<Self> {
         let n = puzzle.board.n();
+        if n == 0 || n > 16 || puzzle.clues.n() != n {
+            return None;
+        }
         let clues = &puzzle.clues;
 
         let mut state = Self {
@@ -180,13 +184,23 @@ impl SolveState {
     /// Assign value `v` to cell at `idx`, propagate constraints.
     /// Returns false if contradiction detected. Records undo entries.
     fn assign(&mut self, idx: usize, v: u8, undo: &mut Vec<UndoEntry>) -> bool {
+        // Already assigned — same value is ok, different value is contradiction
+        if let Some(existing) = self.grid[idx] {
+            return existing == v;
+        }
+        // Value not in candidate set — contradiction
+        if !self.candidates[idx].contains(v) {
+            return false;
+        }
+
         let r = idx / self.n;
         let c = idx % self.n;
 
         // Record and set this cell
         undo.push(UndoEntry {
             idx,
-            prev: self.candidates[idx],
+            prev_candidates: self.candidates[idx],
+            prev_grid: self.grid[idx],
         });
         self.grid[idx] = Some(v);
         self.candidates[idx] = Candidates::single(v);
@@ -204,7 +218,11 @@ impl SolveState {
                     if new.is_empty() {
                         return false;
                     }
-                    undo.push(UndoEntry { idx: peer, prev });
+                    undo.push(UndoEntry {
+                        idx: peer,
+                        prev_candidates: prev,
+                        prev_grid: self.grid[peer],
+                    });
                     self.candidates[peer] = new;
                     if let Some(sv) = new.singleton() {
                         propagation_queue.push((peer, sv));
@@ -221,7 +239,11 @@ impl SolveState {
                     if new.is_empty() {
                         return false;
                     }
-                    undo.push(UndoEntry { idx: peer, prev });
+                    undo.push(UndoEntry {
+                        idx: peer,
+                        prev_candidates: prev,
+                        prev_grid: self.grid[peer],
+                    });
                     self.candidates[peer] = new;
                     if let Some(sv) = new.singleton() {
                         propagation_queue.push((peer, sv));
@@ -243,13 +265,8 @@ impl SolveState {
     /// Undo assignments recorded in the undo log.
     fn undo(&mut self, undo_log: &[UndoEntry]) {
         for entry in undo_log.iter().rev() {
-            self.grid[entry.idx] = if entry.prev.count() == 1 && self.grid[entry.idx].is_some() {
-                // prev was already a singleton (assigned before our branch); restore it
-                entry.prev.singleton()
-            } else {
-                None
-            };
-            self.candidates[entry.idx] = entry.prev;
+            self.grid[entry.idx] = entry.prev_grid;
+            self.candidates[entry.idx] = entry.prev_candidates;
         }
     }
 

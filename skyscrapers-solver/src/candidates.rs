@@ -8,7 +8,7 @@ impl Candidates {
     /// Creates a candidate set containing all values 1..=n.
     pub(crate) fn all(n: u8) -> Self {
         debug_assert!(n <= 16);
-        Self((1u16 << n) - 1)
+        Self(((1u32 << n) - 1) as u16)
     }
 
     /// Creates an empty candidate set.
