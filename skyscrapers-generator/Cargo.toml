@@ -7,8 +7,9 @@ license.workspace = true
 
 [dependencies]
 skyscrapers-core = { path = "../skyscrapers-core" }
+skyscrapers-solver = { path = "../skyscrapers-solver" }
 latin-sampler.workspace = true
+rand.workspace = true
 
 [dev-dependencies]
-rand.workspace = true
 rand_chacha = "0.9"

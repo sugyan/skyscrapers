@@ -184,6 +184,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "skyscrapers-core",
+ "skyscrapers-solver",
 ]
 
 [[package]]
