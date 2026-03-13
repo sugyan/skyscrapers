@@ -37,7 +37,18 @@ enum RemovalTarget {
     ClueRight(usize),
 }
 
-/// Sets a clue value for the given removal target.
+/// Gets the clue value for a clue removal target.
+fn get_clue(clues: &Clues, target: RemovalTarget) -> Option<u8> {
+    match target {
+        RemovalTarget::ClueTop(i) => clues.top(i),
+        RemovalTarget::ClueBottom(i) => clues.bottom(i),
+        RemovalTarget::ClueLeft(i) => clues.left(i),
+        RemovalTarget::ClueRight(i) => clues.right(i),
+        RemovalTarget::Cell(..) => unreachable!(),
+    }
+}
+
+/// Sets a clue value for a clue removal target.
 fn set_clue(clues: &mut Clues, target: RemovalTarget, value: Option<u8>) {
     match target {
         RemovalTarget::ClueTop(i) => clues.set_top(i, value),
@@ -51,15 +62,19 @@ fn set_clue(clues: &mut Clues, target: RemovalTarget, value: Option<u8>) {
 /// Greedy removal of board cells and clues while preserving uniqueness.
 ///
 /// Strategy: remove board cells first, then clues.
+/// Each removal is tested by temporarily clearing the value and checking
+/// uniqueness. If uniqueness is lost, the original value is restored.
+///
 /// NOTE: This two-phase strategy may be changed in the future to a mixed
 /// strategy where board cells and clues are interleaved randomly.
 fn greedy_remove<R: rand::Rng>(
     rng: &mut R,
-    mut board: Board,
-    mut clues: Clues,
+    board: Board,
+    clues: Clues,
     solver: &dyn Solver,
 ) -> Puzzle {
     let n = board.n();
+    let mut puzzle = Puzzle { board, clues };
 
     // Phase 1: Remove board cells
     let mut cell_targets: Vec<RemovalTarget> = (0..n)
@@ -71,17 +86,13 @@ fn greedy_remove<R: rand::Rng>(
         let RemovalTarget::Cell(r, c) = *target else {
             unreachable!()
         };
-        let saved = board.get(r, c);
+        let saved = puzzle.board.get(r, c);
         if saved.is_none() {
             continue;
         }
-        board.set(r, c, None);
-        let puzzle = Puzzle {
-            board: board.clone(),
-            clues: clues.clone(),
-        };
+        puzzle.board.set(r, c, None);
         if solver.solve(&puzzle, 2).len() != 1 {
-            board.set(r, c, saved);
+            puzzle.board.set(r, c, saved);
         }
     }
 
@@ -99,27 +110,17 @@ fn greedy_remove<R: rand::Rng>(
     clue_targets.shuffle(rng);
 
     for target in &clue_targets {
-        let saved = match *target {
-            RemovalTarget::ClueTop(i) => clues.top(i),
-            RemovalTarget::ClueBottom(i) => clues.bottom(i),
-            RemovalTarget::ClueLeft(i) => clues.left(i),
-            RemovalTarget::ClueRight(i) => clues.right(i),
-            RemovalTarget::Cell(..) => unreachable!(),
-        };
+        let saved = get_clue(&puzzle.clues, *target);
         if saved.is_none() {
             continue;
         }
-        set_clue(&mut clues, *target, None);
-        let puzzle = Puzzle {
-            board: board.clone(),
-            clues: clues.clone(),
-        };
+        set_clue(&mut puzzle.clues, *target, None);
         if solver.solve(&puzzle, 2).len() != 1 {
-            set_clue(&mut clues, *target, saved);
+            set_clue(&mut puzzle.clues, *target, saved);
         }
     }
 
-    Puzzle { board, clues }
+    puzzle
 }
 
 /// Parameters for puzzle generation.
@@ -253,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn generate_removes_some_cells() {
+    fn generate_removes_some_cells_and_clues() {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let params = make_generator_params(4);
         let puzzle = generate(&mut rng, &params);
@@ -270,6 +271,26 @@ mod tests {
         assert!(
             given_count < n * n,
             "expected some cells to be removed, but all {given_count} cells are given"
+        );
+
+        let mut clue_count = 0;
+        for i in 0..n {
+            if puzzle.clues.top(i).is_some() {
+                clue_count += 1;
+            }
+            if puzzle.clues.bottom(i).is_some() {
+                clue_count += 1;
+            }
+            if puzzle.clues.left(i).is_some() {
+                clue_count += 1;
+            }
+            if puzzle.clues.right(i).is_some() {
+                clue_count += 1;
+            }
+        }
+        assert!(
+            clue_count < 4 * n,
+            "expected some clues to be removed, but all {clue_count} clues are present"
         );
     }
 
