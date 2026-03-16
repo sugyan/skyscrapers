@@ -29,7 +29,7 @@ impl fmt::Display for Puzzle {
         let n = self.board.n();
 
         // Top clues
-        write!(f, "   ")?;
+        write!(f, "    ")?;
         for i in 0..n {
             if i > 0 {
                 write!(f, " ")?;
@@ -52,7 +52,7 @@ impl fmt::Display for Puzzle {
         write_separator(f, n)?;
 
         // Bottom clues
-        write!(f, "   ")?;
+        write!(f, "    ")?;
         for i in 0..n {
             if i > 0 {
                 write!(f, " ")?;
