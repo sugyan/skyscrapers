@@ -16,13 +16,20 @@ fn format_clue(v: Option<u8>) -> char {
     }
 }
 
+fn write_separator(f: &mut fmt::Formatter<'_>, n: usize) -> fmt::Result {
+    write!(f, "  +")?;
+    for _ in 0..n {
+        write!(f, "--")?;
+    }
+    writeln!(f, "-+")
+}
+
 impl fmt::Display for Puzzle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let n = self.board.n();
-        let indent = "  ";
 
         // Top clues
-        write!(f, "{indent} ")?;
+        write!(f, "   ")?;
         for i in 0..n {
             if i > 0 {
                 write!(f, " ")?;
@@ -31,12 +38,7 @@ impl fmt::Display for Puzzle {
         }
         writeln!(f)?;
 
-        // Top separator
-        write!(f, "{indent}+")?;
-        for _ in 0..n {
-            write!(f, "--")?;
-        }
-        writeln!(f, "-+")?;
+        write_separator(f, n)?;
 
         // Grid rows
         for r in 0..n {
@@ -47,15 +49,10 @@ impl fmt::Display for Puzzle {
             writeln!(f, " | {}", format_clue(self.clues.right(r)))?;
         }
 
-        // Bottom separator
-        write!(f, "{indent}+")?;
-        for _ in 0..n {
-            write!(f, "--")?;
-        }
-        writeln!(f, "-+")?;
+        write_separator(f, n)?;
 
         // Bottom clues
-        write!(f, "{indent} ")?;
+        write!(f, "   ")?;
         for i in 0..n {
             if i > 0 {
                 write!(f, " ")?;

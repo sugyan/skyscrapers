@@ -73,31 +73,27 @@ impl FromStr for Puzzle {
         }
 
         let first_sep = sep_indices[0];
-        let last_sep = sep_indices[sep_indices.len() - 1];
+        let last_sep = *sep_indices.last().unwrap();
 
-        // Top clues: all non-separator lines before first separator
-        let top_lines: Vec<&str> = lines[..first_sep].to_vec();
-        if top_lines.is_empty() {
-            return Err(ParseError::NotEnoughLines);
-        }
-        let top_clues = parse_clue_line(top_lines.last().unwrap())?;
+        // Top clues: last non-separator line before first separator
+        let top_line = lines[..first_sep]
+            .last()
+            .ok_or(ParseError::NotEnoughLines)?;
+        let top_clues = parse_clue_line(top_line)?;
         let n = top_clues.len();
         if n == 0 {
             return Err(ParseError::InconsistentSize);
         }
 
-        // Bottom clues: all non-separator lines after last separator
-        let bottom_lines: Vec<&str> = lines[last_sep + 1..].to_vec();
-        if bottom_lines.is_empty() {
-            return Err(ParseError::NotEnoughLines);
-        }
-        let bottom_clues = parse_clue_line(bottom_lines[0])?;
+        // Bottom clues: first non-separator line after last separator
+        let bottom_line = lines.get(last_sep + 1).ok_or(ParseError::NotEnoughLines)?;
+        let bottom_clues = parse_clue_line(bottom_line)?;
         if bottom_clues.len() != n {
             return Err(ParseError::InconsistentSize);
         }
 
         // Grid rows: lines between separators
-        let grid_lines: Vec<&str> = lines[first_sep + 1..last_sep].to_vec();
+        let grid_lines = &lines[first_sep + 1..last_sep];
         if grid_lines.len() != n {
             return Err(ParseError::InconsistentSize);
         }
@@ -123,15 +119,16 @@ impl FromStr for Puzzle {
             let right_clue = parse_token(parts[2].trim())?;
             clues.set_right(r, right_clue);
 
-            let cell_tokens: Vec<Option<u8>> = parts[1]
-                .split_whitespace()
-                .map(parse_token)
-                .collect::<Result<Vec<_>, _>>()?;
-            if cell_tokens.len() != n {
-                return Err(ParseError::InvalidGridRow(line.to_string()));
+            let mut c = 0;
+            for tok in parts[1].split_whitespace() {
+                if c >= n {
+                    return Err(ParseError::InvalidGridRow(line.to_string()));
+                }
+                board.set(r, c, parse_token(tok)?);
+                c += 1;
             }
-            for (c, val) in cell_tokens.into_iter().enumerate() {
-                board.set(r, c, val);
+            if c != n {
+                return Err(ParseError::InvalidGridRow(line.to_string()));
             }
         }
 
