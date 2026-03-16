@@ -130,6 +130,17 @@ pub struct GeneratorParams {
     pub sampler_params: latin_sampler::SamplerParams,
 }
 
+impl GeneratorParams {
+    /// Creates new generator parameters with default sampler settings.
+    pub fn new(n: usize, solver: impl Solver + 'static) -> Self {
+        Self {
+            n,
+            solver: Box::new(solver),
+            sampler_params: latin_sampler::SamplerParams::default(),
+        }
+    }
+}
+
 /// Generates a Skyscrapers puzzle with a guaranteed unique solution.
 ///
 /// Pipeline: sample latin square → convert to solution → derive board + clues

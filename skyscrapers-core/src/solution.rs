@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// A completely filled n×n board (solution).
 ///
 /// Cell values are 1-based (`1..=n`), stored in row-major order.
@@ -44,6 +46,23 @@ impl Solution {
     }
 }
 
+impl fmt::Display for Solution {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for r in 0..self.n {
+            if r > 0 {
+                writeln!(f)?;
+            }
+            for c in 0..self.n {
+                if c > 0 {
+                    write!(f, " ")?;
+                }
+                write!(f, "{}", self.cells[r * self.n + c])?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,5 +89,12 @@ mod tests {
     #[should_panic(expected = "all cell values must be in 1..=n")]
     fn solution_value_out_of_range() {
         Solution::new(3, vec![0, 1, 2, 1, 2, 3, 2, 3, 1]);
+    }
+
+    #[test]
+    fn display_solution() {
+        let sol = Solution::new(3, vec![1, 2, 3, 2, 3, 1, 3, 1, 2]);
+        let expected = "1 2 3\n2 3 1\n3 1 2";
+        assert_eq!(sol.to_string(), expected);
     }
 }
