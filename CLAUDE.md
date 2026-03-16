@@ -138,6 +138,7 @@ skyscrapers generate -n 5 --seed 42 | skyscrapers solve
 
 ## Conventions
 
+- **n ≤ 9**: Project-wide constraint. `Solution::new`, `Board::new_empty`, `Clues::new_all_none` all assert `1..=9`. The text format assumes single-digit values.
 - Cell values are **1-based** (1..=n) throughout the Skyscrapers domain types
 - `latin-sampler` uses 0-based symbols; conversion happens at the boundary in `solution_from_latin_square`
 - Row-major storage: index = r * n + c

@@ -14,7 +14,11 @@ pub struct Clues {
 
 impl Clues {
     /// Creates clues with all values set to `None`.
+    ///
+    /// # Panics
+    /// Panics if `n` is not in `1..=9`.
     pub fn new_all_none(n: usize) -> Self {
+        assert!((1..=9).contains(&n), "n must be in range 1..=9");
         Self {
             n,
             top: vec![None; n],

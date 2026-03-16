@@ -15,9 +15,9 @@ impl Solution {
     /// `cells` must have exactly `n * n` elements with values in `1..=n`.
     ///
     /// # Panics
-    /// Panics if `n` is 0 or exceeds 255, `cells.len() != n * n`, or any value is out of range.
+    /// Panics if `n` is not in `1..=9`, `cells.len() != n * n`, or any value is out of range.
     pub fn new(n: usize, cells: Vec<u8>) -> Self {
-        assert!((1..=255).contains(&n), "n must be in range 1..=255");
+        assert!((1..=9).contains(&n), "n must be in range 1..=9");
         assert_eq!(cells.len(), n * n, "cells length must be n*n");
         assert!(
             cells.iter().all(|&v| v >= 1 && v <= n as u8),

@@ -36,10 +36,23 @@ fn parse_token(tok: &str) -> Result<Option<u8>, ParseError> {
     if tok == "." {
         Ok(None)
     } else {
-        tok.parse::<u8>()
-            .map(Some)
-            .map_err(|_| ParseError::InvalidToken(tok.to_string()))
+        let v = tok
+            .parse::<u8>()
+            .map_err(|_| ParseError::InvalidToken(tok.to_string()))?;
+        if v == 0 {
+            return Err(ParseError::InvalidToken(tok.to_string()));
+        }
+        Ok(Some(v))
     }
+}
+
+fn validate_value(v: Option<u8>, n: usize) -> Result<(), ParseError> {
+    if let Some(v) = v {
+        if v as usize > n {
+            return Err(ParseError::InvalidToken(v.to_string()));
+        }
+    }
+    Ok(())
 }
 
 fn is_separator(line: &str) -> bool {
@@ -81,7 +94,7 @@ impl FromStr for Puzzle {
             .ok_or(ParseError::NotEnoughLines)?;
         let top_clues = parse_clue_line(top_line)?;
         let n = top_clues.len();
-        if n == 0 {
+        if !(1..=9).contains(&n) {
             return Err(ParseError::InconsistentSize);
         }
 
@@ -102,6 +115,8 @@ impl FromStr for Puzzle {
         let mut clues = Clues::new_all_none(n);
 
         for i in 0..n {
+            validate_value(top_clues[i], n)?;
+            validate_value(bottom_clues[i], n)?;
             clues.set_top(i, top_clues[i]);
             clues.set_bottom(i, bottom_clues[i]);
         }
@@ -114,9 +129,11 @@ impl FromStr for Puzzle {
             }
 
             let left_clue = parse_token(parts[0].trim())?;
+            validate_value(left_clue, n)?;
             clues.set_left(r, left_clue);
 
             let right_clue = parse_token(parts[2].trim())?;
+            validate_value(right_clue, n)?;
             clues.set_right(r, right_clue);
 
             let mut c = 0;
@@ -124,7 +141,9 @@ impl FromStr for Puzzle {
                 if c >= n {
                     return Err(ParseError::InvalidGridRow(line.to_string()));
                 }
-                board.set(r, c, parse_token(tok)?);
+                let val = parse_token(tok)?;
+                validate_value(val, n)?;
+                board.set(r, c, val);
                 c += 1;
             }
             if c != n {
@@ -199,5 +218,33 @@ mod tests {
     fn parse_error_not_enough_lines() {
         let result = "just one line".parse::<Puzzle>();
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_rejects_zero_value() {
+        let input = "\
+    . . .
+  +-------+
+. | 0 . . | .
+. | . . . | .
+. | . . . | .
+  +-------+
+    . . .";
+        let result = input.parse::<Puzzle>();
+        assert!(matches!(result, Err(ParseError::InvalidToken(_))));
+    }
+
+    #[test]
+    fn parse_rejects_value_exceeding_n() {
+        let input = "\
+    . . .
+  +-------+
+. | 4 . . | .
+. | . . . | .
+. | . . . | .
+  +-------+
+    . . .";
+        let result = input.parse::<Puzzle>();
+        assert!(matches!(result, Err(ParseError::InvalidToken(_))));
     }
 }

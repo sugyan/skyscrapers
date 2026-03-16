@@ -22,9 +22,9 @@ struct Cli {
 enum Command {
     /// Generate a Skyscrapers puzzle
     Generate {
-        /// Grid size
-        #[arg(short, default_value_t = 7)]
-        n: usize,
+        /// Grid size (1-9)
+        #[arg(short, default_value_t = 7, value_parser = clap::value_parser!(u64).range(1..=9))]
+        n: u64,
 
         /// RNG seed (random if omitted)
         #[arg(long)]
@@ -42,6 +42,7 @@ fn main() {
 
     match cli.command {
         Command::Generate { n, seed } => {
+            let n = n as usize;
             let seed = seed.unwrap_or_else(|| {
                 let s = rand::random::<u64>();
                 eprintln!("seed: {s}");
