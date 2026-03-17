@@ -57,7 +57,10 @@ fn validate_value(v: Option<u8>, n: usize) -> Result<(), ParseError> {
 
 fn is_separator(line: &str) -> bool {
     let trimmed = line.trim();
-    trimmed.starts_with('+') && trimmed.ends_with('+') && trimmed.contains('-')
+    trimmed.len() >= 3
+        && trimmed.starts_with('+')
+        && trimmed.ends_with('+')
+        && trimmed[1..trimmed.len() - 1].chars().all(|c| c == '-')
 }
 
 fn parse_clue_line(line: &str) -> Result<Vec<Option<u8>>, ParseError> {

@@ -48,7 +48,7 @@ impl SolveState {
     /// Builds the initial state from a puzzle. Returns None if contradictory.
     fn new(puzzle: &Puzzle) -> Option<Self> {
         let n = puzzle.board.n();
-        if n == 0 || n > 16 || puzzle.clues.n() != n {
+        if n == 0 || n > 9 || puzzle.clues.n() != n {
             return None;
         }
         let clues = &puzzle.clues;
