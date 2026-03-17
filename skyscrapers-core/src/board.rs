@@ -65,4 +65,10 @@ mod tests {
         let board = Board::new_empty(3);
         board.get(3, 0);
     }
+
+    #[test]
+    #[should_panic(expected = "n must be in range 1..=9")]
+    fn board_n_too_large() {
+        Board::new_empty(10);
+    }
 }

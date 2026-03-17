@@ -202,4 +202,10 @@ mod tests {
         assert_eq!(clues.left(2), Some(1));
         assert_eq!(clues.right(0), Some(2));
     }
+
+    #[test]
+    #[should_panic(expected = "n must be in range 1..=9")]
+    fn clues_n_too_large() {
+        Clues::new_all_none(10);
+    }
 }

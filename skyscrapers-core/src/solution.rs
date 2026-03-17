@@ -92,6 +92,18 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "n must be in range 1..=9")]
+    fn solution_n_zero() {
+        Solution::new(0, vec![]);
+    }
+
+    #[test]
+    #[should_panic(expected = "n must be in range 1..=9")]
+    fn solution_n_too_large() {
+        Solution::new(10, vec![1; 100]);
+    }
+
+    #[test]
     fn display_solution() {
         let sol = Solution::new(3, vec![1, 2, 3, 2, 3, 1, 3, 1, 2]);
         let expected = "1 2 3\n2 3 1\n3 1 2";
