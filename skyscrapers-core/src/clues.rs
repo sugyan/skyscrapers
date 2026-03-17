@@ -14,7 +14,11 @@ pub struct Clues {
 
 impl Clues {
     /// Creates clues with all values set to `None`.
+    ///
+    /// # Panics
+    /// Panics if `n` is not in `1..=9`.
     pub fn new_all_none(n: usize) -> Self {
+        assert!((1..=9).contains(&n), "n must be in range 1..=9");
         Self {
             n,
             top: vec![None; n],
@@ -197,5 +201,11 @@ mod tests {
         assert_eq!(clues.bottom(1), Some(3));
         assert_eq!(clues.left(2), Some(1));
         assert_eq!(clues.right(0), Some(2));
+    }
+
+    #[test]
+    #[should_panic(expected = "n must be in range 1..=9")]
+    fn clues_n_too_large() {
+        Clues::new_all_none(10);
     }
 }

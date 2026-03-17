@@ -23,7 +23,7 @@ skyscrapers/
 ├── skyscrapers-solver/       Uniqueness verifier (backtracking; SAT planned)
 ├── skyscrapers-generator/    Puzzle generator
 ├── skyscrapers-logic/        Logic solver + difficulty rating           [planned]
-└── skyscrapers-cli/          CLI binary (generate + solve)              [planned]
+└── skyscrapers-cli/          CLI binary (generate + solve)
 ```
 
 ### Dependency Graph
@@ -33,7 +33,7 @@ skyscrapers-core         ← all other crates depend on this
 skyscrapers-solver       ← depends on core
 skyscrapers-generator    ← depends on core, solver, latin-sampler
 skyscrapers-logic        ← depends on core (future)
-skyscrapers-cli          ← depends on core, solver, generator (future)
+skyscrapers-cli          ← depends on core, solver, generator, clap
 ```
 
 No circular dependencies. Flow is always: core → solver → generator → cli.
@@ -42,14 +42,16 @@ No circular dependencies. Flow is always: core → solver → generator → cli.
 
 - [`latin-sampler`](https://crates.io/crates/latin-sampler) — Latin square generation via Jacobson-Matthews MCMC
 - `rand`, `rand_chacha` — seedable RNG
+- `clap` — CLI argument parsing (derive mode)
 - `varisat` — SAT solver for uniqueness verification (planned)
 
 ## Core Types (skyscrapers-core)
 
-- **`Solution`** — A complete n×n grid (1-based values). `new(n, cells)`, `n()`, `get(r, c)`, `cells()`
+- **`Solution`** — A complete n×n grid (1-based values). `new(n, cells)`, `n()`, `get(r, c)`, `cells()`, `Display`
 - **`Board`** — An n×n grid with optional cells. `new_empty(n)`, `get(r, c)`, `set(r, c, v)`
 - **`Clues`** — Clue numbers for all 4 directions. `new_all_none(n)`, `from_solution(sol)`, per-direction accessors/setters
-- **`Puzzle`** — `Board` + `Clues`
+- **`Puzzle`** — `Board` + `Clues`. `Display` (box format), `FromStr` (parses box format)
+- **`ParseError`** — Error type for `Puzzle::from_str`
 
 ### Clue Derivation
 
@@ -67,7 +69,7 @@ The generator has two stages:
 - `solution_from_latin_square(ls) -> Solution` — converts 0-based LatinSquare to 1-based Solution
 - `derive_clues(solution) -> Clues` — computes all clue numbers from a solution
 - `generate(rng, params) -> Puzzle` — end-to-end puzzle generation (Stage A + B)
-- `GeneratorParams` — configuration: `n`, `solver`, `sampler_params`
+- `GeneratorParams` — configuration: `n`, `solver`, `sampler_params`. `new(n, solver)` uses default sampler params
 
 ## Implementation Status
 
@@ -101,10 +103,11 @@ The generator has two stages:
 
 | Step | Status |
 |------|--------|
-| `skyscrapers-cli` crate setup | Not started |
-| `generate` subcommand (options: size, seed, output format) | Not started |
-| `solve` subcommand (read puzzle from stdin/file, print solution) | Not started |
-| `Display` impl for `Puzzle` and `Solution` in core | Not started |
+| `skyscrapers-cli` crate setup | Done |
+| `generate` subcommand (options: size, seed) | Done |
+| `solve` subcommand (read puzzle from stdin/file, print solution) | Done |
+| `Display` impl for `Puzzle` and `Solution` in core | Done |
+| `FromStr` impl for `Puzzle` in core | Done |
 
 ## Development
 
@@ -114,14 +117,20 @@ cargo clippy --workspace
 cargo fmt --check
 ```
 
-## CLI Design (planned)
+## CLI Usage
 
-`skyscrapers-cli` will be a single binary with two subcommands:
+`skyscrapers-cli` provides a `skyscrapers` binary with two subcommands:
 
-- **`generate`** — Generate a puzzle. Options: grid size (`-n`), RNG seed (`--seed`), output format.
-- **`solve`** — Read a puzzle from stdin or file and print the solution.
+```bash
+# Generate a puzzle (default n=7, random seed printed to stderr)
+skyscrapers generate [-n <SIZE>] [--seed <SEED>]
 
-Both subcommands require `Display` implementations for `Puzzle` and `Solution` in `skyscrapers-core` to produce human-readable text output.
+# Solve a puzzle from file or stdin
+skyscrapers solve [FILE]
+
+# Pipe: generate and immediately solve
+skyscrapers generate -n 5 --seed 42 | skyscrapers solve
+```
 
 ## Known Issues / TODO
 
@@ -129,6 +138,7 @@ Both subcommands require `Display` implementations for `Puzzle` and `Solution` i
 
 ## Conventions
 
+- **n ≤ 9**: Project-wide constraint. `Solution::new`, `Board::new_empty`, `Clues::new_all_none` all assert `1..=9`. The text format assumes single-digit values.
 - Cell values are **1-based** (1..=n) throughout the Skyscrapers domain types
 - `latin-sampler` uses 0-based symbols; conversion happens at the boundary in `solution_from_latin_square`
 - Row-major storage: index = r * n + c

@@ -130,6 +130,21 @@ pub struct GeneratorParams {
     pub sampler_params: latin_sampler::SamplerParams,
 }
 
+impl GeneratorParams {
+    /// Creates new generator parameters with default sampler settings.
+    ///
+    /// # Panics
+    /// Panics if `n` is not in `1..=9`.
+    pub fn new(n: usize, solver: impl Solver + 'static) -> Self {
+        assert!((1..=9).contains(&n), "n must be in range 1..=9");
+        Self {
+            n,
+            solver: Box::new(solver),
+            sampler_params: latin_sampler::SamplerParams::default(),
+        }
+    }
+}
+
 /// Generates a Skyscrapers puzzle with a guaranteed unique solution.
 ///
 /// Pipeline: sample latin square → convert to solution → derive board + clues

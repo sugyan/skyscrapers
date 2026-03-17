@@ -7,7 +7,11 @@ pub struct Board {
 
 impl Board {
     /// Creates a new empty board of order `n`.
+    ///
+    /// # Panics
+    /// Panics if `n` is not in `1..=9`.
     pub fn new_empty(n: usize) -> Self {
+        assert!((1..=9).contains(&n), "n must be in range 1..=9");
         Self {
             n,
             cells: vec![None; n * n],
@@ -60,5 +64,11 @@ mod tests {
     fn board_get_out_of_bounds() {
         let board = Board::new_empty(3);
         board.get(3, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "n must be in range 1..=9")]
+    fn board_n_too_large() {
+        Board::new_empty(10);
     }
 }

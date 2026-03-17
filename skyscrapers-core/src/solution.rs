@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// A completely filled n×n board (solution).
 ///
 /// Cell values are 1-based (`1..=n`), stored in row-major order.
@@ -13,9 +15,9 @@ impl Solution {
     /// `cells` must have exactly `n * n` elements with values in `1..=n`.
     ///
     /// # Panics
-    /// Panics if `n` is 0 or exceeds 255, `cells.len() != n * n`, or any value is out of range.
+    /// Panics if `n` is not in `1..=9`, `cells.len() != n * n`, or any value is out of range.
     pub fn new(n: usize, cells: Vec<u8>) -> Self {
-        assert!((1..=255).contains(&n), "n must be in range 1..=255");
+        assert!((1..=9).contains(&n), "n must be in range 1..=9");
         assert_eq!(cells.len(), n * n, "cells length must be n*n");
         assert!(
             cells.iter().all(|&v| v >= 1 && v <= n as u8),
@@ -41,6 +43,23 @@ impl Solution {
     /// Returns the cells as a slice.
     pub fn cells(&self) -> &[u8] {
         &self.cells
+    }
+}
+
+impl fmt::Display for Solution {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for r in 0..self.n {
+            if r > 0 {
+                writeln!(f)?;
+            }
+            for c in 0..self.n {
+                if c > 0 {
+                    write!(f, " ")?;
+                }
+                write!(f, "{}", self.cells[r * self.n + c])?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -70,5 +89,24 @@ mod tests {
     #[should_panic(expected = "all cell values must be in 1..=n")]
     fn solution_value_out_of_range() {
         Solution::new(3, vec![0, 1, 2, 1, 2, 3, 2, 3, 1]);
+    }
+
+    #[test]
+    #[should_panic(expected = "n must be in range 1..=9")]
+    fn solution_n_zero() {
+        Solution::new(0, vec![]);
+    }
+
+    #[test]
+    #[should_panic(expected = "n must be in range 1..=9")]
+    fn solution_n_too_large() {
+        Solution::new(10, vec![1; 100]);
+    }
+
+    #[test]
+    fn display_solution() {
+        let sol = Solution::new(3, vec![1, 2, 3, 2, 3, 1, 3, 1, 2]);
+        let expected = "1 2 3\n2 3 1\n3 1 2";
+        assert_eq!(sol.to_string(), expected);
     }
 }
