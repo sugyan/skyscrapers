@@ -23,6 +23,9 @@ export function decodePuzzle(encoded: string): Puzzle {
     const clues: ClueValue[] = [];
     for (let i = 0; i < n; i++) {
       const v = parseInt(encoded[pos++], 10);
+      if (v < 0 || v > n) {
+        throw new Error(`Invalid clue value: ${v}. Must be 0–${n}`);
+      }
       clues.push(v === 0 ? null : v);
     }
     return clues;
@@ -38,6 +41,9 @@ export function decodePuzzle(encoded: string): Puzzle {
     const row: BoardCell[] = [];
     for (let c = 0; c < n; c++) {
       const v = parseInt(encoded[pos++], 10);
+      if (v < 0 || v > n) {
+        throw new Error(`Invalid cell value: ${v}. Must be 0–${n}`);
+      }
       row.push({
         value: v === 0 ? null : v,
         given: v !== 0,

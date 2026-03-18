@@ -26,6 +26,7 @@ export interface GameState {
 
 export type GameAction =
   | { type: "SELECT_CELL"; row: number; col: number }
+  | { type: "DESELECT" }
   | { type: "SET_VALUE"; value: number }
   | { type: "CLEAR_CELL" }
   | { type: "RESET" }

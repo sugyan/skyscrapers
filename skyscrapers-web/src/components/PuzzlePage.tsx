@@ -36,8 +36,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "SELECT_CELL": {
       const { row, col } = action;
-      if (state.board[row][col].given) return state;
       return { ...state, selectedCell: [row, col] };
+    }
+
+    case "DESELECT": {
+      return { ...state, selectedCell: null };
     }
 
     case "SET_VALUE": {
@@ -117,7 +120,7 @@ export function PuzzlePage({ puzzle, onNewPuzzle }: PuzzlePageProps) {
 
       // Escape
       if (key === "Escape") {
-        dispatch({ type: "SELECT_CELL", row: -1, col: -1 });
+        dispatch({ type: "DESELECT" });
         return;
       }
 
