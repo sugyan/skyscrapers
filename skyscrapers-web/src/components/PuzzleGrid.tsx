@@ -7,6 +7,7 @@ interface PuzzleGridProps {
   board: BoardCellType[][];
   selectedCell: [number, number] | null;
   errors: Set<string>;
+  completed: boolean;
   onCellClick: (row: number, col: number) => void;
 }
 
@@ -15,6 +16,7 @@ export function PuzzleGrid({
   board,
   selectedCell,
   errors,
+  completed,
   onCellClick,
 }: PuzzleGridProps) {
   const { n, clues } = puzzle;
@@ -81,6 +83,7 @@ export function PuzzleGrid({
           given={cell.given}
           selected={isSelected}
           hasError={errors.has(`${r},${c}`)}
+          completed={completed}
           onClick={() => onCellClick(r, c)}
         />
       );

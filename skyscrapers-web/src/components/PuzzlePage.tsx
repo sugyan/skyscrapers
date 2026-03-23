@@ -180,6 +180,7 @@ export function PuzzlePage({ puzzle, onNewPuzzle }: PuzzlePageProps) {
         board={state.board}
         selectedCell={state.selectedCell}
         errors={state.errors}
+        completed={state.completed}
         onCellClick={(row, col) => dispatch({ type: "SELECT_CELL", row, col })}
       />
       <NumberPad
