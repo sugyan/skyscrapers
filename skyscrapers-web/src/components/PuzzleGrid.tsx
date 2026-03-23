@@ -31,7 +31,7 @@ export function PuzzleGrid({
         (gridRow === 0 || gridRow === n + 1) &&
         (gridCol === 0 || gridCol === n + 1)
       ) {
-        cells.push(<div key={key} className="corner-cell" />);
+        cells.push(<div key={key} className="cell-size" />);
         continue;
       }
 
@@ -92,10 +92,10 @@ export function PuzzleGrid({
 
   return (
     <div
-      className="puzzle-grid"
+      className="grid gap-0 w-fit mx-auto select-none"
       style={{
         gridTemplateColumns: `auto repeat(${n}, 1fr) auto`,
-        '--grid-size': n + 2,
+        '--grid-cols': n + 2,
       } as React.CSSProperties}
     >
       {cells}
