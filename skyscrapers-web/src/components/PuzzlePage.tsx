@@ -113,8 +113,10 @@ export function PuzzlePage({ puzzle, onNewPuzzle }: PuzzlePageProps) {
 
       // Clear
       if (key === "0" || key === "Backspace" || key === "Delete") {
-        e.preventDefault();
-        dispatch({ type: "CLEAR_CELL" });
+        if (state.selectedCell !== null && !state.board[state.selectedCell[0]][state.selectedCell[1]].given) {
+          e.preventDefault();
+          dispatch({ type: "CLEAR_CELL" });
+        }
         return;
       }
 

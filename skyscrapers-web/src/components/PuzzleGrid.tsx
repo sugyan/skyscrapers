@@ -92,7 +92,8 @@ export function PuzzleGrid({
       className="puzzle-grid"
       style={{
         gridTemplateColumns: `auto repeat(${n}, 1fr) auto`,
-      }}
+        '--grid-size': n + 2,
+      } as React.CSSProperties}
     >
       {cells}
     </div>
