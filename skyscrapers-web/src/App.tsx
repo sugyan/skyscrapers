@@ -4,6 +4,7 @@ import { samplePuzzles } from "./samples";
 import { PuzzlePage } from "./components/PuzzlePage";
 import type { Puzzle } from "./types";
 import "./styles/puzzle.css";
+import "./styles/app.css";
 
 function App() {
   const puzzleFromUrl = useMemo(() => {
