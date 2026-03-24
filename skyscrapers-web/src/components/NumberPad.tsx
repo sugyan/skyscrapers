@@ -12,8 +12,11 @@ export function NumberPad({
   onClear,
 }: NumberPadProps) {
   const btnBase =
-    "w-12 h-12 text-lg border border-gray-400 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 cursor-pointer transition-colors duration-100 hover:bg-gray-200 dark:hover:bg-slate-700";
-  const btnActive = "bg-blue-100 dark:bg-blue-900/50 border-blue-500 dark:border-blue-400";
+    "w-12 h-12 text-lg border rounded-md cursor-pointer transition-colors duration-100";
+  const btnDefault =
+    "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700";
+  const btnActive =
+    "border-blue-500 dark:border-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900/70";
 
   const buttons: React.ReactNode[] = [];
 
@@ -21,7 +24,7 @@ export function NumberPad({
     buttons.push(
       <button
         key={i}
-        className={`${btnBase} ${currentValue === i ? btnActive : ""}`}
+        className={`${btnBase} ${currentValue === i ? btnActive : btnDefault}`}
         onClick={() => onNumberSelect(i)}
       >
         {i}
@@ -32,7 +35,7 @@ export function NumberPad({
   buttons.push(
     <button
       key="clear"
-      className={`${btnBase} text-xl text-red-600 dark:text-red-400`}
+      className={`${btnBase} ${btnDefault} text-xl text-red-600 dark:text-red-400`}
       onClick={onClear}
     >
       ×
