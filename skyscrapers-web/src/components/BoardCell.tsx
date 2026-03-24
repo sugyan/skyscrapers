@@ -19,10 +19,7 @@ export function BoardCell({
   if (hasError) classNames.push("error");
 
   return (
-    <div
-      className={classNames.join(" ")}
-      onClick={given ? undefined : onClick}
-    >
+    <div className={classNames.join(" ")} onClick={given ? undefined : onClick}>
       {value ?? ""}
     </div>
   );

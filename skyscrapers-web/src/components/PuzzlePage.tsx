@@ -19,7 +19,11 @@ function createInitialState(puzzle: Puzzle): GameState {
   };
 }
 
-function checkCompleted(n: number, board: BoardCell[][], errors: Set<string>): boolean {
+function checkCompleted(
+  n: number,
+  board: BoardCell[][],
+  errors: Set<string>
+): boolean {
   if (errors.size > 0) return false;
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
@@ -113,7 +117,10 @@ export function PuzzlePage({ puzzle, onNewPuzzle }: PuzzlePageProps) {
 
       // Clear
       if (key === "0" || key === "Backspace" || key === "Delete") {
-        if (state.selectedCell !== null && !state.board[state.selectedCell[0]][state.selectedCell[1]].given) {
+        if (
+          state.selectedCell !== null &&
+          !state.board[state.selectedCell[0]][state.selectedCell[1]].given
+        ) {
           e.preventDefault();
           dispatch({ type: "CLEAR_CELL" });
         }
@@ -143,7 +150,10 @@ export function PuzzlePage({ puzzle, onNewPuzzle }: PuzzlePageProps) {
             const idx = (r * n + c + i) % (n * n);
             const tr = Math.floor(idx / n);
             const tc = idx % n;
-            if (state.board[tr][tc].value === null && !state.board[tr][tc].given) {
+            if (
+              state.board[tr][tc].value === null &&
+              !state.board[tr][tc].given
+            ) {
               dispatch({ type: "SELECT_CELL", row: tr, col: tc });
               return;
             }
