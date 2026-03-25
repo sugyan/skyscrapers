@@ -37,25 +37,45 @@ export function PuzzleGrid({
 
       // Top clues
       if (gridRow === 0 && gridCol >= 1 && gridCol <= n) {
-        cells.push(<ClueCell key={key} value={clues.top[gridCol - 1]} />);
+        cells.push(
+          <ClueCell key={key} value={clues.top[gridCol - 1]} direction="top" />,
+        );
         continue;
       }
 
       // Bottom clues
       if (gridRow === n + 1 && gridCol >= 1 && gridCol <= n) {
-        cells.push(<ClueCell key={key} value={clues.bottom[gridCol - 1]} />);
+        cells.push(
+          <ClueCell
+            key={key}
+            value={clues.bottom[gridCol - 1]}
+            direction="bottom"
+          />,
+        );
         continue;
       }
 
       // Left clues
       if (gridCol === 0 && gridRow >= 1 && gridRow <= n) {
-        cells.push(<ClueCell key={key} value={clues.left[gridRow - 1]} />);
+        cells.push(
+          <ClueCell
+            key={key}
+            value={clues.left[gridRow - 1]}
+            direction="left"
+          />,
+        );
         continue;
       }
 
       // Right clues
       if (gridCol === n + 1 && gridRow >= 1 && gridRow <= n) {
-        cells.push(<ClueCell key={key} value={clues.right[gridRow - 1]} />);
+        cells.push(
+          <ClueCell
+            key={key}
+            value={clues.right[gridRow - 1]}
+            direction="right"
+          />,
+        );
         continue;
       }
 
