@@ -25,11 +25,11 @@ Puzzles are encoded as a compact digit string:
 
 **Total length**: `1 + 4n + n²`
 
-| n | Total length |
-|---|--------------|
-| 5 | 46           |
-| 7 | 78           |
-| 8 | 97           |
+| n   | Total length |
+| --- | ------------ |
+| 5   | 46           |
+| 7   | 78           |
+| 8   | 97           |
 
 ### Clue Ordering
 
