@@ -37,33 +37,25 @@ export function PuzzleGrid({
 
       // Top clues
       if (gridRow === 0 && gridCol >= 1 && gridCol <= n) {
-        cells.push(
-          <ClueCell key={key} value={clues.top[gridCol - 1]} />
-        );
+        cells.push(<ClueCell key={key} value={clues.top[gridCol - 1]} />);
         continue;
       }
 
       // Bottom clues
       if (gridRow === n + 1 && gridCol >= 1 && gridCol <= n) {
-        cells.push(
-          <ClueCell key={key} value={clues.bottom[gridCol - 1]} />
-        );
+        cells.push(<ClueCell key={key} value={clues.bottom[gridCol - 1]} />);
         continue;
       }
 
       // Left clues
       if (gridCol === 0 && gridRow >= 1 && gridRow <= n) {
-        cells.push(
-          <ClueCell key={key} value={clues.left[gridRow - 1]} />
-        );
+        cells.push(<ClueCell key={key} value={clues.left[gridRow - 1]} />);
         continue;
       }
 
       // Right clues
       if (gridCol === n + 1 && gridRow >= 1 && gridRow <= n) {
-        cells.push(
-          <ClueCell key={key} value={clues.right[gridRow - 1]} />
-        );
+        cells.push(<ClueCell key={key} value={clues.right[gridRow - 1]} />);
         continue;
       }
 
@@ -72,9 +64,7 @@ export function PuzzleGrid({
       const c = gridCol - 1;
       const cell = board[r][c];
       const isSelected =
-        selectedCell !== null &&
-        selectedCell[0] === r &&
-        selectedCell[1] === c;
+        selectedCell !== null && selectedCell[0] === r && selectedCell[1] === c;
 
       cells.push(
         <BoardCell
@@ -85,7 +75,7 @@ export function PuzzleGrid({
           hasError={errors.has(`${r},${c}`)}
           completed={completed}
           onClick={() => onCellClick(r, c)}
-        />
+        />,
       );
     }
   }
@@ -93,10 +83,12 @@ export function PuzzleGrid({
   return (
     <div
       className="grid gap-0 w-fit mx-auto select-none"
-      style={{
-        gridTemplateColumns: `auto repeat(${n}, 1fr) auto`,
-        '--grid-cols': n + 2,
-      } as React.CSSProperties}
+      style={
+        {
+          gridTemplateColumns: `auto repeat(${n}, 1fr) auto`,
+          "--grid-cols": n + 2,
+        } as React.CSSProperties
+      }
     >
       {cells}
     </div>

@@ -32,10 +32,15 @@ export function BoardCell({
             ? "bg-given-bg dark:bg-given-bg-dark"
             : "bg-board-bg dark:bg-board-bg-dark";
 
-  const font = given ? "font-bold cursor-default" : "font-normal cursor-pointer";
+  const font = given
+    ? "font-bold cursor-default"
+    : "font-normal cursor-pointer";
 
   return (
-    <div className={`${base} ${bg} ${font}`} onClick={given ? undefined : onClick}>
+    <div
+      className={`${base} ${bg} ${font}`}
+      onClick={given ? undefined : onClick}
+    >
       {value ?? ""}
     </div>
   );

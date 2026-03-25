@@ -14,13 +14,13 @@ Compile `skyscrapers-core`, `skyscrapers-generator`, and `skyscrapers-solver` to
 
 ## Technology Stack
 
-| Layer       | Choice                                  |
-|-------------|-----------------------------------------|
-| Framework   | React (via Vite `react-swc-ts` template)|
-| Language    | TypeScript                              |
-| Build       | Vite                                    |
-| Styling     | Plain CSS (no frameworks, no CSS Modules)|
-| Dependencies| None beyond React + Vite defaults for MVP|
+| Layer        | Choice                                                |
+| ------------ | ----------------------------------------------------- |
+| Framework    | React (via Vite `react-swc-ts` template)              |
+| Language     | TypeScript                                            |
+| Build        | Vite                                                  |
+| Styling      | Tailwind CSS v4 (`tailwindcss` + `@tailwindcss/vite`) |
+| Dependencies | Tailwind CSS in addition to React + Vite defaults     |
 
 ---
 
@@ -34,22 +34,22 @@ Puzzles are encoded as a compact digit string, passed via the URL query paramete
 <n><top[0..n]><bottom[0..n]><left[0..n]><right[0..n]><board row-major n*n>
 ```
 
-| Segment               | Length | Description                                      |
-|-----------------------|--------|--------------------------------------------------|
-| `n`                   | 1      | Board size as a single digit (5–9)               |
-| `top[0..n]`          | n      | Top clues, left-to-right. `0` = no clue          |
-| `bottom[0..n]`       | n      | Bottom clues, left-to-right                      |
-| `left[0..n]`         | n      | Left clues, top-to-bottom                        |
-| `right[0..n]`        | n      | Right clues, top-to-bottom                       |
-| `board[0..n*n]`      | n×n    | Board cells in row-major order. `0` = empty cell |
+| Segment         | Length | Description                                      |
+| --------------- | ------ | ------------------------------------------------ |
+| `n`             | 1      | Board size as a single digit (5–9)               |
+| `top[0..n]`     | n      | Top clues, left-to-right. `0` = no clue          |
+| `bottom[0..n]`  | n      | Bottom clues, left-to-right                      |
+| `left[0..n]`    | n      | Left clues, top-to-bottom                        |
+| `right[0..n]`   | n      | Right clues, top-to-bottom                       |
+| `board[0..n*n]` | n×n    | Board cells in row-major order. `0` = empty cell |
 
 **Total length**: `1 + 4n + n²`
 
-| n | Total length |
-|---|-------------|
-| 5 | 46          |
-| 7 | 78          |
-| 8 | 97          |
+| n   | Total length |
+| --- | ------------ |
+| 5   | 46           |
+| 7   | 78           |
+| 8   | 97           |
 
 ### Clue Ordering
 
@@ -112,13 +112,13 @@ This directory lives at the workspace root, independent of the Cargo workspace.
 ```typescript
 // types.ts
 
-type ClueValue = number | null;  // null = no clue
+type ClueValue = number | null; // null = no clue
 
 interface Puzzle {
-  n: number;                     // 5–9
-  board: BoardCell[][];          // n × n, row-major
+  n: number; // 5–9
+  board: BoardCell[][]; // n × n, row-major
   clues: {
-    top: ClueValue[];            // length n
+    top: ClueValue[]; // length n
     bottom: ClueValue[];
     left: ClueValue[];
     right: ClueValue[];
@@ -126,16 +126,16 @@ interface Puzzle {
 }
 
 interface BoardCell {
-  value: number | null;          // 1..n or null (empty)
-  given: boolean;                // true = from puzzle definition (not editable)
+  value: number | null; // 1..n or null (empty)
+  given: boolean; // true = from puzzle definition (not editable)
 }
 
 interface GameState {
-  puzzle: Puzzle;                       // original puzzle (immutable)
-  board: BoardCell[][];                 // player's working board
+  puzzle: Puzzle; // original puzzle (immutable)
+  board: BoardCell[][]; // player's working board
   selectedCell: [number, number] | null; // [row, col] or null
-  errors: Set<string>;                  // set of "r,c" keys with violations
-  completed: boolean;                   // all cells filled, no errors
+  errors: Set<string>; // set of "r,c" keys with violations
+  completed: boolean; // all cells filled, no errors
 }
 
 type GameAction =
@@ -152,7 +152,7 @@ type GameAction =
 // encoding.ts
 
 function encodePuzzle(puzzle: Puzzle): string;
-function decodePuzzle(encoded: string): Puzzle;  // throws on invalid input
+function decodePuzzle(encoded: string): Puzzle; // throws on invalid input
 ```
 
 ---

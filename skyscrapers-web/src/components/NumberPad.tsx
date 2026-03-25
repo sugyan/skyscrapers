@@ -28,7 +28,7 @@ export function NumberPad({
         onClick={() => onNumberSelect(i)}
       >
         {i}
-      </button>
+      </button>,
     );
   }
 
@@ -39,7 +39,7 @@ export function NumberPad({
       onClick={onClear}
     >
       ×
-    </button>
+    </button>,
   );
 
   return (
