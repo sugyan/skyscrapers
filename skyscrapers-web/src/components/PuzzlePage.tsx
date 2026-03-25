@@ -183,13 +183,14 @@ export function PuzzlePage({ puzzle, onNewPuzzle }: PuzzlePageProps) {
       : null;
 
   return (
-    <div className="puzzle-page">
-      <h1>Skyscrapers</h1>
+    <div className="flex flex-col items-center p-5 sm:p-8">
+      <h1 className="text-2xl font-bold mb-5">Skyscrapers</h1>
       <PuzzleGrid
         puzzle={puzzle}
         board={state.board}
         selectedCell={state.selectedCell}
         errors={state.errors}
+        completed={state.completed}
         onCellClick={(row, col) => dispatch({ type: "SELECT_CELL", row, col })}
       />
       <NumberPad

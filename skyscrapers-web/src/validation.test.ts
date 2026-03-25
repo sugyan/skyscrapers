@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { validateBoard } from "./validation";
 import type { BoardCell } from "./types";
 
-function makeBoard(n: number, values: (number | null)[][]): BoardCell[][] {
+function makeBoard(_n: number, values: (number | null)[][]): BoardCell[][] {
   return values.map((row) => row.map((v) => ({ value: v, given: v !== null })));
 }
 

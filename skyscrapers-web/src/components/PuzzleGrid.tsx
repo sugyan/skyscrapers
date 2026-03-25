@@ -7,6 +7,7 @@ interface PuzzleGridProps {
   board: BoardCellType[][];
   selectedCell: [number, number] | null;
   errors: Set<string>;
+  completed: boolean;
   onCellClick: (row: number, col: number) => void;
 }
 
@@ -15,6 +16,7 @@ export function PuzzleGrid({
   board,
   selectedCell,
   errors,
+  completed,
   onCellClick,
 }: PuzzleGridProps) {
   const { n, clues } = puzzle;
@@ -29,7 +31,7 @@ export function PuzzleGrid({
         (gridRow === 0 || gridRow === n + 1) &&
         (gridCol === 0 || gridCol === n + 1)
       ) {
-        cells.push(<div key={key} className="corner-cell" />);
+        cells.push(<div key={key} className="cell-size" />);
         continue;
       }
 
@@ -71,6 +73,7 @@ export function PuzzleGrid({
           given={cell.given}
           selected={isSelected}
           hasError={errors.has(`${r},${c}`)}
+          completed={completed}
           onClick={() => onCellClick(r, c)}
         />,
       );
@@ -79,11 +82,11 @@ export function PuzzleGrid({
 
   return (
     <div
-      className="puzzle-grid"
+      className="grid gap-0 w-fit mx-auto select-none"
       style={
         {
           gridTemplateColumns: `auto repeat(${n}, 1fr) auto`,
-          "--grid-size": n + 2,
+          "--grid-cols": n + 2,
         } as React.CSSProperties
       }
     >
