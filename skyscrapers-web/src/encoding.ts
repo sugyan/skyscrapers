@@ -13,7 +13,7 @@ export function decodePuzzle(encoded: string): Puzzle {
   const expectedLength = 1 + 4 * n + n * n;
   if (encoded.length !== expectedLength) {
     throw new Error(
-      `Invalid length: expected ${expectedLength}, got ${encoded.length}`
+      `Invalid length: expected ${expectedLength}, got ${encoded.length}`,
     );
   }
 

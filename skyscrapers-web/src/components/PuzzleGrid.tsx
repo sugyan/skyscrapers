@@ -72,7 +72,7 @@ export function PuzzleGrid({
           selected={isSelected}
           hasError={errors.has(`${r},${c}`)}
           onClick={() => onCellClick(r, c)}
-        />
+        />,
       );
     }
   }

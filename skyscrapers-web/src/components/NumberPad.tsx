@@ -21,14 +21,14 @@ export function NumberPad({
         onClick={() => onNumberSelect(i)}
       >
         {i}
-      </button>
+      </button>,
     );
   }
 
   buttons.push(
     <button key="clear" className="numpad-btn clear" onClick={onClear}>
       ×
-    </button>
+    </button>,
   );
 
   return <div className="number-pad">{buttons}</div>;

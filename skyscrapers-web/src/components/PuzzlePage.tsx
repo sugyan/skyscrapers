@@ -22,7 +22,7 @@ function createInitialState(puzzle: Puzzle): GameState {
 function checkCompleted(
   n: number,
   board: BoardCell[][],
-  errors: Set<string>
+  errors: Set<string>,
 ): boolean {
   if (errors.size > 0) return false;
   for (let r = 0; r < n; r++) {
@@ -169,7 +169,7 @@ export function PuzzlePage({ puzzle, onNewPuzzle }: PuzzlePageProps) {
         }
       }
     },
-    [puzzle.n, state.selectedCell, state.board]
+    [puzzle.n, state.selectedCell, state.board],
   );
 
   useEffect(() => {
