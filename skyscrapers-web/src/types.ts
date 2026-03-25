@@ -18,6 +18,7 @@ export interface BoardCell {
 
 export interface GameState {
   puzzle: Puzzle;
+  solution: number[][];
   board: BoardCell[][];
   selectedCell: [number, number] | null;
   errors: Set<string>;
