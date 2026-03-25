@@ -2,13 +2,13 @@ import { describe, it, expect } from "vitest";
 import { validateBoard } from "./validation";
 import type { BoardCell } from "./types";
 
-function makeBoard(_n: number, values: (number | null)[][]): BoardCell[][] {
+function makeBoard(values: (number | null)[][]): BoardCell[][] {
   return values.map((row) => row.map((v) => ({ value: v, given: v !== null })));
 }
 
 describe("validateBoard", () => {
   it("returns no errors for a valid complete board", () => {
-    const board = makeBoard(3, [
+    const board = makeBoard([
       [1, 2, 3],
       [2, 3, 1],
       [3, 1, 2],
@@ -17,7 +17,7 @@ describe("validateBoard", () => {
   });
 
   it("returns no errors for a partial board with no conflicts", () => {
-    const board = makeBoard(3, [
+    const board = makeBoard([
       [1, null, null],
       [null, 2, null],
       [null, null, 3],
@@ -26,7 +26,7 @@ describe("validateBoard", () => {
   });
 
   it("detects row duplicates", () => {
-    const board = makeBoard(3, [
+    const board = makeBoard([
       [1, 1, null],
       [null, null, null],
       [null, null, null],
@@ -38,7 +38,7 @@ describe("validateBoard", () => {
   });
 
   it("detects column duplicates", () => {
-    const board = makeBoard(3, [
+    const board = makeBoard([
       [2, null, null],
       [null, null, null],
       [2, null, null],
@@ -50,7 +50,7 @@ describe("validateBoard", () => {
   });
 
   it("detects out-of-range values", () => {
-    const board = makeBoard(3, [
+    const board = makeBoard([
       [0 as unknown as number, null, null],
       [null, 4, null],
       [null, null, null],

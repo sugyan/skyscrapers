@@ -14,13 +14,13 @@ Compile `skyscrapers-core`, `skyscrapers-generator`, and `skyscrapers-solver` to
 
 ## Technology Stack
 
-| Layer        | Choice                                    |
-| ------------ | ----------------------------------------- |
-| Framework    | React (via Vite `react-swc-ts` template)  |
-| Language     | TypeScript                                |
-| Build        | Vite                                      |
-| Styling      | Plain CSS (no frameworks, no CSS Modules) |
-| Dependencies | None beyond React + Vite defaults for MVP |
+| Layer        | Choice                                                |
+| ------------ | ----------------------------------------------------- |
+| Framework    | React (via Vite `react-swc-ts` template)              |
+| Language     | TypeScript                                            |
+| Build        | Vite                                                  |
+| Styling      | Tailwind CSS v4 (`tailwindcss` + `@tailwindcss/vite`) |
+| Dependencies | Tailwind CSS in addition to React + Vite defaults     |
 
 ---
 
