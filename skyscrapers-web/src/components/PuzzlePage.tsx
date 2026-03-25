@@ -9,9 +9,10 @@ function deepCopyBoard(board: BoardCell[][]): BoardCell[][] {
   return board.map((row) => row.map((cell) => ({ ...cell })));
 }
 
-function createInitialState(puzzle: Puzzle): GameState {
+function createInitialState(puzzle: Puzzle, solution: number[][]): GameState {
   return {
     puzzle,
+    solution,
     board: deepCopyBoard(puzzle.board),
     selectedCell: null,
     errors: new Set<string>(),
@@ -78,11 +79,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "RESET": {
-      return createInitialState(puzzle);
+      return createInitialState(puzzle, state.solution);
     }
 
     case "CHECK": {
-      const errors = validateBoard(n, state.board);
+      const errors = new Set<string>();
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const v = state.board[r][c].value;
+          if (v !== null && v !== state.solution[r][c]) {
+            errors.add(`${r},${c}`);
+          }
+        }
+      }
       return {
         ...state,
         errors,
@@ -97,11 +106,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
 interface PuzzlePageProps {
   puzzle: Puzzle;
+  solution: number[][];
   onNewPuzzle: () => void;
 }
 
-export function PuzzlePage({ puzzle, onNewPuzzle }: PuzzlePageProps) {
-  const [state, dispatch] = useReducer(gameReducer, puzzle, createInitialState);
+export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
+  const [state, dispatch] = useReducer(
+    gameReducer,
+    { puzzle, solution },
+    ({ puzzle, solution }) => createInitialState(puzzle, solution),
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
