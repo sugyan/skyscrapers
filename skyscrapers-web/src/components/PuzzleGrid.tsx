@@ -91,9 +91,11 @@ export function PuzzleGrid({
           key={key}
           value={cell.value}
           given={cell.given}
+          candidates={cell.candidates}
           selected={isSelected}
           hasError={errors.has(`${r},${c}`)}
           completed={completed}
+          n={n}
           onClick={() => onCellClick(r, c)}
         />,
       );

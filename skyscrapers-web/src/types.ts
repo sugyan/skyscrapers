@@ -14,7 +14,10 @@ export interface Puzzle {
 export interface BoardCell {
   value: number | null;
   given: boolean;
+  candidates: Set<number>;
 }
+
+export type InputMode = "answer" | "candidate";
 
 export interface GameState {
   puzzle: Puzzle;
@@ -23,6 +26,7 @@ export interface GameState {
   selectedCell: [number, number] | null;
   errors: Set<string>;
   completed: boolean;
+  inputMode: InputMode;
 }
 
 export type GameAction =
@@ -30,5 +34,8 @@ export type GameAction =
   | { type: "DESELECT" }
   | { type: "SET_VALUE"; value: number }
   | { type: "CLEAR_CELL" }
+  | { type: "TOGGLE_CANDIDATE"; value: number }
+  | { type: "CLEAR_CANDIDATES" }
+  | { type: "SET_INPUT_MODE"; mode: InputMode }
   | { type: "RESET" }
   | { type: "CHECK" };
