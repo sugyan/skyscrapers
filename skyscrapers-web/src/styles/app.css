@@ -26,10 +26,20 @@
     height: min(60px, calc((100vw - 48px) / var(--grid-cols, 9)));
   }
 
+  .text-candidate {
+    font-size: min(14px, calc((100vw - 48px) / var(--grid-cols, 9) / 3.5));
+    font-weight: 300;
+    line-height: 1;
+  }
+
   @media (min-width: 768px) {
     .cell-size {
       width: 60px;
       height: 60px;
+    }
+
+    .text-candidate {
+      font-size: 14px;
     }
   }
 }

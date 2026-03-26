@@ -6,17 +6,23 @@ import { NumberPad } from "./NumberPad";
 import { GameControls } from "./GameControls";
 
 function deepCopyBoard(board: BoardCell[][]): BoardCell[][] {
-  return board.map((row) => row.map((cell) => ({ ...cell })));
+  return board.map((row) =>
+    row.map((cell) => ({ ...cell, candidates: new Set(cell.candidates) })),
+  );
 }
 
 function createInitialState(puzzle: Puzzle, solution: number[][]): GameState {
+  const board = puzzle.board.map((row) =>
+    row.map((cell) => ({ ...cell, candidates: new Set<number>() })),
+  );
   return {
     puzzle,
     solution,
-    board: deepCopyBoard(puzzle.board),
+    board,
     selectedCell: null,
     errors: new Set<string>(),
     completed: false,
+    inputMode: "answer",
   };
 }
 
@@ -53,7 +59,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const [r, c] = state.selectedCell;
       if (state.board[r][c].given) return state;
       const newBoard = deepCopyBoard(state.board);
-      newBoard[r][c] = { value: action.value, given: false };
+      newBoard[r][c] = {
+        value: action.value,
+        given: false,
+        candidates: new Set(),
+      };
       const errors = validateBoard(n, newBoard);
       return {
         ...state,
@@ -68,7 +78,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const [r, c] = state.selectedCell;
       if (state.board[r][c].given) return state;
       const newBoard = deepCopyBoard(state.board);
-      newBoard[r][c] = { value: null, given: false };
+      newBoard[r][c] = { value: null, given: false, candidates: new Set() };
       const errors = validateBoard(n, newBoard);
       return {
         ...state,
@@ -76,6 +86,34 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         errors,
         completed: false,
       };
+    }
+
+    case "TOGGLE_CANDIDATE": {
+      if (state.selectedCell === null) return state;
+      const [r, c] = state.selectedCell;
+      const cell = state.board[r][c];
+      if (cell.given || cell.value !== null) return state;
+      const newBoard = deepCopyBoard(state.board);
+      const candidates = newBoard[r][c].candidates;
+      if (candidates.has(action.value)) {
+        candidates.delete(action.value);
+      } else {
+        candidates.add(action.value);
+      }
+      return { ...state, board: newBoard };
+    }
+
+    case "CLEAR_CANDIDATES": {
+      if (state.selectedCell === null) return state;
+      const [r, c] = state.selectedCell;
+      if (state.board[r][c].given) return state;
+      const newBoard = deepCopyBoard(state.board);
+      newBoard[r][c].candidates = new Set();
+      return { ...state, board: newBoard };
+    }
+
+    case "SET_INPUT_MODE": {
+      return { ...state, inputMode: action.mode };
     }
 
     case "RESET": {
@@ -122,10 +160,24 @@ export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
       const n = puzzle.n;
       const key = e.key;
 
+      // Space toggles input mode
+      if (key === " ") {
+        e.preventDefault();
+        dispatch({
+          type: "SET_INPUT_MODE",
+          mode: state.inputMode === "answer" ? "candidate" : "answer",
+        });
+        return;
+      }
+
       // Digits 1-n
       const digit = parseInt(key, 10);
       if (digit >= 1 && digit <= n) {
-        dispatch({ type: "SET_VALUE", value: digit });
+        if (state.inputMode === "candidate") {
+          dispatch({ type: "TOGGLE_CANDIDATE", value: digit });
+        } else {
+          dispatch({ type: "SET_VALUE", value: digit });
+        }
         return;
       }
 
@@ -136,7 +188,11 @@ export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
           !state.board[state.selectedCell[0]][state.selectedCell[1]].given
         ) {
           e.preventDefault();
-          dispatch({ type: "CLEAR_CELL" });
+          if (state.inputMode === "candidate") {
+            dispatch({ type: "CLEAR_CANDIDATES" });
+          } else {
+            dispatch({ type: "CLEAR_CELL" });
+          }
         }
         return;
       }
@@ -183,7 +239,7 @@ export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
         }
       }
     },
-    [puzzle.n, state.selectedCell, state.board],
+    [puzzle.n, state.selectedCell, state.board, state.inputMode],
   );
 
   useEffect(() => {
@@ -191,9 +247,9 @@ export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  const selectedValue =
+  const selectedCell =
     state.selectedCell !== null
-      ? state.board[state.selectedCell[0]][state.selectedCell[1]].value
+      ? state.board[state.selectedCell[0]][state.selectedCell[1]]
       : null;
 
   return (
@@ -209,9 +265,20 @@ export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
       />
       <NumberPad
         n={puzzle.n}
-        currentValue={selectedValue}
-        onNumberSelect={(value) => dispatch({ type: "SET_VALUE", value })}
-        onClear={() => dispatch({ type: "CLEAR_CELL" })}
+        board={state.board}
+        currentValue={selectedCell?.value ?? null}
+        currentCandidates={selectedCell?.candidates ?? null}
+        memoDisabled={
+          selectedCell === null ||
+          selectedCell.given ||
+          selectedCell.value !== null
+        }
+        onAnswer={(value) => dispatch({ type: "SET_VALUE", value })}
+        onClearAnswer={() => dispatch({ type: "CLEAR_CELL" })}
+        onToggleCandidate={(value) =>
+          dispatch({ type: "TOGGLE_CANDIDATE", value })
+        }
+        onClearCandidates={() => dispatch({ type: "CLEAR_CANDIDATES" })}
       />
       <GameControls
         onReset={() => dispatch({ type: "RESET" })}

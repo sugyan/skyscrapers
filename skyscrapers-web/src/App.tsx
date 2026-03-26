@@ -13,6 +13,7 @@ function puzzleFromSample(sample: SamplePuzzle): Puzzle {
       row.map((value) => ({
         value,
         given: value !== null,
+        candidates: new Set<number>(),
       })),
     ),
   };

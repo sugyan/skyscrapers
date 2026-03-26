@@ -47,6 +47,7 @@ export function decodePuzzle(encoded: string): Puzzle {
       row.push({
         value: v === 0 ? null : v,
         given: v !== 0,
+        candidates: new Set(),
       });
     }
     board.push(row);

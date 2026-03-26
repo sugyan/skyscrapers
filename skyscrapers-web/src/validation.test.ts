@@ -3,7 +3,13 @@ import { validateBoard } from "./validation";
 import type { BoardCell } from "./types";
 
 function makeBoard(values: (number | null)[][]): BoardCell[][] {
-  return values.map((row) => row.map((v) => ({ value: v, given: v !== null })));
+  return values.map((row) =>
+    row.map((v) => ({
+      value: v,
+      given: v !== null,
+      candidates: new Set<number>(),
+    })),
+  );
 }
 
 describe("validateBoard", () => {
@@ -56,7 +62,7 @@ describe("validateBoard", () => {
       [null, null, null],
     ]);
     // Manually set value 0 (bypassing makeBoard's null conversion)
-    board[0][0] = { value: 0, given: false };
+    board[0][0] = { value: 0, given: false, candidates: new Set() };
     const errors = validateBoard(3, board);
     expect(errors.has("0,0")).toBe(true);
     expect(errors.has("1,1")).toBe(true);
