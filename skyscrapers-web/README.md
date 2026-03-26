@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# Skyscrapers Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Browser-based interactive player for [Skyscrapers](https://www.nikoli.co.jp/en/puzzles/skyscrapers/) puzzles. Built with React, TypeScript, Vite, and Tailwind CSS v4.
 
-Currently, two official plugins are available:
+Currently, puzzles are selected from built-in samples. The goal is to eventually generate puzzles directly in the browser via WASM, requiring only size and seed as URL parameters (e.g., `?n=7&seed=42`).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Puzzle Encoding Format
 
-## React Compiler
+> **Note:** This encoding is the current mechanism for passing puzzles via URL. Once WASM integration is complete, the URL will only need `n` and `seed` parameters. The encoding format may still be used internally at the WASM boundary.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Puzzles are encoded as a compact digit string:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```
+<n><top[0..n]><bottom[0..n]><left[0..n]><right[0..n]><board row-major n*n>
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+| Segment         | Length | Description                                      |
+| --------------- | ------ | ------------------------------------------------ |
+| `n`             | 1      | Board size as a single digit (1–9)               |
+| `top[0..n]`     | n      | Top clues, left-to-right. `0` = no clue          |
+| `bottom[0..n]`  | n      | Bottom clues, left-to-right                      |
+| `left[0..n]`    | n      | Left clues, top-to-bottom                        |
+| `right[0..n]`   | n      | Right clues, top-to-bottom                       |
+| `board[0..n*n]` | n×n    | Board cells in row-major order. `0` = empty cell |
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
+**Total length**: `1 + 4n + n²`
 
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+| n   | Total length |
+| --- | ------------ |
+| 5   | 46           |
+| 7   | 78           |
+| 8   | 97           |
+
+### Clue Ordering
+
+The clue order matches the Rust `Clues` struct: **top, bottom, left, right**.
+
+### Example
+
+For an n=5 puzzle:
+
 ```
+500300010030000003040200000000000000000000000020000
+^     ^     ^     ^     ^
+n  top[5] bot[5] lft[5] rgt[5]  board[25]
+```
+
+## Development
+
+```bash
+npm run dev            # Start dev server
+npm run build          # Type-check and build for production
+npm run preview        # Preview production build
+npm run lint           # Run ESLint
+npm run format:check   # Check formatting with Prettier
+npm run test           # Run tests with Vitest
+```
+
+## Future: WASM Integration
+
+The plan is to compile `skyscrapers-core`, `skyscrapers-generator`, and `skyscrapers-solver` to WebAssembly via `wasm-pack`, enabling in-browser puzzle generation without a server.
+
+Once integrated, the URL will only need size and seed parameters (`?n=7&seed=42`). The WASM module will generate the puzzle directly in the browser, eliminating the need for pre-generated encoded strings in the URL.
