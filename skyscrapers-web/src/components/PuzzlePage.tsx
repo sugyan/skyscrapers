@@ -265,24 +265,16 @@ export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
       />
       <NumberPad
         n={puzzle.n}
-        inputMode={state.inputMode}
+        board={state.board}
         currentValue={selectedCell?.value ?? null}
         currentCandidates={selectedCell?.candidates ?? null}
-        onNumberSelect={(value) => {
-          if (state.inputMode === "candidate") {
-            dispatch({ type: "TOGGLE_CANDIDATE", value });
-          } else {
-            dispatch({ type: "SET_VALUE", value });
-          }
-        }}
-        onClear={() => {
-          if (state.inputMode === "candidate") {
-            dispatch({ type: "CLEAR_CANDIDATES" });
-          } else {
-            dispatch({ type: "CLEAR_CELL" });
-          }
-        }}
-        onModeChange={(mode) => dispatch({ type: "SET_INPUT_MODE", mode })}
+        memoDisabled={selectedCell === null || selectedCell.given || selectedCell.value !== null}
+        onAnswer={(value) => dispatch({ type: "SET_VALUE", value })}
+        onClearAnswer={() => dispatch({ type: "CLEAR_CELL" })}
+        onToggleCandidate={(value) =>
+          dispatch({ type: "TOGGLE_CANDIDATE", value })
+        }
+        onClearCandidates={() => dispatch({ type: "CLEAR_CANDIDATES" })}
       />
       <GameControls
         onReset={() => dispatch({ type: "RESET" })}
