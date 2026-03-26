@@ -66,8 +66,7 @@ export function NumberPad({
   }
 
   const btnSize = "w-12 h-12";
-  const btnBase =
-    `${btnSize} text-lg border rounded-md transition-colors duration-100`;
+  const btnBase = `${btnSize} text-lg border rounded-md transition-colors duration-100`;
   const btnDefault =
     "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 cursor-pointer";
   const btnActiveAnswer =

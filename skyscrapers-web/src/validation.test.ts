@@ -4,7 +4,11 @@ import type { BoardCell } from "./types";
 
 function makeBoard(values: (number | null)[][]): BoardCell[][] {
   return values.map((row) =>
-    row.map((v) => ({ value: v, given: v !== null, candidates: new Set<number>() })),
+    row.map((v) => ({
+      value: v,
+      given: v !== null,
+      candidates: new Set<number>(),
+    })),
   );
 }
 

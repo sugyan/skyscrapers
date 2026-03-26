@@ -80,11 +80,7 @@ export function BoardCell({
       className={`${base} ${bg} ${font}`}
       onClick={given ? undefined : onClick}
     >
-      {value != null ? (
-        value
-      ) : (
-        <CandidatesGrid candidates={candidates} n={n} />
-      )}
+      {value != null ? value : <CandidatesGrid candidates={candidates} n={n} />}
     </div>
   );
 }

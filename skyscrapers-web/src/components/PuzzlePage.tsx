@@ -268,7 +268,11 @@ export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
         board={state.board}
         currentValue={selectedCell?.value ?? null}
         currentCandidates={selectedCell?.candidates ?? null}
-        memoDisabled={selectedCell === null || selectedCell.given || selectedCell.value !== null}
+        memoDisabled={
+          selectedCell === null ||
+          selectedCell.given ||
+          selectedCell.value !== null
+        }
         onAnswer={(value) => dispatch({ type: "SET_VALUE", value })}
         onClearAnswer={() => dispatch({ type: "CLEAR_CELL" })}
         onToggleCandidate={(value) =>
