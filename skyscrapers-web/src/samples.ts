@@ -16,10 +16,10 @@ export const samplePuzzles: SamplePuzzle[] = [
     label: "4×4",
     n: 4,
     clues: {
-      top: [null, 3, null, null],
-      bottom: [null, 3, 3, null],
+      top: [null, null, null, 3],
+      bottom: [null, 2, null, null],
       left: [null, 3, null, null],
-      right: [null, null, 1, null],
+      right: [4, null, null, null],
     },
     board: [
       [null, null, null, null],
@@ -28,10 +28,10 @@ export const samplePuzzles: SamplePuzzle[] = [
       [null, null, null, null],
     ],
     solution: [
-      [2, 4, 3, 1],
-      [1, 3, 4, 2],
-      [3, 1, 2, 4],
-      [4, 2, 1, 3],
+      [4, 3, 2, 1],
+      [1, 2, 4, 3],
+      [3, 4, 1, 2],
+      [2, 1, 3, 4],
     ],
   },
   {
