@@ -36,6 +36,7 @@ function EraserIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
       className="w-5 h-5"
+      aria-hidden="true"
     >
       <path d="M20 20H7L3 16c-.8-.8-.8-2 0-2.8L14.6 1.6c.8-.8 2-.8 2.8 0L21 5.2c.8.8.8 2 0 2.8L12 17" />
       <path d="M6 11l4 4" />
@@ -124,6 +125,7 @@ export function NumberPad({
       key="clear"
       className={`${btnBase} flex items-center justify-center ${memoDisabled ? `${btnDisabled}` : `${btnDefault} text-red-600 dark:text-red-400`}`}
       disabled={memoDisabled}
+      aria-label="Clear candidates"
       onClick={onClearCandidates}
     >
       <EraserIcon />
