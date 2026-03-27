@@ -36,6 +36,23 @@ fn puzzle_5x5() -> Puzzle {
         .unwrap()
 }
 
+fn puzzle_7x7() -> Puzzle {
+    "\
+        4 . 2 3 . 1 2
+      +---------------+
+    . | . . . . . . . | .
+    . | . . . 3 5 . . | .
+    4 | 1 . . . . . . | .
+    . | . . . . . . . | 4
+    . | . 2 . . . . . | .
+    . | . . . . . . . | 5
+    . | . . . . . . . | .
+      +---------------+
+        . 4 . . 2 6 2"
+        .parse()
+        .unwrap()
+}
+
 fn puzzle_6x6() -> Puzzle {
     "\
         3 2 1 . 2 .
@@ -85,5 +102,17 @@ fn backtracking_6x6(b: &mut Bencher) {
 #[bench]
 fn sat_6x6(b: &mut Bencher) {
     let puzzle = puzzle_6x6();
+    b.iter(|| SatSolver.solve(&puzzle, 2));
+}
+
+#[bench]
+fn backtracking_7x7(b: &mut Bencher) {
+    let puzzle = puzzle_7x7();
+    b.iter(|| BacktrackingSolver.solve(&puzzle, 2));
+}
+
+#[bench]
+fn sat_7x7(b: &mut Bencher) {
+    let puzzle = puzzle_7x7();
     b.iter(|| SatSolver.solve(&puzzle, 2));
 }
