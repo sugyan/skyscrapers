@@ -131,7 +131,12 @@ fn add_given_clauses(solver: &mut varisat::Solver, n: usize, board: &skyscrapers
     for r in 0..n {
         for c in 0..n {
             if let Some(v) = board.get(r, c) {
-                solver.add_clause(&[cell_lit(n, r, c, v as usize - 1, true)]);
+                let v_usize = v as usize;
+                if v_usize == 0 || v_usize > n {
+                    solver.add_clause(&[]);
+                    return;
+                }
+                solver.add_clause(&[cell_lit(n, r, c, v_usize - 1, true)]);
             }
         }
     }
@@ -286,8 +291,6 @@ fn generate_permutations(
         result.push(perm.clone());
         return;
     }
-
-    let remaining = n - pos - 1;
 
     for v in 1..=n as u8 {
         if !used[v as usize] {
