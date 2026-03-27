@@ -491,44 +491,89 @@ mod tests {
     fn cross_validate_with_backtracking() {
         use crate::BacktrackingSolver;
 
-        // Test several puzzles: SAT and backtracking should find the same unique solution
-        let test_cases = vec![
-            // 4x4 with full clues
+        let test_cases: Vec<(Puzzle, Solution)> = vec![
+            // 4x4: full clues, empty board
             {
                 let sol = make_4x4_solution();
                 let clues = Clues::from_solution(&sol);
-                Puzzle {
-                    board: Board::new_empty(4),
-                    clues,
-                }
+                (
+                    Puzzle {
+                        board: Board::new_empty(4),
+                        clues,
+                    },
+                    sol,
+                )
             },
-            // 5x5 cyclic
+            // 5x5: sparse clues, empty board (generated puzzle)
             {
-                let cells = vec![
-                    1, 2, 3, 4, 5, //
-                    2, 3, 4, 5, 1, //
-                    3, 4, 5, 1, 2, //
-                    4, 5, 1, 2, 3, //
-                    5, 1, 2, 3, 4, //
-                ];
-                let sol = Solution::new(5, cells);
-                let clues = Clues::from_solution(&sol);
-                Puzzle {
-                    board: Board::new_empty(5),
-                    clues,
-                }
+                let sol = Solution::new(
+                    5,
+                    vec![
+                        3, 4, 2, 1, 5, //
+                        2, 1, 3, 5, 4, //
+                        1, 3, 5, 4, 2, //
+                        5, 2, 4, 3, 1, //
+                        4, 5, 1, 2, 3, //
+                    ],
+                );
+                let mut clues = Clues::new_all_none(5);
+                clues.set_top(2, Some(3));
+                clues.set_bottom(1, Some(1));
+                clues.set_bottom(4, Some(3));
+                clues.set_left(1, Some(3));
+                clues.set_right(2, Some(3));
+                clues.set_right(3, Some(4));
+                clues.set_right(4, Some(2));
+                let mut board = Board::new_empty(5);
+                board.set(4, 3, Some(2));
+                (Puzzle { board, clues }, sol)
+            },
+            // 7x7: sparse clues, sparse board (generated puzzle)
+            {
+                let sol = Solution::new(
+                    7,
+                    vec![
+                        2, 6, 5, 4, 1, 7, 3, //
+                        4, 7, 1, 3, 5, 6, 2, //
+                        1, 5, 4, 6, 3, 2, 7, //
+                        3, 1, 7, 2, 6, 5, 4, //
+                        6, 2, 3, 1, 7, 4, 5, //
+                        7, 4, 6, 5, 2, 3, 1, //
+                        5, 3, 2, 7, 4, 1, 6, //
+                    ],
+                );
+                let mut clues = Clues::new_all_none(7);
+                clues.set_top(0, Some(4));
+                clues.set_top(2, Some(2));
+                clues.set_top(3, Some(3));
+                clues.set_top(5, Some(1));
+                clues.set_top(6, Some(2));
+                clues.set_bottom(1, Some(4));
+                clues.set_bottom(4, Some(2));
+                clues.set_bottom(5, Some(6));
+                clues.set_bottom(6, Some(2));
+                clues.set_left(2, Some(4));
+                clues.set_right(3, Some(4));
+                clues.set_right(5, Some(5));
+                let mut board = Board::new_empty(7);
+                board.set(1, 3, Some(3));
+                board.set(1, 4, Some(5));
+                board.set(2, 0, Some(1));
+                board.set(4, 1, Some(2));
+                (Puzzle { board, clues }, sol)
             },
         ];
 
         let bt = BacktrackingSolver;
         let sat = SatSolver;
 
-        for puzzle in &test_cases {
+        for (i, (puzzle, expected)) in test_cases.iter().enumerate() {
             let bt_solutions = bt.solve(puzzle, 2);
             let sat_solutions = sat.solve(puzzle, 2);
-            assert_eq!(bt_solutions.len(), sat_solutions.len());
-            assert_eq!(bt_solutions.len(), 1);
-            assert_eq!(bt_solutions[0], sat_solutions[0]);
+            assert_eq!(bt_solutions.len(), 1, "case {i}: bt should find unique solution");
+            assert_eq!(sat_solutions.len(), 1, "case {i}: sat should find unique solution");
+            assert_eq!(bt_solutions[0], *expected, "case {i}: bt solution mismatch");
+            assert_eq!(sat_solutions[0], *expected, "case {i}: sat solution mismatch");
         }
     }
 }
