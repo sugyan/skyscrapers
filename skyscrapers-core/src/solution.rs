@@ -37,6 +37,8 @@ impl fmt::Display for SolutionParseError {
     }
 }
 
+impl std::error::Error for SolutionParseError {}
+
 impl Solution {
     /// Creates a new `Solution` from raw cells.
     ///

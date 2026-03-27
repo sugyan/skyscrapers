@@ -50,7 +50,11 @@ impl Solver for SatSolver {
                     solver.add_clause(&blocking);
                     solutions.push(solution);
                 }
-                _ => break,
+                Ok(false) => break,
+                Err(e) => {
+                    debug_assert!(false, "SAT solver error: {e}");
+                    break;
+                }
             }
         }
         solutions
@@ -134,12 +138,18 @@ fn add_given_clauses(solver: &mut varisat::Solver, n: usize, board: &skyscrapers
 }
 
 /// Add clue constraints using permutation enumeration and Tseitin transformation.
+///
+/// Permutations are memoized by `(clue_fwd, clue_rev)` to avoid redundant generation
+/// when multiple lines share the same clue pair.
 fn add_clue_clauses(
     solver: &mut varisat::Solver,
     n: usize,
     clues: &skyscrapers_core::Clues,
     next_var_index: &mut usize,
 ) {
+    use std::collections::HashMap;
+    let mut cache: HashMap<(Option<u8>, Option<u8>), Vec<Vec<u8>>> = HashMap::new();
+
     // Row clues (left/right)
     for r in 0..n {
         let clue_left = clues.left(r);
@@ -148,7 +158,9 @@ fn add_clue_clauses(
             continue;
         }
 
-        let perms = valid_permutations(n, clue_left, clue_right);
+        let perms = cache
+            .entry((clue_left, clue_right))
+            .or_insert_with(|| valid_permutations(n, clue_left, clue_right));
         if perms.is_empty() {
             // Contradiction: no valid permutation — add empty clause
             solver.add_clause(&[]);
@@ -156,7 +168,7 @@ fn add_clue_clauses(
         }
 
         // Cell indices for this row: (r, 0), (r, 1), ..., (r, n-1)
-        add_permutation_clauses(solver, n, &perms, next_var_index, |pos, v| {
+        add_permutation_clauses(solver, n, perms, next_var_index, |pos, v| {
             cell_lit(n, r, pos, v, true)
         });
     }
@@ -169,14 +181,16 @@ fn add_clue_clauses(
             continue;
         }
 
-        let perms = valid_permutations(n, clue_top, clue_bottom);
+        let perms = cache
+            .entry((clue_top, clue_bottom))
+            .or_insert_with(|| valid_permutations(n, clue_top, clue_bottom));
         if perms.is_empty() {
             solver.add_clause(&[]);
             return;
         }
 
         // Cell indices for this column: (0, c), (1, c), ..., (n-1, c)
-        add_permutation_clauses(solver, n, &perms, next_var_index, |pos, v| {
+        add_permutation_clauses(solver, n, perms, next_var_index, |pos, v| {
             cell_lit(n, pos, c, v, true)
         });
     }
@@ -229,11 +243,24 @@ fn valid_permutations(n: usize, clue_fwd: Option<u8>, clue_rev: Option<u8>) -> V
     let mut result = Vec::new();
     let mut perm = vec![0u8; n];
     let mut used = vec![false; n + 1]; // 1-indexed
-    generate_permutations(n, 0, &mut perm, &mut used, clue_fwd, clue_rev, &mut result);
+    generate_permutations(
+        n,
+        0,
+        &mut perm,
+        &mut used,
+        clue_fwd,
+        clue_rev,
+        0,
+        0,
+        &mut result,
+    );
     result
 }
 
-/// Recursive permutation generator with early pruning.
+/// Recursive permutation generator with early pruning on forward visibility.
+///
+/// Prunes branches where the forward visibility count already exceeds the
+/// clue constraint before the permutation is complete.
 fn generate_permutations(
     n: usize,
     pos: usize,
@@ -241,16 +268,16 @@ fn generate_permutations(
     used: &mut Vec<bool>,
     clue_fwd: Option<u8>,
     clue_rev: Option<u8>,
+    fwd_visible: u8,
+    fwd_max: u8,
     result: &mut Vec<Vec<u8>>,
 ) {
     if pos == n {
-        // Check forward clue
         if let Some(expected) = clue_fwd {
-            if count_visible(perm) != expected {
+            if fwd_visible != expected {
                 return;
             }
         }
-        // Check reverse clue
         if let Some(expected) = clue_rev {
             if count_visible_rev(perm) != expected {
                 return;
@@ -260,11 +287,43 @@ fn generate_permutations(
         return;
     }
 
+    let remaining = n - pos - 1;
+
     for v in 1..=n as u8 {
         if !used[v as usize] {
+            let new_visible = if v > fwd_max {
+                fwd_visible + 1
+            } else {
+                fwd_visible
+            };
+            let new_max = fwd_max.max(v);
+
+            // Prune: if forward visibility already exceeds the clue, skip
+            if let Some(expected) = clue_fwd {
+                if new_visible > expected {
+                    continue;
+                }
+                // If we've used all positions and still can't reach the target, skip
+                // (remaining positions can add at most `remaining` visible buildings)
+                if new_max == n as u8 && new_visible < expected {
+                    // max is already n, so no more buildings can be visible
+                    continue;
+                }
+            }
+
             perm[pos] = v;
             used[v as usize] = true;
-            generate_permutations(n, pos + 1, perm, used, clue_fwd, clue_rev, result);
+            generate_permutations(
+                n,
+                pos + 1,
+                perm,
+                used,
+                clue_fwd,
+                clue_rev,
+                new_visible,
+                new_max,
+                result,
+            );
             used[v as usize] = false;
         }
     }
@@ -571,10 +630,21 @@ mod tests {
         for (i, (puzzle, expected)) in test_cases.iter().enumerate() {
             let bt_solutions = bt.solve(puzzle, 2);
             let sat_solutions = sat.solve(puzzle, 2);
-            assert_eq!(bt_solutions.len(), 1, "case {i}: bt should find unique solution");
-            assert_eq!(sat_solutions.len(), 1, "case {i}: sat should find unique solution");
+            assert_eq!(
+                bt_solutions.len(),
+                1,
+                "case {i}: bt should find unique solution"
+            );
+            assert_eq!(
+                sat_solutions.len(),
+                1,
+                "case {i}: sat should find unique solution"
+            );
             assert_eq!(bt_solutions[0], *expected, "case {i}: bt solution mismatch");
-            assert_eq!(sat_solutions[0], *expected, "case {i}: sat solution mismatch");
+            assert_eq!(
+                sat_solutions[0], *expected,
+                "case {i}: sat solution mismatch"
+            );
         }
     }
 }

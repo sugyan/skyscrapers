@@ -318,5 +318,4 @@ mod tests {
 
         assert_eq!(puzzle1, puzzle2);
     }
-
 }

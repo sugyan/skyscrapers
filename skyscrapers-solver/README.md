@@ -22,7 +22,7 @@ Faster than BacktrackingSolver for n≥6.
 
 `rustup run nightly cargo bench -p skyscrapers-solver`
 
-| | n=4 | n=5 | n=6 |
+| Solver | n=4 | n=5 | n=6 |
 |---|---:|---:|---:|
 | BacktrackingSolver | 2.7 µs | 41 µs | 18.3 ms |
 | SatSolver | 42 µs | 174 µs | 1.2 ms |
