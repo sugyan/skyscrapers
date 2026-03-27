@@ -17,3 +17,4 @@ clap = { version = "4", features = ["derive"] }
 rand = "0.9.2"
 rand_chacha = "0.9"
 latin-sampler = "0.1"
+varisat = "0.2"
