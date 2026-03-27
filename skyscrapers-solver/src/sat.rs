@@ -492,76 +492,77 @@ mod tests {
         use crate::BacktrackingSolver;
 
         let test_cases: Vec<(Puzzle, Solution)> = vec![
-            // 4x4: full clues, empty board
-            {
-                let sol = make_4x4_solution();
-                let clues = Clues::from_solution(&sol);
-                (
-                    Puzzle {
-                        board: Board::new_empty(4),
-                        clues,
-                    },
-                    sol,
-                )
-            },
-            // 5x5: sparse clues, empty board (generated puzzle)
-            {
-                let sol = Solution::new(
-                    5,
-                    vec![
-                        3, 4, 2, 1, 5, //
-                        2, 1, 3, 5, 4, //
-                        1, 3, 5, 4, 2, //
-                        5, 2, 4, 3, 1, //
-                        4, 5, 1, 2, 3, //
-                    ],
-                );
-                let mut clues = Clues::new_all_none(5);
-                clues.set_top(2, Some(3));
-                clues.set_bottom(1, Some(1));
-                clues.set_bottom(4, Some(3));
-                clues.set_left(1, Some(3));
-                clues.set_right(2, Some(3));
-                clues.set_right(3, Some(4));
-                clues.set_right(4, Some(2));
-                let mut board = Board::new_empty(5);
-                board.set(4, 3, Some(2));
-                (Puzzle { board, clues }, sol)
-            },
+            // 4x4: sparse clues, empty board (generated puzzle, seed=42)
+            (
+                "\
+                    3 . . .
+                  +---------+
+                . | . . . . | .
+                3 | . . . . | .
+                . | . . . . | 1
+                . | . . . . | .
+                  +---------+
+                    . 3 3 ."
+                    .parse()
+                    .unwrap(),
+                "\
+                2 4 3 1
+                1 3 4 2
+                3 1 2 4
+                4 2 1 3"
+                    .parse()
+                    .unwrap(),
+            ),
+            // 5x5: sparse clues, sparse board (generated puzzle)
+            (
+                "\
+                    . . 3 . .
+                  +-----------+
+                . | . . . . . | .
+                3 | . . . . . | .
+                . | . . . . . | 3
+                . | . . . . . | 4
+                . | . . . 2 . | 2
+                  +-----------+
+                    . 1 . . 3"
+                    .parse()
+                    .unwrap(),
+                "\
+                3 4 2 1 5
+                2 1 3 5 4
+                1 3 5 4 2
+                5 2 4 3 1
+                4 5 1 2 3"
+                    .parse()
+                    .unwrap(),
+            ),
             // 7x7: sparse clues, sparse board (generated puzzle)
-            {
-                let sol = Solution::new(
-                    7,
-                    vec![
-                        2, 6, 5, 4, 1, 7, 3, //
-                        4, 7, 1, 3, 5, 6, 2, //
-                        1, 5, 4, 6, 3, 2, 7, //
-                        3, 1, 7, 2, 6, 5, 4, //
-                        6, 2, 3, 1, 7, 4, 5, //
-                        7, 4, 6, 5, 2, 3, 1, //
-                        5, 3, 2, 7, 4, 1, 6, //
-                    ],
-                );
-                let mut clues = Clues::new_all_none(7);
-                clues.set_top(0, Some(4));
-                clues.set_top(2, Some(2));
-                clues.set_top(3, Some(3));
-                clues.set_top(5, Some(1));
-                clues.set_top(6, Some(2));
-                clues.set_bottom(1, Some(4));
-                clues.set_bottom(4, Some(2));
-                clues.set_bottom(5, Some(6));
-                clues.set_bottom(6, Some(2));
-                clues.set_left(2, Some(4));
-                clues.set_right(3, Some(4));
-                clues.set_right(5, Some(5));
-                let mut board = Board::new_empty(7);
-                board.set(1, 3, Some(3));
-                board.set(1, 4, Some(5));
-                board.set(2, 0, Some(1));
-                board.set(4, 1, Some(2));
-                (Puzzle { board, clues }, sol)
-            },
+            (
+                "\
+                    4 . 2 3 . 1 2
+                  +---------------+
+                . | . . . . . . . | .
+                . | . . . 3 5 . . | .
+                4 | 1 . . . . . . | .
+                . | . . . . . . . | 4
+                . | . 2 . . . . . | .
+                . | . . . . . . . | 5
+                . | . . . . . . . | .
+                  +---------------+
+                    . 4 . . 2 6 2"
+                    .parse()
+                    .unwrap(),
+                "\
+                2 6 5 4 1 7 3
+                4 7 1 3 5 6 2
+                1 5 4 6 3 2 7
+                3 1 7 2 6 5 4
+                6 2 3 1 7 4 5
+                7 4 6 5 2 3 1
+                5 3 2 7 4 1 6"
+                    .parse()
+                    .unwrap(),
+            ),
         ];
 
         let bt = BacktrackingSolver;
