@@ -1,7 +1,9 @@
 mod backtracking;
 mod candidates;
+mod sat;
 
 pub use backtracking::BacktrackingSolver;
+pub use sat::SatSolver;
 use skyscrapers_core::{Puzzle, Solution};
 
 /// A solver that finds solutions to a Skyscrapers puzzle.
