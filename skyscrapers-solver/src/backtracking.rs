@@ -259,6 +259,51 @@ impl SolveState {
             }
         }
 
+        // Check clue constraints for completed lines
+        if !self.check_completed_line_clues(r, c) {
+            return false;
+        }
+
+        true
+    }
+
+    /// Check clue constraints for the row and column containing (r, c),
+    /// but only if the entire line is fully assigned.
+    fn check_completed_line_clues(&self, r: usize, c: usize) -> bool {
+        // Check row only if there is at least one row clue
+        if self.left[r].is_some() || self.right[r].is_some() {
+            let row_complete = (0..self.n).all(|j| self.grid[r * self.n + j].is_some());
+            if row_complete {
+                if let Some(expected) = self.left[r] {
+                    if self.count_visible_row(r, true) != expected {
+                        return false;
+                    }
+                }
+                if let Some(expected) = self.right[r] {
+                    if self.count_visible_row(r, false) != expected {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // Check column only if there is at least one column clue
+        if self.top[c].is_some() || self.bottom[c].is_some() {
+            let col_complete = (0..self.n).all(|j| self.grid[j * self.n + c].is_some());
+            if col_complete {
+                if let Some(expected) = self.top[c] {
+                    if self.count_visible_col(c, true) != expected {
+                        return false;
+                    }
+                }
+                if let Some(expected) = self.bottom[c] {
+                    if self.count_visible_col(c, false) != expected {
+                        return false;
+                    }
+                }
+            }
+        }
+
         true
     }
 
