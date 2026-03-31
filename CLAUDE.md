@@ -20,7 +20,7 @@ A Skyscrapers puzzle is played on an n×n grid where each row and column is a pe
 skyscrapers/
 ├── Cargo.toml                (workspace root)
 ├── skyscrapers-core/         Shared types + clue derivation
-├── skyscrapers-solver/       Uniqueness verifier (backtracking; SAT planned)
+├── skyscrapers-solver/       Uniqueness verifier (backtracking)
 ├── skyscrapers-generator/    Puzzle generator
 ├── skyscrapers-logic/        Logic solver + difficulty rating           [planned]
 └── skyscrapers-cli/          CLI binary (generate + solve)
@@ -43,7 +43,6 @@ No circular dependencies. Flow is always: core → solver → generator → cli.
 - [`latin-sampler`](https://crates.io/crates/latin-sampler) — Latin square generation via Jacobson-Matthews MCMC
 - `rand`, `rand_chacha` — seedable RNG
 - `clap` — CLI argument parsing (derive mode)
-- `varisat` — SAT solver for uniqueness verification (planned)
 
 ## Core Types (skyscrapers-core)
 
@@ -82,8 +81,6 @@ The generator has two stages:
 | `skyscrapers-core` (types + clue derivation) | Done |
 | `skyscrapers-generator` stage A (solution + clues) | Done |
 | `skyscrapers-solver` (backtracking) | Done |
-| `skyscrapers-solver` (SAT) | Not started |
-| Solver benchmarks (n=7, 8) | Not started |
 
 ### Phase 2: Puzzle Generation
 
