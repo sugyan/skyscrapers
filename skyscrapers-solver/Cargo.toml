@@ -7,4 +7,3 @@ license.workspace = true
 
 [dependencies]
 skyscrapers-core = { path = "../skyscrapers-core" }
-varisat = { workspace = true }
