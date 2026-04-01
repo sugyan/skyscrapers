@@ -1,3 +1,6 @@
+#[cfg(target_arch = "wasm32")]
+mod wasm;
+
 use latin_sampler::LatinSquare;
 use rand::seq::SliceRandom;
 use skyscrapers_core::{Board, Clues, Puzzle, Solution};

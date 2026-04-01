@@ -306,11 +306,15 @@ version = "0.1.0"
 name = "skyscrapers-generator"
 version = "0.1.0"
 dependencies = [
+ "getrandom",
  "latin-sampler",
  "rand",
  "rand_chacha",
+ "serde",
+ "serde-wasm-bindgen",
  "skyscrapers-core",
  "skyscrapers-solver",
+ "wasm-bindgen",
 ]
 
 [[package]]
