@@ -38,7 +38,9 @@ pub fn generate_puzzle(n: u8, seed: u64) -> Result<JsValue, JsError> {
 
     // Recover the solution by solving the generated puzzle
     let solutions = BacktrackingSolver.solve(&puzzle, 1);
-    let solution = &solutions[0];
+    let solution = solutions
+        .first()
+        .ok_or_else(|| JsError::new("solver failed to find a solution for the generated puzzle"))?;
 
     let result = PuzzleResult {
         n,
