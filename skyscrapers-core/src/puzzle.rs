@@ -4,6 +4,7 @@ use crate::{Board, Clues};
 
 /// A puzzle consists of an initial board and clues.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Puzzle {
     pub board: Board,
     pub clues: Clues,

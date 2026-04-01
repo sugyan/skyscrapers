@@ -1,8 +1,9 @@
 /// An n×n board with possibly undetermined cells.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Board {
     n: usize,
-    cells: Vec<Option<u8>>,
+    cells: Vec<Vec<Option<u8>>>,
 }
 
 impl Board {
@@ -14,7 +15,7 @@ impl Board {
         assert!((1..=9).contains(&n), "n must be in range 1..=9");
         Self {
             n,
-            cells: vec![None; n * n],
+            cells: vec![vec![None; n]; n],
         }
     }
 
@@ -29,7 +30,7 @@ impl Board {
     /// Panics if `r >= n` or `c >= n`.
     pub fn get(&self, r: usize, c: usize) -> Option<u8> {
         assert!(r < self.n && c < self.n, "index out of bounds");
-        self.cells[r * self.n + c]
+        self.cells[r][c]
     }
 
     /// Sets the value at position (r, c).
@@ -38,7 +39,7 @@ impl Board {
     /// Panics if `r >= n` or `c >= n`.
     pub fn set(&mut self, r: usize, c: usize, v: Option<u8>) {
         assert!(r < self.n && c < self.n, "index out of bounds");
-        self.cells[r * self.n + c] = v;
+        self.cells[r][c] = v;
     }
 }
 

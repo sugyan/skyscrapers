@@ -3,11 +3,12 @@ use std::str::FromStr;
 
 /// A completely filled n×n board (solution).
 ///
-/// Cell values are 1-based (`1..=n`), stored in row-major order.
+/// Cell values are 1-based (`1..=n`), stored as a 2D grid (rows × columns).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Solution {
     n: usize,
-    cells: Vec<u8>,
+    cells: Vec<Vec<u8>>,
 }
 
 /// Error type for parsing a `Solution` from text.
@@ -40,17 +41,20 @@ impl fmt::Display for SolutionParseError {
 impl std::error::Error for SolutionParseError {}
 
 impl Solution {
-    /// Creates a new `Solution` from raw cells.
+    /// Creates a new `Solution` from a 2D grid.
     ///
-    /// `cells` must have exactly `n * n` elements with values in `1..=n`.
+    /// `cells` must be an n×n grid with values in `1..=n`.
     ///
     /// # Panics
-    /// Panics if `n` is not in `1..=9`, `cells.len() != n * n`, or any value is out of range.
-    pub fn new(n: usize, cells: Vec<u8>) -> Self {
+    /// Panics if `n` is not in `1..=9`, dimensions are wrong, or any value is out of range.
+    pub fn new(n: usize, cells: Vec<Vec<u8>>) -> Self {
         assert!((1..=9).contains(&n), "n must be in range 1..=9");
-        assert_eq!(cells.len(), n * n, "cells length must be n*n");
+        assert_eq!(cells.len(), n, "must have exactly n rows");
+        for row in &cells {
+            assert_eq!(row.len(), n, "each row must have exactly n columns");
+        }
         assert!(
-            cells.iter().all(|&v| v >= 1 && v <= n as u8),
+            cells.iter().flatten().all(|&v| v >= 1 && v <= n as u8),
             "all cell values must be in 1..=n"
         );
         Self { n, cells }
@@ -67,26 +71,26 @@ impl Solution {
     /// Panics if `r >= n` or `c >= n`.
     pub fn get(&self, r: usize, c: usize) -> u8 {
         assert!(r < self.n && c < self.n, "index out of bounds");
-        self.cells[r * self.n + c]
+        self.cells[r][c]
     }
 
-    /// Returns the cells as a slice.
-    pub fn cells(&self) -> &[u8] {
+    /// Returns the cells as a 2D grid.
+    pub fn cells(&self) -> &[Vec<u8>] {
         &self.cells
     }
 }
 
 impl fmt::Display for Solution {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for r in 0..self.n {
+        for (r, row) in self.cells.iter().enumerate() {
             if r > 0 {
                 writeln!(f)?;
             }
-            for c in 0..self.n {
+            for (c, &v) in row.iter().enumerate() {
                 if c > 0 {
                     write!(f, " ")?;
                 }
-                write!(f, "{}", self.cells[r * self.n + c])?;
+                write!(f, "{v}")?;
             }
         }
         Ok(())
@@ -123,8 +127,9 @@ impl FromStr for Solution {
             return Err(SolutionParseError::InvalidSize(n));
         }
 
-        let mut cells = Vec::with_capacity(n * n);
+        let mut cells = Vec::with_capacity(n);
         for row in &rows {
+            let mut row_cells = Vec::with_capacity(n);
             for &tok in row {
                 let v: u8 = tok
                     .parse()
@@ -132,8 +137,9 @@ impl FromStr for Solution {
                 if v < 1 || v > n as u8 {
                     return Err(SolutionParseError::ValueOutOfRange(v, n));
                 }
-                cells.push(v);
+                row_cells.push(v);
             }
+            cells.push(row_cells);
         }
 
         Ok(Self { n, cells })
@@ -146,8 +152,7 @@ mod tests {
 
     #[test]
     fn solution_new_and_accessors() {
-        // 3×3 solution
-        let cells = vec![1, 2, 3, 2, 3, 1, 3, 1, 2];
+        let cells = vec![vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]];
         let sol = Solution::new(3, cells.clone());
         assert_eq!(sol.n(), 3);
         assert_eq!(sol.get(0, 0), 1);
@@ -157,15 +162,18 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "cells length must be n*n")]
+    #[should_panic(expected = "must have exactly n rows")]
     fn solution_wrong_length() {
-        Solution::new(3, vec![1, 2, 3]);
+        Solution::new(3, vec![vec![1, 2, 3]]);
     }
 
     #[test]
     #[should_panic(expected = "all cell values must be in 1..=n")]
     fn solution_value_out_of_range() {
-        Solution::new(3, vec![0, 1, 2, 1, 2, 3, 2, 3, 1]);
+        Solution::new(
+            3,
+            vec![vec![0, 1, 2], vec![1, 2, 3], vec![2, 3, 1]],
+        );
     }
 
     #[test]
@@ -177,12 +185,15 @@ mod tests {
     #[test]
     #[should_panic(expected = "n must be in range 1..=9")]
     fn solution_n_too_large() {
-        Solution::new(10, vec![1; 100]);
+        Solution::new(10, vec![vec![1; 10]; 10]);
     }
 
     #[test]
     fn display_solution() {
-        let sol = Solution::new(3, vec![1, 2, 3, 2, 3, 1, 3, 1, 2]);
+        let sol = Solution::new(
+            3,
+            vec![vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]],
+        );
         let expected = "1 2 3\n2 3 1\n3 1 2";
         assert_eq!(sol.to_string(), expected);
     }
@@ -192,7 +203,10 @@ mod tests {
         let input = "1 2 3\n2 3 1\n3 1 2";
         let sol: Solution = input.parse().unwrap();
         assert_eq!(sol.n(), 3);
-        assert_eq!(sol.cells(), &[1, 2, 3, 2, 3, 1, 3, 1, 2]);
+        assert_eq!(
+            sol.cells(),
+            &[vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]]
+        );
     }
 
     #[test]
@@ -208,7 +222,15 @@ mod tests {
 
     #[test]
     fn display_parse_roundtrip() {
-        let sol = Solution::new(4, vec![2, 1, 4, 3, 3, 4, 1, 2, 4, 3, 2, 1, 1, 2, 3, 4]);
+        let sol = Solution::new(
+            4,
+            vec![
+                vec![2, 1, 4, 3],
+                vec![3, 4, 1, 2],
+                vec![4, 3, 2, 1],
+                vec![1, 2, 3, 4],
+            ],
+        );
         let parsed: Solution = sol.to_string().parse().unwrap();
         assert_eq!(sol, parsed);
     }

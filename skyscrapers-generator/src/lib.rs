@@ -9,7 +9,9 @@ use skyscrapers_solver::Solver;
 /// Converts a `LatinSquare` (0-based symbols) into a `Solution` (1-based heights).
 pub fn solution_from_latin_square(ls: &LatinSquare) -> Solution {
     let n = ls.n();
-    let cells: Vec<u8> = ls.cells().iter().map(|&v| v + 1).collect();
+    let cells: Vec<Vec<u8>> = (0..n)
+        .map(|r| (0..n).map(|c| ls.get(r, c) + 1).collect())
+        .collect();
     Solution::new(n, cells)
 }
 
@@ -150,14 +152,17 @@ impl GeneratorParams {
 
 /// Generates a Skyscrapers puzzle with a guaranteed unique solution.
 ///
+/// Returns the puzzle and its solution.
+///
 /// Pipeline: sample latin square → convert to solution → derive board + clues
-/// → greedy removal → puzzle
-pub fn generate<R: rand::Rng>(rng: &mut R, params: &GeneratorParams) -> Puzzle {
+/// → greedy removal → (puzzle, solution)
+pub fn generate<R: rand::Rng>(rng: &mut R, params: &GeneratorParams) -> (Puzzle, Solution) {
     let ls = latin_sampler::sample(params.n, rng, &params.sampler_params);
     let solution = solution_from_latin_square(&ls);
     let board = board_from_solution(&solution);
     let clues = derive_clues(&solution);
-    greedy_remove(rng, board, clues, params.solver.as_ref())
+    let puzzle = greedy_remove(rng, board, clues, params.solver.as_ref());
+    (puzzle, solution)
 }
 
 #[cfg(test)]
@@ -227,10 +232,10 @@ mod tests {
         let sol = Solution::new(
             4,
             vec![
-                2, 1, 4, 3, //
-                3, 4, 1, 2, //
-                4, 3, 2, 1, //
-                1, 2, 3, 4, //
+                vec![2, 1, 4, 3],
+                vec![3, 4, 1, 2],
+                vec![4, 3, 2, 1],
+                vec![1, 2, 3, 4],
             ],
         );
         let clues = derive_clues(&sol);
@@ -243,7 +248,10 @@ mod tests {
 
     #[test]
     fn board_from_solution_fills_all_cells() {
-        let sol = Solution::new(3, vec![1, 2, 3, 2, 3, 1, 3, 1, 2]);
+        let sol = Solution::new(
+            3,
+            vec![vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]],
+        );
         let board = board_from_solution(&sol);
         assert_eq!(board.n(), 3);
         for r in 0..3 {
@@ -265,7 +273,7 @@ mod tests {
     fn generate_produces_unique_solution() {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let params = make_generator_params(4);
-        let puzzle = generate(&mut rng, &params);
+        let (puzzle, _solution) = generate(&mut rng, &params);
 
         let solutions = BacktrackingSolver.solve(&puzzle, 2);
         assert_eq!(solutions.len(), 1);
@@ -275,7 +283,7 @@ mod tests {
     fn generate_removes_some_cells_and_clues() {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let params = make_generator_params(4);
-        let puzzle = generate(&mut rng, &params);
+        let (puzzle, _solution) = generate(&mut rng, &params);
         let n = puzzle.board.n();
 
         let mut given_count = 0;
@@ -316,9 +324,10 @@ mod tests {
     fn generate_deterministic_with_seed() {
         let params = make_generator_params(4);
 
-        let puzzle1 = generate(&mut ChaCha20Rng::seed_from_u64(99), &params);
-        let puzzle2 = generate(&mut ChaCha20Rng::seed_from_u64(99), &params);
+        let (puzzle1, sol1) = generate(&mut ChaCha20Rng::seed_from_u64(99), &params);
+        let (puzzle2, sol2) = generate(&mut ChaCha20Rng::seed_from_u64(99), &params);
 
         assert_eq!(puzzle1, puzzle2);
+        assert_eq!(sol1, sol2);
     }
 }
