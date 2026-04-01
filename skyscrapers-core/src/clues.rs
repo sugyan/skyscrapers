@@ -4,6 +4,7 @@ use crate::Solution;
 ///
 /// Each direction has `n` clue slots, where `None` means the clue is hidden.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Clues {
     n: usize,
     top: Vec<Option<u8>>,
@@ -129,10 +130,10 @@ mod tests {
         let sol = Solution::new(
             4,
             vec![
-                2, 1, 4, 3, //
-                3, 4, 1, 2, //
-                4, 3, 2, 1, //
-                1, 2, 3, 4, //
+                vec![2, 1, 4, 3],
+                vec![3, 4, 1, 2],
+                vec![4, 3, 2, 1],
+                vec![1, 2, 3, 4],
             ],
         );
         let clues = Clues::from_solution(&sol);

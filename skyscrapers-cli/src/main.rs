@@ -50,7 +50,7 @@ fn main() {
             });
             let mut rng = ChaCha20Rng::seed_from_u64(seed);
             let params = GeneratorParams::new(n, BacktrackingSolver);
-            let puzzle = generate(&mut rng, &params);
+            let (puzzle, _solution) = generate(&mut rng, &params);
             println!("{puzzle}");
         }
         Command::Solve { file } => {

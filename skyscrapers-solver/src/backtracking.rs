@@ -22,7 +22,13 @@ impl Solver for BacktrackingSolver {
         state.search(&mut solutions, limit);
         solutions
             .into_iter()
-            .map(|grid| Solution::new(n, grid.into_iter().map(|v| v.unwrap()).collect()))
+            .map(|grid| {
+                let cells: Vec<Vec<u8>> = grid
+                    .chunks(n)
+                    .map(|row| row.iter().map(|v| v.unwrap()).collect())
+                    .collect();
+                Solution::new(n, cells)
+            })
             .collect()
     }
 }
@@ -423,10 +429,10 @@ mod tests {
         Solution::new(
             4,
             vec![
-                2, 1, 4, 3, //
-                3, 4, 1, 2, //
-                4, 3, 2, 1, //
-                1, 2, 3, 4, //
+                vec![2, 1, 4, 3],
+                vec![3, 4, 1, 2],
+                vec![4, 3, 2, 1],
+                vec![1, 2, 3, 4],
             ],
         )
     }
@@ -547,16 +553,18 @@ mod tests {
 
     #[test]
     fn solve_n7_roundtrip() {
-        let cells = vec![
-            1, 2, 3, 4, 5, 6, 7, //
-            2, 3, 4, 5, 6, 7, 1, //
-            3, 4, 5, 6, 7, 1, 2, //
-            4, 5, 6, 7, 1, 2, 3, //
-            5, 6, 7, 1, 2, 3, 4, //
-            6, 7, 1, 2, 3, 4, 5, //
-            7, 1, 2, 3, 4, 5, 6, //
-        ];
-        let sol = Solution::new(7, cells);
+        let sol = Solution::new(
+            7,
+            vec![
+                vec![1, 2, 3, 4, 5, 6, 7],
+                vec![2, 3, 4, 5, 6, 7, 1],
+                vec![3, 4, 5, 6, 7, 1, 2],
+                vec![4, 5, 6, 7, 1, 2, 3],
+                vec![5, 6, 7, 1, 2, 3, 4],
+                vec![6, 7, 1, 2, 3, 4, 5],
+                vec![7, 1, 2, 3, 4, 5, 6],
+            ],
+        );
         let clues = Clues::from_solution(&sol);
         let board = Board::new_empty(7);
         let puzzle = Puzzle { board, clues };
