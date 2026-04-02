@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { samplePuzzles } from "./samples";
 import type { SamplePuzzle } from "./samples";
 import { PuzzlePage } from "./components/PuzzlePage";
+import { HowToPlayModal } from "./components/HowToPlayModal";
 import type { Puzzle } from "./types";
 import { generatePuzzle, randomSeed } from "./wasm";
 import type { GenerateResult } from "./wasm";
@@ -63,6 +64,7 @@ function App() {
   const [seedInput, setSeedInput] = useState("");
   const [lastSeed, setLastSeed] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   // Generate from URL params on initial load
   useEffect(() => {
@@ -107,18 +109,33 @@ function App() {
 
   if (current) {
     return (
-      <PuzzlePage
-        key={`${current.puzzle.n}-${lastSeed}`}
-        puzzle={current.puzzle}
-        solution={current.solution}
-        onNewPuzzle={handleNewPuzzle}
-      />
+      <>
+        <PuzzlePage
+          key={`${current.puzzle.n}-${lastSeed}`}
+          puzzle={current.puzzle}
+          solution={current.solution}
+          onNewPuzzle={handleNewPuzzle}
+          onShowHowToPlay={() => setShowHowToPlay(true)}
+        />
+        {showHowToPlay && (
+          <HowToPlayModal onClose={() => setShowHowToPlay(false)} />
+        )}
+      </>
     );
   }
 
   return (
     <div className="flex flex-col items-center pt-10 px-5">
-      <h1 className="text-2xl font-bold mb-6">Skyscrapers</h1>
+      <h1 className="text-2xl font-bold mb-3">Skyscrapers</h1>
+      <button
+        onClick={() => setShowHowToPlay(true)}
+        className="mb-6 text-sm text-blue-600 dark:text-blue-400 underline cursor-pointer hover:text-blue-800 dark:hover:text-blue-300"
+      >
+        How to Play
+      </button>
+      {showHowToPlay && (
+        <HowToPlayModal onClose={() => setShowHowToPlay(false)} />
+      )}
 
       <section className="mb-8 w-full max-w-sm">
         <h2 className="text-lg font-semibold mb-3">Generate</h2>
