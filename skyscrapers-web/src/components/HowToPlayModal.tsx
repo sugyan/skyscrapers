@@ -165,9 +165,7 @@ function ExampleGrid() {
         <div key={`r${r}`} className="contents">
           {clueCell(CLUES.left[r])}
           {row.map((v, c) => (
-            <div key={`c${r}${c}`}>
-              {boardCell(v, r === HIGHLIGHT_ROW)}
-            </div>
+            <div key={`c${r}${c}`}>{boardCell(v, r === HIGHLIGHT_ROW)}</div>
           ))}
           {clueCell(CLUES.right[r])}
         </div>
