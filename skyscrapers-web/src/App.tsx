@@ -123,8 +123,9 @@ function App() {
       <section className="mb-8 w-full max-w-sm">
         <h2 className="text-lg font-semibold mb-3">Generate</h2>
         <div className="flex items-center gap-3 mb-3">
-          <label className="text-sm">Size:</label>
+          <label htmlFor="size-select" className="text-sm">Size:</label>
           <select
+            id="size-select"
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}
             className="px-3 py-1.5 border border-gray-400 dark:border-slate-600 rounded bg-white dark:bg-slate-800"
@@ -137,8 +138,9 @@ function App() {
           </select>
         </div>
         <div className="flex items-center gap-3 mb-3">
-          <label className="text-sm">Seed:</label>
+          <label htmlFor="seed-input" className="text-sm">Seed:</label>
           <input
+            id="seed-input"
             type="text"
             value={seedInput}
             onChange={(e) => setSeedInput(e.target.value)}

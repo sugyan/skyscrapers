@@ -45,16 +45,20 @@ export function convertWasmResult(raw: WasmPuzzleResult): GenerateResult {
   return { puzzle, solution: ws.cells };
 }
 
-let initialized = false;
+let initPromise: Promise<void> | null = null;
+
+async function ensureInit(): Promise<void> {
+  if (!initPromise) {
+    initPromise = init().then(() => {});
+  }
+  await initPromise;
+}
 
 export async function generatePuzzle(
   n: number,
   seed: bigint,
 ): Promise<GenerateResult> {
-  if (!initialized) {
-    await init();
-    initialized = true;
-  }
+  await ensureInit();
   const raw = generate_puzzle(n, seed) as WasmPuzzleResult;
   return convertWasmResult(raw);
 }
