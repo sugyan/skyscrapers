@@ -67,4 +67,3 @@ npm run test           # Run tests with Vitest
 ## Future Work
 
 - **Web Worker**: For larger board sizes (n=7, 8), puzzle generation can take several seconds and block the UI. Moving the WASM call to a Web Worker would keep the UI responsive during generation.
-- **URL-based puzzles**: Use `?n=7&seed=42` URL parameters to share and reproduce puzzles directly.
