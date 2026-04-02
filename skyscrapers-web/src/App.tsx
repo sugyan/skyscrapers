@@ -123,7 +123,9 @@ function App() {
       <section className="mb-8 w-full max-w-sm">
         <h2 className="text-lg font-semibold mb-3">Generate</h2>
         <div className="flex items-center gap-3 mb-3">
-          <label htmlFor="size-select" className="text-sm">Size:</label>
+          <label htmlFor="size-select" className="text-sm">
+            Size:
+          </label>
           <select
             id="size-select"
             value={size}
@@ -138,7 +140,9 @@ function App() {
           </select>
         </div>
         <div className="flex items-center gap-3 mb-3">
-          <label htmlFor="seed-input" className="text-sm">Seed:</label>
+          <label htmlFor="seed-input" className="text-sm">
+            Seed:
+          </label>
           <input
             id="seed-input"
             type="text"
