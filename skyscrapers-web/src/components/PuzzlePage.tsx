@@ -146,9 +146,15 @@ interface PuzzlePageProps {
   puzzle: Puzzle;
   solution: number[][];
   onNewPuzzle: () => void;
+  onShowHowToPlay: () => void;
 }
 
-export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
+export function PuzzlePage({
+  puzzle,
+  solution,
+  onNewPuzzle,
+  onShowHowToPlay,
+}: PuzzlePageProps) {
   const [state, dispatch] = useReducer(
     gameReducer,
     { puzzle, solution },
@@ -254,7 +260,16 @@ export function PuzzlePage({ puzzle, solution, onNewPuzzle }: PuzzlePageProps) {
 
   return (
     <div className="flex flex-col items-center p-5 sm:p-8">
-      <h1 className="text-2xl font-bold mb-5">Skyscrapers</h1>
+      <div className="flex items-center gap-3 mb-5">
+        <h1 className="text-2xl font-bold">Skyscrapers</h1>
+        <button
+          onClick={onShowHowToPlay}
+          className="w-7 h-7 rounded-full border border-gray-400 dark:border-slate-500 text-sm font-bold text-gray-500 dark:text-gray-400 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700"
+          aria-label="How to Play"
+        >
+          ?
+        </button>
+      </div>
       <PuzzleGrid
         puzzle={puzzle}
         board={state.board}
