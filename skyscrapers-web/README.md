@@ -2,11 +2,11 @@
 
 Browser-based interactive player for [Skyscrapers](https://www.nikoli.co.jp/en/puzzles/skyscrapers/) puzzles. Built with React, TypeScript, Vite, and Tailwind CSS v4.
 
-Currently, puzzles are selected from built-in samples. The goal is to eventually generate puzzles directly in the browser via WASM, requiring only size and seed as URL parameters (e.g., `?n=7&seed=42`).
+Puzzles can be generated directly in the browser via WASM (`skyscrapers-generator`), or selected from built-in samples.
 
 ## Puzzle Encoding Format
 
-> **Note:** This encoding is the current mechanism for passing puzzles via URL. Once WASM integration is complete, the URL will only need `n` and `seed` parameters. The encoding format may still be used internally at the WASM boundary.
+> **Note:** With WASM integration, the URL could use just `n` and `seed` parameters. The encoding format may still be useful for sharing specific puzzle states.
 
 Puzzles are encoded as a compact digit string:
 
@@ -47,7 +47,15 @@ n  top[5] bot[5] lft[5] rgt[5]  board[25]
 
 ## Development
 
+The WASM package must be built before running the web app:
+
 ```bash
+# Build WASM package (requires wasm-pack)
+wasm-pack build --target web skyscrapers-generator
+
+# Web app commands
+cd skyscrapers-web
+npm install
 npm run dev            # Start dev server
 npm run build          # Type-check and build for production
 npm run preview        # Preview production build
@@ -56,8 +64,7 @@ npm run format:check   # Check formatting with Prettier
 npm run test           # Run tests with Vitest
 ```
 
-## Future: WASM Integration
+## Future Work
 
-The plan is to compile `skyscrapers-core`, `skyscrapers-generator`, and `skyscrapers-solver` to WebAssembly via `wasm-pack`, enabling in-browser puzzle generation without a server.
-
-Once integrated, the URL will only need size and seed parameters (`?n=7&seed=42`). The WASM module will generate the puzzle directly in the browser, eliminating the need for pre-generated encoded strings in the URL.
+- **Web Worker**: For larger board sizes (n=7, 8), puzzle generation can take several seconds and block the UI. Moving the WASM call to a Web Worker would keep the UI responsive during generation.
+- **URL-based puzzles**: Use `?n=7&seed=42` URL parameters to share and reproduce puzzles directly.
