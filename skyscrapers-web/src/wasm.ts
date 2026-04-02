@@ -1,16 +1,19 @@
 import init, { generate_puzzle } from "skyscrapers-generator";
 import type { Puzzle } from "./types";
 
-/** Shape returned by WASM generate_puzzle (via serde-wasm-bindgen) */
-interface WasmPuzzleResult {
+/**
+ * Shape returned by WASM generate_puzzle (via serde-wasm-bindgen).
+ * Note: serde-wasm-bindgen serializes `None` as `undefined`, not `null`.
+ */
+export interface WasmPuzzleResult {
   puzzle: {
-    board: { n: number; cells: (number | null)[][] };
+    board: { n: number; cells: (number | null | undefined)[][] };
     clues: {
       n: number;
-      top: (number | null)[];
-      bottom: (number | null)[];
-      left: (number | null)[];
-      right: (number | null)[];
+      top: (number | null | undefined)[];
+      bottom: (number | null | undefined)[];
+      left: (number | null | undefined)[];
+      right: (number | null | undefined)[];
     };
   };
   solution: { n: number; cells: number[][] };
@@ -27,16 +30,16 @@ export function convertWasmResult(raw: WasmPuzzleResult): GenerateResult {
     n: wp.board.n,
     board: wp.board.cells.map((row) =>
       row.map((value) => ({
-        value,
-        given: value !== null,
+        value: value ?? null,
+        given: value != null,
         candidates: new Set<number>(),
       })),
     ),
     clues: {
-      top: wp.clues.top,
-      bottom: wp.clues.bottom,
-      left: wp.clues.left,
-      right: wp.clues.right,
+      top: wp.clues.top.map((v) => v ?? null),
+      bottom: wp.clues.bottom.map((v) => v ?? null),
+      left: wp.clues.left.map((v) => v ?? null),
+      right: wp.clues.right.map((v) => v ?? null),
     },
   };
   return { puzzle, solution: ws.cells };
