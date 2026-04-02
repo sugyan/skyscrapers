@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { samplePuzzles } from "./samples";
 import type { SamplePuzzle } from "./samples";
 import { PuzzlePage } from "./components/PuzzlePage";
@@ -24,6 +24,33 @@ function puzzleFromSample(sample: SamplePuzzle): GenerateResult {
   };
 }
 
+function parseUrlParams(): { n: number; seed: bigint } | null {
+  const params = new URLSearchParams(window.location.search);
+  const nStr = params.get("n");
+  const seedStr = params.get("seed");
+  if (!nStr || !seedStr) return null;
+  const n = Number(nStr);
+  if (!Number.isInteger(n) || n < 4 || n > 8) return null;
+  try {
+    return { n, seed: BigInt(seedStr) };
+  } catch {
+    return null;
+  }
+}
+
+function updateUrl(n: number, seed: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("n", String(n));
+  url.searchParams.set("seed", seed);
+  window.history.pushState({}, "", url);
+}
+
+function clearUrl() {
+  const url = new URL(window.location.href);
+  url.search = "";
+  window.history.pushState({}, "", url);
+}
+
 const SIZES = [4, 5, 6, 7, 8] as const;
 
 function App() {
@@ -37,19 +64,45 @@ function App() {
   const [lastSeed, setLastSeed] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Generate from URL params on initial load
+  useEffect(() => {
+    const params = parseUrlParams();
+    if (params) {
+      setSize(params.n);
+      setSeedInput(params.seed.toString());
+      setGenerating(true);
+      generatePuzzle(params.n, params.seed)
+        .then((result) => {
+          setLastSeed(params.seed.toString());
+          setCurrent(result);
+        })
+        .catch((e) => {
+          setError(e instanceof Error ? e.message : String(e));
+        })
+        .finally(() => setGenerating(false));
+    }
+  }, []);
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
     try {
       const seed = seedInput.trim() ? BigInt(seedInput.trim()) : randomSeed();
-      setLastSeed(seed.toString());
+      const seedStr = seed.toString();
+      setLastSeed(seedStr);
       const result = await generatePuzzle(size, seed);
       setCurrent(result);
+      updateUrl(size, seedStr);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleNewPuzzle = () => {
+    setCurrent(null);
+    clearUrl();
   };
 
   if (current) {
@@ -58,7 +111,7 @@ function App() {
         key={`${current.puzzle.n}-${lastSeed}`}
         puzzle={current.puzzle}
         solution={current.solution}
-        onNewPuzzle={() => setCurrent(null)}
+        onNewPuzzle={handleNewPuzzle}
       />
     );
   }
