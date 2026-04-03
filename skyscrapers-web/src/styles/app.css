@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-board-bg: #ffffff;
+  --color-board-bg: #f8f9fb;
   --color-board-border: #9ca3af;
   --color-given-bg: #e5e7eb;
   --color-selected-bg: #dbeafe;
@@ -27,7 +27,7 @@
   }
 
   .text-candidate {
-    font-size: min(14px, calc((100vw - 48px) / var(--grid-cols, 9) / 3.5));
+    font-size: min(11px, calc((100vw - 48px) / var(--grid-cols, 9) / 4.5));
     font-weight: 300;
     line-height: 1;
   }
@@ -39,7 +39,7 @@
     }
 
     .text-candidate {
-      font-size: 14px;
+      font-size: 11px;
     }
   }
 }

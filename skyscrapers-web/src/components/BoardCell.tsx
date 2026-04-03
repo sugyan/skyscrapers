@@ -72,9 +72,9 @@ export function BoardCell({
         : selected
           ? "bg-selected-bg dark:bg-selected-bg-dark ring-2 ring-selected-ring dark:ring-selected-ring-dark ring-inset z-10"
           : sameValue
-            ? "bg-blue-100 dark:bg-blue-900/30"
+            ? "bg-blue-200 dark:bg-blue-900/40"
             : sameRowOrCol
-              ? "bg-blue-50 dark:bg-slate-700/40"
+              ? "bg-blue-100/60 dark:bg-slate-600/40"
               : given
                 ? "bg-given-bg dark:bg-given-bg-dark"
                 : "bg-board-bg dark:bg-board-bg-dark";
