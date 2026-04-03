@@ -3,8 +3,12 @@ interface BoardCellProps {
   given: boolean;
   candidates: Set<number>;
   selected: boolean;
+  sameValue: boolean;
+  sameRowOrCol: boolean;
   hasError: boolean;
   completed: boolean;
+  row: number;
+  col: number;
   n: number;
   onClick: () => void;
 }
@@ -18,18 +22,17 @@ function CandidatesGrid({
 }) {
   if (candidates.size === 0) return null;
 
-  const cols = n <= 5 ? n : 3;
-  const rows = Math.ceil(n / cols);
+  const cols = n <= 6 ? n : Math.ceil(n / 2);
 
   return (
     <div
-      className="grid w-full h-full items-center justify-items-center leading-none"
+      className="grid items-center justify-items-center leading-none"
       style={{
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
+        gridTemplateRows: n > 6 ? "repeat(2, 1fr)" : "1fr",
       }}
     >
-      {Array.from({ length: rows * cols }, (_, i) => {
+      {Array.from({ length: (n > 6 ? 2 : 1) * cols }, (_, i) => {
         const num = i + 1;
         return (
           <span
@@ -49,8 +52,12 @@ export function BoardCell({
   given,
   candidates,
   selected,
+  sameValue,
+  sameRowOrCol,
   hasError,
   completed,
+  row,
+  col,
   n,
   onClick,
 }: BoardCellProps) {
@@ -58,27 +65,34 @@ export function BoardCell({
     "cell-size flex items-center justify-center border border-board-border dark:border-board-border-dark transition-colors duration-100 text-xl";
 
   const bg = completed
-    ? given
-      ? "bg-completed-given-bg dark:bg-completed-given-bg-dark transition-colors duration-500"
-      : "bg-completed-bg dark:bg-completed-bg-dark transition-colors duration-500"
+    ? "cell-rainbow"
     : hasError && selected
       ? "bg-red-200 dark:bg-red-900/50 ring-2 ring-selected-ring dark:ring-selected-ring-dark ring-inset z-10"
       : hasError
         ? "bg-error-bg dark:bg-error-bg-dark"
         : selected
           ? "bg-selected-bg dark:bg-selected-bg-dark ring-2 ring-selected-ring dark:ring-selected-ring-dark ring-inset z-10"
-          : given
-            ? "bg-given-bg dark:bg-given-bg-dark"
-            : "bg-board-bg dark:bg-board-bg-dark";
+          : sameValue
+            ? "bg-blue-200 dark:bg-blue-900/40"
+            : sameRowOrCol
+              ? "bg-blue-100/60 dark:bg-slate-600/40"
+              : given
+                ? "bg-given-bg dark:bg-given-bg-dark"
+                : "bg-board-bg dark:bg-board-bg-dark";
 
   const font = given
-    ? "font-bold cursor-default"
-    : "font-normal cursor-pointer";
+    ? "font-bold text-gray-800 dark:text-slate-100"
+    : "font-normal text-blue-600 dark:text-blue-400";
+
+  const style = completed
+    ? ({ "--rainbow-delay": `${(row + col) * 0.15}s` } as React.CSSProperties)
+    : undefined;
 
   return (
     <div
-      className={`${base} ${bg} ${font}`}
-      onClick={given ? undefined : onClick}
+      className={`${base} ${bg} ${font} cursor-pointer`}
+      style={style}
+      onClick={onClick}
     >
       {value != null ? value : <CandidatesGrid candidates={candidates} n={n} />}
     </div>

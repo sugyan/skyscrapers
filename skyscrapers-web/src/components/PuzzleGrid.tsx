@@ -20,6 +20,10 @@ export function PuzzleGrid({
   onCellClick,
 }: PuzzleGridProps) {
   const { n, clues } = puzzle;
+  const selectedValue =
+    selectedCell !== null
+      ? board[selectedCell[0]][selectedCell[1]].value
+      : null;
   const cells: React.ReactNode[] = [];
 
   for (let gridRow = 0; gridRow < n + 2; gridRow++) {
@@ -85,6 +89,15 @@ export function PuzzleGrid({
       const cell = board[r][c];
       const isSelected =
         selectedCell !== null && selectedCell[0] === r && selectedCell[1] === c;
+      const isSameValue =
+        !isSelected &&
+        selectedValue !== null &&
+        cell.value !== null &&
+        cell.value === selectedValue;
+      const isSameRowOrCol =
+        !isSelected &&
+        selectedCell !== null &&
+        (selectedCell[0] === r || selectedCell[1] === c);
 
       cells.push(
         <BoardCell
@@ -93,8 +106,12 @@ export function PuzzleGrid({
           given={cell.given}
           candidates={cell.candidates}
           selected={isSelected}
+          sameValue={isSameValue}
+          sameRowOrCol={isSameRowOrCol}
           hasError={errors.has(`${r},${c}`)}
           completed={completed}
+          row={r}
+          col={c}
           n={n}
           onClick={() => onCellClick(r, c)}
         />,

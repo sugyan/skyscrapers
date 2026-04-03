@@ -5,6 +5,7 @@ interface NumberPadProps {
   board: BoardCell[][];
   currentValue: number | null;
   currentCandidates: Set<number> | null;
+  answerDisabled: boolean;
   memoDisabled: boolean;
   onAnswer: (value: number) => void;
   onClearAnswer: () => void;
@@ -49,6 +50,7 @@ export function NumberPad({
   board,
   currentValue,
   currentCandidates,
+  answerDisabled,
   memoDisabled,
   onAnswer,
   onClearAnswer,
@@ -66,7 +68,7 @@ export function NumberPad({
     }
   }
 
-  const btnSize = "w-12 h-12";
+  const btnSize = "w-10 h-10 sm:w-12 sm:h-12";
   const btnBase = `${btnSize} text-lg border rounded-md transition-colors duration-100`;
   const btnDefault =
     "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 cursor-pointer";
@@ -81,12 +83,13 @@ export function NumberPad({
   const answerButtons: React.ReactNode[] = [];
   for (let i = 1; i <= n; i++) {
     const remaining = n - (placedCounts.get(i) ?? 0);
-    const isActive = currentValue === i;
+    const isActive = !answerDisabled && currentValue === i;
     answerButtons.push(
       <div key={i} className="flex flex-col items-center">
         <RemainingBars remaining={remaining} />
         <button
-          className={`${btnBase} font-bold ${isActive ? btnActiveAnswer : btnDefault}`}
+          className={`${btnBase} font-bold ${answerDisabled ? btnDisabled : isActive ? btnActiveAnswer : btnDefault}`}
+          disabled={answerDisabled}
           onClick={() => onAnswer(i)}
         >
           {i}
@@ -97,7 +100,8 @@ export function NumberPad({
   answerButtons.push(
     <div key="clear" className="flex flex-col justify-end">
       <button
-        className={`${btnBase} text-xl text-red-600 dark:text-red-400 ${btnDefault}`}
+        className={`${btnBase} text-xl ${answerDisabled ? btnDisabled : `${btnDefault} text-red-600 dark:text-red-400`}`}
+        disabled={answerDisabled}
         onClick={onClearAnswer}
       >
         ×
@@ -133,11 +137,11 @@ export function NumberPad({
   );
 
   return (
-    <div className="flex flex-col items-center gap-1.5 my-5">
-      <div className="flex gap-2 items-end justify-center flex-wrap max-w-[90vw]">
+    <div className="flex flex-col items-center gap-1.5 mt-8 mb-5">
+      <div className="flex gap-1.5 sm:gap-2 items-end justify-center flex-wrap max-w-[90vw]">
         {answerButtons}
       </div>
-      <div className="flex gap-2 justify-center flex-wrap max-w-[90vw]">
+      <div className="flex gap-1.5 sm:gap-2 justify-center flex-wrap max-w-[90vw]">
         {memoButtons}
       </div>
     </div>
