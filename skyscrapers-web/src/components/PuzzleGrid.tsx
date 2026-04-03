@@ -21,7 +21,9 @@ export function PuzzleGrid({
 }: PuzzleGridProps) {
   const { n, clues } = puzzle;
   const selectedValue =
-    selectedCell !== null ? board[selectedCell[0]][selectedCell[1]].value : null;
+    selectedCell !== null
+      ? board[selectedCell[0]][selectedCell[1]].value
+      : null;
   const cells: React.ReactNode[] = [];
 
   for (let gridRow = 0; gridRow < n + 2; gridRow++) {

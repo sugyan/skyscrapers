@@ -271,7 +271,7 @@ export function PuzzlePage({
         </button>
       </div>
       {state.completed && (
-        <p className="text-green-600 dark:text-green-400 font-bold text-xl mb-3 animate-bounce">
+        <p className="text-green-600 dark:text-green-400 font-bold text-xl mb-3 animate-bounce motion-reduce:animate-none">
           Completed!
         </p>
       )}

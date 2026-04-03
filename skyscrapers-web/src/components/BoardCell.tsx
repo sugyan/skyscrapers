@@ -85,7 +85,7 @@ export function BoardCell({
     : "font-normal text-blue-600 dark:text-blue-400";
 
   const style = completed
-    ? { "--rainbow-delay": `${(row + col) * 0.15}s` } as React.CSSProperties
+    ? ({ "--rainbow-delay": `${(row + col) * 0.15}s` } as React.CSSProperties)
     : undefined;
 
   return (
