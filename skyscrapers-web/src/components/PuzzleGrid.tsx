@@ -108,6 +108,8 @@ export function PuzzleGrid({
           sameRowOrCol={isSameRowOrCol}
           hasError={errors.has(`${r},${c}`)}
           completed={completed}
+          row={r}
+          col={c}
           n={n}
           onClick={() => onCellClick(r, c)}
         />,

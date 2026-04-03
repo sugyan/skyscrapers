@@ -7,6 +7,8 @@ interface BoardCellProps {
   sameRowOrCol: boolean;
   hasError: boolean;
   completed: boolean;
+  row: number;
+  col: number;
   n: number;
   onClick: () => void;
 }
@@ -54,6 +56,8 @@ export function BoardCell({
   sameRowOrCol,
   hasError,
   completed,
+  row,
+  col,
   n,
   onClick,
 }: BoardCellProps) {
@@ -61,9 +65,7 @@ export function BoardCell({
     "cell-size flex items-center justify-center border border-board-border dark:border-board-border-dark transition-colors duration-100 text-xl";
 
   const bg = completed
-    ? given
-      ? "bg-completed-given-bg dark:bg-completed-given-bg-dark transition-colors duration-500"
-      : "bg-completed-bg dark:bg-completed-bg-dark transition-colors duration-500"
+    ? "cell-rainbow"
     : hasError && selected
       ? "bg-red-200 dark:bg-red-900/50 ring-2 ring-selected-ring dark:ring-selected-ring-dark ring-inset z-10"
       : hasError
@@ -82,9 +84,14 @@ export function BoardCell({
     ? "font-bold text-gray-800 dark:text-slate-100"
     : "font-normal text-blue-600 dark:text-blue-400";
 
+  const style = completed
+    ? { "--rainbow-delay": `${(row + col) * 0.15}s` } as React.CSSProperties
+    : undefined;
+
   return (
     <div
       className={`${base} ${bg} ${font} cursor-pointer`}
+      style={style}
       onClick={onClick}
     >
       {value != null ? value : <CandidatesGrid candidates={candidates} n={n} />}

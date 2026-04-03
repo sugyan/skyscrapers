@@ -270,6 +270,11 @@ export function PuzzlePage({
           ?
         </button>
       </div>
+      {state.completed && (
+        <p className="text-green-600 dark:text-green-400 font-bold text-xl mb-3 animate-bounce">
+          Completed!
+        </p>
+      )}
       <PuzzleGrid
         puzzle={puzzle}
         board={state.board}
@@ -300,7 +305,6 @@ export function PuzzlePage({
         onReset={() => dispatch({ type: "RESET" })}
         onCheck={() => dispatch({ type: "CHECK" })}
         onNewPuzzle={onNewPuzzle}
-        completed={state.completed}
       />
     </div>
   );

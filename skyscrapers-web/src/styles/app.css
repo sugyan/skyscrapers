@@ -32,6 +32,22 @@
     line-height: 1;
   }
 
+  .cell-rainbow {
+    animation: rainbow 1.5s ease-in-out infinite;
+    animation-delay: var(--rainbow-delay, 0s);
+  }
+
+  @keyframes rainbow {
+    0%   { background-color: #ffd0d8; }
+    16%  { background-color: #ffe0be; }
+    33%  { background-color: #fff2a8; }
+    50%  { background-color: #b8eab8; }
+    66%  { background-color: #b8daff; }
+    83%  { background-color: #e4b8ff; }
+    100% { background-color: #ffd0d8; }
+  }
+
+
   @media (min-width: 768px) {
     .cell-size {
       width: 60px;
