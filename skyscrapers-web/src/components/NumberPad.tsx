@@ -5,6 +5,7 @@ interface NumberPadProps {
   board: BoardCell[][];
   currentValue: number | null;
   currentCandidates: Set<number> | null;
+  answerDisabled: boolean;
   memoDisabled: boolean;
   onAnswer: (value: number) => void;
   onClearAnswer: () => void;
@@ -49,6 +50,7 @@ export function NumberPad({
   board,
   currentValue,
   currentCandidates,
+  answerDisabled,
   memoDisabled,
   onAnswer,
   onClearAnswer,
@@ -81,12 +83,13 @@ export function NumberPad({
   const answerButtons: React.ReactNode[] = [];
   for (let i = 1; i <= n; i++) {
     const remaining = n - (placedCounts.get(i) ?? 0);
-    const isActive = currentValue === i;
+    const isActive = !answerDisabled && currentValue === i;
     answerButtons.push(
       <div key={i} className="flex flex-col items-center">
         <RemainingBars remaining={remaining} />
         <button
-          className={`${btnBase} font-bold ${isActive ? btnActiveAnswer : btnDefault}`}
+          className={`${btnBase} font-bold ${answerDisabled ? btnDisabled : isActive ? btnActiveAnswer : btnDefault}`}
+          disabled={answerDisabled}
           onClick={() => onAnswer(i)}
         >
           {i}
@@ -97,7 +100,8 @@ export function NumberPad({
   answerButtons.push(
     <div key="clear" className="flex flex-col justify-end">
       <button
-        className={`${btnBase} text-xl text-red-600 dark:text-red-400 ${btnDefault}`}
+        className={`${btnBase} text-xl ${answerDisabled ? btnDisabled : `${btnDefault} text-red-600 dark:text-red-400`}`}
+        disabled={answerDisabled}
         onClick={onClearAnswer}
       >
         ×

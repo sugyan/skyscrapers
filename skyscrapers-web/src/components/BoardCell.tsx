@@ -79,13 +79,13 @@ export function BoardCell({
                 : "bg-board-bg dark:bg-board-bg-dark";
 
   const font = given
-    ? "font-bold cursor-default"
-    : "font-normal cursor-pointer";
+    ? "font-bold text-gray-800 dark:text-slate-100"
+    : "font-normal text-blue-600 dark:text-blue-400";
 
   return (
     <div
-      className={`${base} ${bg} ${font}`}
-      onClick={given ? undefined : onClick}
+      className={`${base} ${bg} ${font} cursor-pointer`}
+      onClick={onClick}
     >
       {value != null ? value : <CandidatesGrid candidates={candidates} n={n} />}
     </div>

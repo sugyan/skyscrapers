@@ -283,6 +283,7 @@ export function PuzzlePage({
         board={state.board}
         currentValue={selectedCell?.value ?? null}
         currentCandidates={selectedCell?.candidates ?? null}
+        answerDisabled={selectedCell === null || selectedCell.given}
         memoDisabled={
           selectedCell === null ||
           selectedCell.given ||
