@@ -3,6 +3,8 @@ interface BoardCellProps {
   given: boolean;
   candidates: Set<number>;
   selected: boolean;
+  sameValue: boolean;
+  sameRowOrCol: boolean;
   hasError: boolean;
   completed: boolean;
   n: number;
@@ -49,6 +51,8 @@ export function BoardCell({
   given,
   candidates,
   selected,
+  sameValue,
+  sameRowOrCol,
   hasError,
   completed,
   n,
@@ -67,9 +71,13 @@ export function BoardCell({
         ? "bg-error-bg dark:bg-error-bg-dark"
         : selected
           ? "bg-selected-bg dark:bg-selected-bg-dark ring-2 ring-selected-ring dark:ring-selected-ring-dark ring-inset z-10"
-          : given
-            ? "bg-given-bg dark:bg-given-bg-dark"
-            : "bg-board-bg dark:bg-board-bg-dark";
+          : sameValue
+            ? "bg-blue-100 dark:bg-blue-900/30"
+            : sameRowOrCol
+              ? "bg-blue-50 dark:bg-slate-700/40"
+              : given
+                ? "bg-given-bg dark:bg-given-bg-dark"
+                : "bg-board-bg dark:bg-board-bg-dark";
 
   const font = given
     ? "font-bold cursor-default"
