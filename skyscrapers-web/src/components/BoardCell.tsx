@@ -25,7 +25,7 @@ function CandidatesGrid({
 
   return (
     <div
-      className="grid w-full h-full items-center justify-items-center leading-none"
+      className="grid w-full items-center justify-items-center leading-none"
       style={{
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`,
