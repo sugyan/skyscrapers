@@ -20,18 +20,17 @@ function CandidatesGrid({
 }) {
   if (candidates.size === 0) return null;
 
-  const cols = n <= 5 ? n : 3;
-  const rows = Math.ceil(n / cols);
+  const cols = n <= 6 ? n : Math.ceil(n / 2);
 
   return (
     <div
-      className="grid w-full items-center justify-items-center leading-none"
+      className="grid items-center justify-items-center leading-none"
       style={{
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
+        gridTemplateRows: n > 6 ? "repeat(2, 1fr)" : "1fr",
       }}
     >
-      {Array.from({ length: rows * cols }, (_, i) => {
+      {Array.from({ length: (n > 6 ? 2 : 1) * cols }, (_, i) => {
         const num = i + 1;
         return (
           <span
