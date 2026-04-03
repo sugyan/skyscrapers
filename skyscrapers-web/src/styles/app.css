@@ -7,17 +7,12 @@
   --color-selected-bg: #dbeafe;
   --color-selected-ring: #3b82f6;
   --color-error-bg: #fee2e2;
-  --color-completed-bg: #dcfce7;
-  --color-completed-given-bg: #bbf7d0;
-
   --color-board-bg-dark: #1e293b;
   --color-board-border-dark: #475569;
   --color-given-bg-dark: #334155;
   --color-selected-bg-dark: #1e3a5f;
   --color-selected-ring-dark: #60a5fa;
   --color-error-bg-dark: #451a1a;
-  --color-completed-bg-dark: #14532d;
-  --color-completed-given-bg-dark: #166534;
 }
 
 @layer components {
@@ -46,7 +41,6 @@
     83%  { background-color: #e4b8ff; }
     100% { background-color: #ffd0d8; }
   }
-
 
   @media (min-width: 768px) {
     .cell-size {
