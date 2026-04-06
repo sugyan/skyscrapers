@@ -1,6 +1,7 @@
 pub(crate) mod clue_pruning;
 pub(crate) mod hidden_singles;
 pub(crate) mod naked_singles;
+pub(crate) mod visibility;
 
 use super::difficulty::{Step, Technique};
 use super::state::SolveState;
@@ -19,7 +20,7 @@ pub(crate) enum TechniqueResult {
 const TECHNIQUES: &[Technique] = &[
     Technique::NakedSingles,
     Technique::HiddenSingles,
-    // Technique::VisibilityPropagation,
+    Technique::VisibilityPropagation,
     // Technique::NakedSets,
     // Technique::HiddenSets,
     // Technique::XWing,
@@ -43,6 +44,7 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
     match technique {
         Technique::NakedSingles => naked_singles::apply(state),
         Technique::HiddenSingles => hidden_singles::apply(state),
+        Technique::VisibilityPropagation => visibility::apply(state),
         _ => TechniqueResult::NoProgress, // not yet implemented
     }
 }
