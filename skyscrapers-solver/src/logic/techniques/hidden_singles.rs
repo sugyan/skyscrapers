@@ -81,3 +81,49 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
 
     TechniqueResult::NoProgress
 }
+
+#[cfg(test)]
+mod tests {
+    use skyscrapers_core::{Board, Clues, Puzzle};
+
+    use super::*;
+
+    #[test]
+    fn finds_hidden_single_in_row() {
+        // Create a 4x4 board where value 4 can only go in one position in row 0
+        // by filling column constraints
+        let mut board = Board::new_empty(4);
+        // Put 4 in col 0, 1, 2 (rows 1, 2, 3) so row 0 can only have 4 at col 3
+        board.set(1, 0, Some(4));
+        board.set(2, 1, Some(4));
+        board.set(3, 2, Some(4));
+        let clues = Clues::new_all_none(4);
+        let puzzle = Puzzle { board, clues };
+        let mut state = SolveState::new(&puzzle).unwrap();
+
+        // Value 4 in row 0 can only be at col 3 (eliminated from col 0,1,2 by column peers)
+        let result = apply(&mut state);
+        match result {
+            TechniqueResult::Progress(step) => {
+                assert_eq!(step.technique, Technique::HiddenSingles);
+                assert!(step.actions.contains(&Action::Place {
+                    row: 0,
+                    col: 3,
+                    value: 4,
+                }));
+            }
+            _ => panic!("Expected hidden single to find value 4 at (0,3)"),
+        }
+    }
+
+    #[test]
+    fn no_hidden_single_in_empty_board() {
+        let board = Board::new_empty(4);
+        let clues = Clues::new_all_none(4);
+        let puzzle = Puzzle { board, clues };
+        let mut state = SolveState::new(&puzzle).unwrap();
+
+        let result = apply(&mut state);
+        assert!(matches!(result, TechniqueResult::NoProgress));
+    }
+}

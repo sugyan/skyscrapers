@@ -152,4 +152,110 @@ mod tests {
         let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
         assert!(result.solutions.is_empty());
     }
+
+    #[test]
+    fn solve_near_complete_with_naked_singles() {
+        // Board missing only a few cells, solvable by naked singles alone
+        let sol = Solution::new(
+            4,
+            vec![
+                vec![2, 1, 4, 3],
+                vec![3, 4, 1, 2],
+                vec![4, 3, 2, 1],
+                vec![1, 2, 3, 4],
+            ],
+        );
+        let mut board = Board::new_empty(4);
+        // Fill all but last column
+        for r in 0..4 {
+            for c in 0..3 {
+                board.set(r, c, Some(sol.get(r, c)));
+            }
+        }
+        let clues = Clues::new_all_none(4);
+        let puzzle = Puzzle { board, clues };
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        assert_eq!(result.solutions.len(), 1);
+        assert_eq!(result.solutions[0], sol);
+        assert_eq!(result.difficulty, Some(Difficulty::Easy));
+    }
+
+    #[test]
+    fn solve_with_hidden_singles() {
+        // Place values so that hidden singles are needed:
+        // col 0 is fully determined, cols 1-3 have gaps requiring hidden singles
+        let sol = Solution::new(
+            4,
+            vec![
+                vec![2, 1, 4, 3],
+                vec![3, 4, 1, 2],
+                vec![4, 3, 2, 1],
+                vec![1, 2, 3, 4],
+            ],
+        );
+        let mut board = Board::new_empty(4);
+        // Fill column 0 and some diagonal cells to create hidden single opportunities
+        for r in 0..4 {
+            board.set(r, 0, Some(sol.get(r, 0)));
+        }
+        // Add enough to force unique solution via hidden singles
+        board.set(0, 1, Some(1));
+        board.set(1, 1, Some(4));
+        board.set(2, 2, Some(2));
+        board.set(3, 3, Some(4));
+        let clues = Clues::new_all_none(4);
+        let puzzle = Puzzle { board, clues };
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        assert_eq!(result.solutions.len(), 1);
+        assert_eq!(result.solutions[0], sol);
+    }
+
+    #[test]
+    fn solve_with_difficulty_reports_easy() {
+        // A near-complete board solved entirely during init (propagation)
+        // should report Easy difficulty
+        let sol = Solution::new(
+            4,
+            vec![
+                vec![2, 1, 4, 3],
+                vec![3, 4, 1, 2],
+                vec![4, 3, 2, 1],
+                vec![1, 2, 3, 4],
+            ],
+        );
+        let mut board = Board::new_empty(4);
+        for r in 0..4 {
+            for c in 0..3 {
+                board.set(r, c, Some(sol.get(r, c)));
+            }
+        }
+        let clues = Clues::new_all_none(4);
+        let puzzle = Puzzle { board, clues };
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        assert_eq!(result.solutions.len(), 1);
+        // Solved during init (no explicit steps), but still Easy
+        assert_eq!(result.difficulty, Some(Difficulty::Easy));
+    }
+
+    #[test]
+    fn next_step_returns_hint() {
+        // Board with a hidden single available
+        let mut board = Board::new_empty(4);
+        // Place values so that 4 in row 0 can only go at col 2 (hidden single)
+        board.set(1, 0, Some(3));
+        board.set(1, 1, Some(4));
+        board.set(2, 0, Some(4));
+        board.set(3, 0, Some(1));
+        board.set(3, 3, Some(4));
+        let clues = Clues::new_all_none(4);
+        let puzzle = Puzzle {
+            board: board.clone(),
+            clues,
+        };
+
+        let step = LogicSolver.next_step(&puzzle, &board);
+        assert!(step.is_some());
+        let step = step.unwrap();
+        assert!(!step.actions.is_empty());
+    }
 }
