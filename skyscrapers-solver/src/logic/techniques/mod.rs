@@ -1,5 +1,7 @@
 pub(crate) mod clue_pruning;
+pub(crate) mod hidden_sets;
 pub(crate) mod hidden_singles;
+pub(crate) mod naked_sets;
 pub(crate) mod naked_singles;
 pub(crate) mod visibility;
 
@@ -21,8 +23,8 @@ const TECHNIQUES: &[Technique] = &[
     Technique::NakedSingles,
     Technique::HiddenSingles,
     Technique::VisibilityPropagation,
-    // Technique::NakedSets,
-    // Technique::HiddenSets,
+    Technique::NakedSets,
+    Technique::HiddenSets,
     // Technique::XWing,
     // Technique::VisibilityChain,
     // Technique::PermutationEnumeration,
@@ -45,6 +47,8 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::NakedSingles => naked_singles::apply(state),
         Technique::HiddenSingles => hidden_singles::apply(state),
         Technique::VisibilityPropagation => visibility::apply(state),
+        Technique::NakedSets => naked_sets::apply(state),
+        Technique::HiddenSets => hidden_sets::apply(state),
         _ => TechniqueResult::NoProgress, // not yet implemented
     }
 }

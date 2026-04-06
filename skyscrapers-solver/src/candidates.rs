@@ -63,6 +63,11 @@ impl Candidates {
     pub(crate) fn intersect(self, other: Self) -> Self {
         Self(self.0 & other.0)
     }
+
+    /// Returns the union of two candidate sets.
+    pub(crate) fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
 }
 
 pub(crate) struct CandidatesIter(u16);
