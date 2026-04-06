@@ -35,6 +35,24 @@ impl SolveState {
             right: (0..n).map(|i| clues.right(i)).collect(),
         };
 
+        // Apply clue-based pruning before board values
+        if !super::techniques::clue_pruning::apply(&mut state) {
+            return None;
+        }
+
+        // Assign any singletons created by clue pruning
+        for idx in 0..n * n {
+            if state.grid[idx].is_none() {
+                if let Some(v) = state.candidates[idx].singleton() {
+                    let r = idx / n;
+                    let c = idx % n;
+                    if !state.assign(r, c, v) {
+                        return None;
+                    }
+                }
+            }
+        }
+
         // Place board values with constraint propagation
         for r in 0..n {
             for c in 0..n {

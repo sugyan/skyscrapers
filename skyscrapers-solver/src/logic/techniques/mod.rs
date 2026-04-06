@@ -1,3 +1,4 @@
+pub(crate) mod clue_pruning;
 pub(crate) mod hidden_singles;
 pub(crate) mod naked_singles;
 
