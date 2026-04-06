@@ -50,11 +50,22 @@ impl LogicSolver {
         loop {
             // Check if already complete (initial board values + propagation may solve it)
             if state.is_complete() {
-                return SolveResult {
-                    solutions: vec![state.to_solution()],
-                    difficulty: Some(max_technique.map_or(Difficulty::Easy, |t| t.difficulty())),
-                    steps,
-                };
+                if state.verify_clues() {
+                    return SolveResult {
+                        solutions: vec![state.to_solution()],
+                        difficulty: Some(
+                            max_technique.map_or(Difficulty::Easy, |t| t.difficulty()),
+                        ),
+                        steps,
+                    };
+                } else {
+                    // Grid is complete but violates clues — contradiction
+                    return SolveResult {
+                        solutions: Vec::new(),
+                        difficulty: None,
+                        steps,
+                    };
+                }
             }
 
             match apply_next_technique(&mut state) {

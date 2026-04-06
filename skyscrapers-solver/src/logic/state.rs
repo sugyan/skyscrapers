@@ -137,6 +137,61 @@ impl SolveState {
         skyscrapers_core::Solution::new(self.n, cells)
     }
 
+    /// Verify all clue constraints against the completed grid.
+    pub fn verify_clues(&self) -> bool {
+        for i in 0..self.n {
+            if let Some(expected) = self.top[i] {
+                if self.count_visible_col(i, true) != expected {
+                    return false;
+                }
+            }
+            if let Some(expected) = self.bottom[i] {
+                if self.count_visible_col(i, false) != expected {
+                    return false;
+                }
+            }
+            if let Some(expected) = self.left[i] {
+                if self.count_visible_row(i, true) != expected {
+                    return false;
+                }
+            }
+            if let Some(expected) = self.right[i] {
+                if self.count_visible_row(i, false) != expected {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    fn count_visible_col(&self, col: usize, top_to_bottom: bool) -> u8 {
+        let mut max = 0u8;
+        let mut count = 0u8;
+        for r in 0..self.n {
+            let row = if top_to_bottom { r } else { self.n - 1 - r };
+            let h = self.grid[row * self.n + col].unwrap();
+            if h > max {
+                count += 1;
+                max = h;
+            }
+        }
+        count
+    }
+
+    fn count_visible_row(&self, row: usize, left_to_right: bool) -> u8 {
+        let mut max = 0u8;
+        let mut count = 0u8;
+        for c in 0..self.n {
+            let col = if left_to_right { c } else { self.n - 1 - c };
+            let h = self.grid[row * self.n + col].unwrap();
+            if h > max {
+                count += 1;
+                max = h;
+            }
+        }
+        count
+    }
+
     /// Index helper: (r, c) -> flat index
     #[inline]
     pub fn idx(&self, r: usize, c: usize) -> usize {

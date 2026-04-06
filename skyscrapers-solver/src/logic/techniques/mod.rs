@@ -23,7 +23,7 @@ pub(crate) enum TechniqueResult {
 const TECHNIQUES: &[Technique] = &[
     Technique::NakedSingles,
     Technique::HiddenSingles,
-    Technique::VisibilityPropagation,
+    // Technique::VisibilityPropagation, // temporarily disabled for debugging
     Technique::NakedSets,
     Technique::HiddenSets,
     Technique::XWing,

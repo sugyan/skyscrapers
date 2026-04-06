@@ -7,6 +7,11 @@ use crate::logic::techniques::TechniqueResult;
 /// For each line with a clue, for each unassigned cell, for each candidate value:
 /// check if placing that value could ever satisfy the clue constraint.
 /// If not, eliminate the candidate.
+///
+/// **Known issue**: The greedy min/max visibility bounds do not account for the
+/// constraint that each value appears exactly once in a line. This can lead to
+/// incorrect eliminations. Currently disabled in the technique list pending a
+/// more accurate algorithm (e.g., permutation enumeration or exact bounds).
 pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
     let n = state.n;
 
