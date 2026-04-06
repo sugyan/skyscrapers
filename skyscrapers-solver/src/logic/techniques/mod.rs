@@ -4,6 +4,7 @@ pub(crate) mod hidden_singles;
 pub(crate) mod naked_sets;
 pub(crate) mod naked_singles;
 pub(crate) mod visibility;
+pub(crate) mod x_wing;
 
 use super::difficulty::{Step, Technique};
 use super::state::SolveState;
@@ -25,7 +26,7 @@ const TECHNIQUES: &[Technique] = &[
     Technique::VisibilityPropagation,
     Technique::NakedSets,
     Technique::HiddenSets,
-    // Technique::XWing,
+    Technique::XWing,
     // Technique::VisibilityChain,
     // Technique::PermutationEnumeration,
 ];
@@ -49,6 +50,7 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::VisibilityPropagation => visibility::apply(state),
         Technique::NakedSets => naked_sets::apply(state),
         Technique::HiddenSets => hidden_sets::apply(state),
+        Technique::XWing => x_wing::apply(state),
         _ => TechniqueResult::NoProgress, // not yet implemented
     }
 }
