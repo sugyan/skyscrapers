@@ -3,7 +3,7 @@ pub(crate) mod hidden_sets;
 pub(crate) mod hidden_singles;
 pub(crate) mod naked_sets;
 pub(crate) mod naked_singles;
-pub(crate) mod visibility;
+pub(crate) mod permutation;
 pub(crate) mod x_wing;
 
 use super::difficulty::{Step, Technique};
@@ -23,12 +23,10 @@ pub(crate) enum TechniqueResult {
 const TECHNIQUES: &[Technique] = &[
     Technique::NakedSingles,
     Technique::HiddenSingles,
-    // Technique::VisibilityPropagation, // temporarily disabled for debugging
     Technique::NakedSets,
     Technique::HiddenSets,
     Technique::XWing,
-    // Technique::VisibilityChain,
-    // Technique::PermutationEnumeration,
+    Technique::PermutationEnumeration,
 ];
 
 /// Try all techniques in order. Returns the first one that makes progress.
@@ -47,10 +45,10 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
     match technique {
         Technique::NakedSingles => naked_singles::apply(state),
         Technique::HiddenSingles => hidden_singles::apply(state),
-        Technique::VisibilityPropagation => visibility::apply(state),
         Technique::NakedSets => naked_sets::apply(state),
         Technique::HiddenSets => hidden_sets::apply(state),
         Technique::XWing => x_wing::apply(state),
-        _ => TechniqueResult::NoProgress, // not yet implemented
+        Technique::PermutationEnumeration => permutation::apply(state),
+        Technique::CluePruning => TechniqueResult::NoProgress, // applied during initialization
     }
 }

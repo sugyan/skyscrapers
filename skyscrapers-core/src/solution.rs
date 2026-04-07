@@ -170,10 +170,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "all cell values must be in 1..=n")]
     fn solution_value_out_of_range() {
-        Solution::new(
-            3,
-            vec![vec![0, 1, 2], vec![1, 2, 3], vec![2, 3, 1]],
-        );
+        Solution::new(3, vec![vec![0, 1, 2], vec![1, 2, 3], vec![2, 3, 1]]);
     }
 
     #[test]
@@ -190,10 +187,7 @@ mod tests {
 
     #[test]
     fn display_solution() {
-        let sol = Solution::new(
-            3,
-            vec![vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]],
-        );
+        let sol = Solution::new(3, vec![vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]]);
         let expected = "1 2 3\n2 3 1\n3 1 2";
         assert_eq!(sol.to_string(), expected);
     }
@@ -203,10 +197,7 @@ mod tests {
         let input = "1 2 3\n2 3 1\n3 1 2";
         let sol: Solution = input.parse().unwrap();
         assert_eq!(sol.n(), 3);
-        assert_eq!(
-            sol.cells(),
-            &[vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]]
-        );
+        assert_eq!(sol.cells(), &[vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]]);
     }
 
     #[test]

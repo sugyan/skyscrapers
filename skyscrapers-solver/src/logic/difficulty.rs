@@ -17,11 +17,9 @@ pub enum Technique {
     NakedSingles,
     HiddenSingles,
     CluePruning,
-    VisibilityPropagation,
     NakedSets,
     HiddenSets,
     XWing,
-    VisibilityChain,
     PermutationEnumeration,
 }
 
@@ -29,9 +27,9 @@ impl Technique {
     pub fn difficulty(self) -> Difficulty {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
-            Self::CluePruning | Self::VisibilityPropagation => Difficulty::Medium,
+            Self::CluePruning => Difficulty::Medium,
             Self::NakedSets | Self::HiddenSets | Self::XWing => Difficulty::Hard,
-            Self::VisibilityChain | Self::PermutationEnumeration => Difficulty::Expert,
+            Self::PermutationEnumeration => Difficulty::Expert,
         }
     }
 }
@@ -73,11 +71,6 @@ pub enum Reason {
         value: u8,
         base_lines: Vec<Line>,
         cover_lines: Vec<Line>,
-    },
-    /// Visibility chain reasoning.
-    VisibilityChain {
-        clue: CluePosition,
-        known_cells: Vec<(usize, usize)>,
     },
     /// Permutation enumeration elimination.
     PermutationElimination { line: Line, clue: CluePosition },

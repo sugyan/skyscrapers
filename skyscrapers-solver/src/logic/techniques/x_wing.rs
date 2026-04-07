@@ -123,7 +123,8 @@ fn find_fish_cols(state: &mut SolveState, v: u8, n: usize) -> TechniqueResult {
             {
                 let cols = [col_rows[i].0, col_rows[j].0];
                 let rows = &col_rows[i].1;
-                let result = eliminate_fish(state, v, rows, &cols, false, n);
+                // base_lines = cols (base columns), cover_lines = rows (cover rows)
+                let result = eliminate_fish(state, v, &cols, rows, false, n);
                 if !matches!(result, TechniqueResult::NoProgress) {
                     return result;
                 }
@@ -149,7 +150,8 @@ fn find_fish_cols(state: &mut SolveState, v: u8, n: usize) -> TechniqueResult {
                 if row_union.len() == 3 {
                     let cols = [col_rows[i].0, col_rows[j].0, col_rows[k].0];
                     row_union.sort_unstable();
-                    let result = eliminate_fish(state, v, &row_union, &cols, false, n);
+                    // base_lines = cols (base columns), cover_lines = row_union (cover rows)
+                    let result = eliminate_fish(state, v, &cols, &row_union, false, n);
                     if !matches!(result, TechniqueResult::NoProgress) {
                         return result;
                     }
