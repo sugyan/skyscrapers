@@ -9,6 +9,8 @@ pub enum Difficulty {
     Hard,
     /// Requires visibility chain reasoning or permutation enumeration.
     Expert,
+    /// Requires forcing chain (assumption-based reasoning).
+    Master,
 }
 
 /// Identifies a specific solving technique.
@@ -21,6 +23,7 @@ pub enum Technique {
     HiddenSets,
     XWing,
     PermutationEnumeration,
+    ForcingChain,
 }
 
 impl Technique {
@@ -30,6 +33,7 @@ impl Technique {
             Self::CluePruning => Difficulty::Medium,
             Self::NakedSets | Self::HiddenSets | Self::XWing => Difficulty::Hard,
             Self::PermutationEnumeration => Difficulty::Expert,
+            Self::ForcingChain => Difficulty::Master,
         }
     }
 }
@@ -74,6 +78,11 @@ pub enum Reason {
     },
     /// Permutation enumeration elimination.
     PermutationElimination { line: Line, clue: CluePosition },
+    /// Forcing chain: assuming a value led to a contradiction.
+    ForcingChainElimination {
+        assumed_cell: (usize, usize),
+        assumed_value: u8,
+    },
 }
 
 /// Identifies a row or column.

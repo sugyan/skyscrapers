@@ -248,6 +248,72 @@ mod tests {
         assert_eq!(result.difficulty, Some(Difficulty::Easy));
     }
 
+    /// Helper to build a puzzle from clue specification.
+    fn build_puzzle_with_clues(
+        n: usize,
+        givens: &[(usize, usize, u8)],
+        top: &[(usize, u8)],
+        bottom: &[(usize, u8)],
+        left: &[(usize, u8)],
+        right: &[(usize, u8)],
+    ) -> Puzzle {
+        let mut board = Board::new_empty(n);
+        for &(r, c, v) in givens {
+            board.set(r, c, Some(v));
+        }
+        let mut clues = Clues::new_all_none(n);
+        for &(i, v) in top {
+            clues.set_top(i, Some(v));
+        }
+        for &(i, v) in bottom {
+            clues.set_bottom(i, Some(v));
+        }
+        for &(i, v) in left {
+            clues.set_left(i, Some(v));
+        }
+        for &(i, v) in right {
+            clues.set_right(i, Some(v));
+        }
+        Puzzle { board, clues }
+    }
+
+    #[test]
+    fn solve_n4_seed9_with_forcing_chain() {
+        // n=4, seed=9: 0 givens, clues: top=[2,_,2,2], left=[_,_,2,_], bottom=[_,_,2,_]
+        let puzzle =
+            build_puzzle_with_clues(4, &[], &[(0, 2), (2, 2), (3, 2)], &[(2, 2)], &[(2, 2)], &[]);
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        assert_eq!(result.solutions.len(), 1, "n=4 seed=9 should be solvable");
+        assert_eq!(result.difficulty, Some(Difficulty::Master));
+    }
+
+    #[test]
+    fn solve_n4_seed13_with_forcing_chain() {
+        // n=4, seed=13: 2 givens, clues: top=[_,2,_,_], left=[_,_,1,_], bottom=[_,_,_,2]
+        // givens: (2,1)=2, (3,0)=1
+        let puzzle = build_puzzle_with_clues(
+            4,
+            &[(2, 1, 2), (3, 0, 1)],
+            &[(1, 2)],
+            &[(3, 2)],
+            &[(2, 1)],
+            &[],
+        );
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        assert_eq!(result.solutions.len(), 1, "n=4 seed=13 should be solvable");
+        assert_eq!(result.difficulty, Some(Difficulty::Master));
+    }
+
+    #[test]
+    fn solve_n4_seed15_with_forcing_chain() {
+        // n=4, seed=15: 0 givens, clues: left=[_,2,_,3], right=[_,_,3,1], bottom=[3,_,_,_]
+        let puzzle =
+            build_puzzle_with_clues(4, &[], &[], &[(0, 3)], &[(1, 2), (3, 3)], &[(2, 3), (3, 1)]);
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        assert_eq!(result.solutions.len(), 1, "n=4 seed=15 should be solvable");
+        assert_eq!(result.difficulty, Some(Difficulty::Master));
+    }
+
     #[test]
     fn next_step_returns_hint() {
         // Board with a hidden single available

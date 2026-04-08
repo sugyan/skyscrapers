@@ -6,6 +6,7 @@ use crate::candidates::Candidates;
 ///
 /// Similar to the backtracking solver's SolveState but without undo logs
 /// (the logic solver never speculatively assigns).
+#[derive(Clone)]
 pub(crate) struct SolveState {
     pub n: usize,
     pub grid: Vec<Option<u8>>,

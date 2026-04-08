@@ -1,4 +1,5 @@
 pub(crate) mod clue_pruning;
+pub(crate) mod forcing_chain;
 pub(crate) mod hidden_sets;
 pub(crate) mod hidden_singles;
 pub(crate) mod naked_sets;
@@ -27,6 +28,7 @@ const TECHNIQUES: &[Technique] = &[
     Technique::HiddenSets,
     Technique::XWing,
     Technique::PermutationEnumeration,
+    Technique::ForcingChain,
 ];
 
 /// Try all techniques in order. Returns the first one that makes progress.
@@ -49,6 +51,42 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::HiddenSets => hidden_sets::apply(state),
         Technique::XWing => x_wing::apply(state),
         Technique::PermutationEnumeration => permutation::apply(state),
+        Technique::ForcingChain => forcing_chain::apply(state),
         Technique::CluePruning => TechniqueResult::NoProgress, // applied during initialization
     }
+}
+
+/// Run all techniques except ForcingChain in a loop until no more progress.
+/// Returns false if a contradiction is detected.
+pub(crate) fn propagate(state: &mut SolveState) -> bool {
+    loop {
+        let mut progress = false;
+        for &technique in TECHNIQUES {
+            if technique == Technique::ForcingChain {
+                continue;
+            }
+            match apply_technique(technique, state) {
+                TechniqueResult::Contradiction => return false,
+                TechniqueResult::Progress(_) => {
+                    progress = true;
+                    break;
+                }
+                TechniqueResult::NoProgress => continue,
+            }
+        }
+        if !progress {
+            break;
+        }
+    }
+    // Check for empty candidates in unassigned cells
+    for idx in 0..state.n * state.n {
+        if state.grid[idx].is_none() && state.candidates[idx].is_empty() {
+            return false;
+        }
+    }
+    // If complete, verify clues
+    if state.is_complete() && !state.verify_clues() {
+        return false;
+    }
+    true
 }
