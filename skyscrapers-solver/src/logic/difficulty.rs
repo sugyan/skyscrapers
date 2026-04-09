@@ -27,7 +27,7 @@ pub enum Technique {
     XYWing,
     PermutationEnumeration,
     DualCluePermutation,
-    CrossLinePermutation,
+
     SimpleForcingChain,
     FullForcingChain,
 }
@@ -39,8 +39,7 @@ impl Technique {
             Self::CluePruning => Difficulty::Medium,
             Self::NakedSets | Self::HiddenSets | Self::XWing | Self::XYWing => Difficulty::Hard,
             Self::PermutationEnumeration
-            | Self::DualCluePermutation
-            | Self::CrossLinePermutation => Difficulty::Expert,
+            | Self::DualCluePermutation => Difficulty::Expert,
             Self::SimpleForcingChain => Difficulty::Master,
             Self::FullForcingChain => Difficulty::Grandmaster,
         }
@@ -100,11 +99,7 @@ pub enum Reason {
         wing_b: (usize, usize),
         eliminated_value: u8,
     },
-    /// Cross-line permutation: row and column clue constraints intersected.
-    CrossLinePermutationElimination {
-        row_clue: CluePosition,
-        col_clue: CluePosition,
-    },
+
     /// Forcing chain: assuming a value led to a contradiction.
     ForcingChainElimination {
         assumed_cell: (usize, usize),

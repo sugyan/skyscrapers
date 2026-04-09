@@ -1,5 +1,5 @@
 pub(crate) mod clue_pruning;
-pub(crate) mod cross_line_permutation;
+
 pub(crate) mod dual_clue_permutation;
 pub(crate) mod forcing_chain;
 pub(crate) mod hidden_sets;
@@ -33,7 +33,7 @@ const TECHNIQUES: &[Technique] = &[
     Technique::XYWing,
     Technique::PermutationEnumeration,
     Technique::DualCluePermutation,
-    Technique::CrossLinePermutation,
+
     Technique::SimpleForcingChain,
     Technique::FullForcingChain,
 ];
@@ -60,7 +60,7 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::XYWing => xy_wing::apply(state),
         Technique::PermutationEnumeration => permutation::apply(state),
         Technique::DualCluePermutation => dual_clue_permutation::apply(state),
-        Technique::CrossLinePermutation => cross_line_permutation::apply(state),
+
         Technique::SimpleForcingChain => forcing_chain::apply_simple(state),
         Technique::FullForcingChain => forcing_chain::apply_full(state),
         Technique::CluePruning => TechniqueResult::NoProgress, // applied during initialization

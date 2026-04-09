@@ -293,7 +293,6 @@ mod tests {
     fn solve_n4_seed13() {
         // n=4, seed=13: 2 givens, clues: top=[_,2,_,_], left=[_,_,1,_], bottom=[_,_,_,2]
         // givens: (2,1)=2, (3,0)=1
-        // Now solvable at Expert level thanks to CrossLinePermutation.
         let puzzle = build_puzzle_with_clues(
             4,
             &[(2, 1, 2), (3, 0, 1)],
@@ -310,7 +309,6 @@ mod tests {
     #[test]
     fn solve_n4_seed15() {
         // n=4, seed=15: 0 givens, clues: left=[_,2,_,3], right=[_,_,3,1], bottom=[3,_,_,_]
-        // Now solvable at Expert level thanks to CrossLinePermutation.
         let puzzle =
             build_puzzle_with_clues(4, &[], &[], &[(0, 3)], &[(1, 2), (3, 3)], &[(2, 3), (3, 1)]);
         let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
