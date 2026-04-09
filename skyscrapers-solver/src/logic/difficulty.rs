@@ -25,6 +25,7 @@ pub enum Technique {
     HiddenSets,
     XWing,
     XYWing,
+    WWing,
     PermutationEnumeration,
     DualCluePermutation,
 
@@ -37,7 +38,9 @@ impl Technique {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning => Difficulty::Medium,
-            Self::NakedSets | Self::HiddenSets | Self::XWing | Self::XYWing => Difficulty::Hard,
+            Self::NakedSets | Self::HiddenSets | Self::XWing | Self::XYWing | Self::WWing => {
+                Difficulty::Hard
+            }
             Self::PermutationEnumeration
             | Self::DualCluePermutation => Difficulty::Expert,
             Self::SimpleForcingChain => Difficulty::Master,
@@ -100,6 +103,15 @@ pub enum Reason {
         eliminated_value: u8,
     },
 
+    /// W-Wing: two bivalue cells connected by a strong link eliminate a candidate.
+    WWingElimination {
+        cell_a: (usize, usize),
+        cell_b: (usize, usize),
+        link_c: (usize, usize),
+        link_d: (usize, usize),
+        link_value: u8,
+        eliminated_value: u8,
+    },
     /// Forcing chain: assuming a value led to a contradiction.
     ForcingChainElimination {
         assumed_cell: (usize, usize),
