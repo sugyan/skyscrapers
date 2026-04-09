@@ -1,16 +1,23 @@
 use super::super::difficulty::{Action, Reason, Step, Technique};
 use super::super::state::SolveState;
-use super::{TechniqueResult, propagate};
+use super::{TechniqueResult, propagate, propagate_simple};
 
-/// Forcing Chain: assume a candidate value, propagate, and eliminate if contradiction.
-///
-/// For each unassigned cell with 2-3 candidates, try each candidate:
-/// 1. Clone the state and assign the candidate
-/// 2. Run all other techniques to propagate
-/// 3. If contradiction is detected, eliminate that candidate from the original state
-///
-/// Depth-1 only (no nested assumptions).
-pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
+/// SimpleForcingChain: assume a candidate value, propagate with NakedSingles + HiddenSingles only.
+/// Human-traceable assumption chains.
+pub(crate) fn apply_simple(state: &mut SolveState) -> TechniqueResult {
+    apply_inner(state, false)
+}
+
+/// FullForcingChain: assume a candidate value, propagate with all techniques.
+/// Only tried after SimpleForcingChain fails.
+pub(crate) fn apply_full(state: &mut SolveState) -> TechniqueResult {
+    apply_inner(state, true)
+}
+
+/// Shared implementation for Simple and Full ForcingChain.
+/// `full=false`: propagate with NakedSingles + HiddenSingles only (Simple).
+/// `full=true`: propagate with all techniques except ForcingChain (Full).
+fn apply_inner(state: &mut SolveState, full: bool) -> TechniqueResult {
     let n = state.n;
 
     // Collect unassigned cells sorted by candidate count (ascending)
@@ -28,6 +35,12 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
     }
     cells.sort_by_key(|&(_, _, count)| count);
 
+    let technique = if full {
+        Technique::FullForcingChain
+    } else {
+        Technique::SimpleForcingChain
+    };
+
     for &(r, c, _) in &cells {
         let idx = r * n + c;
         let candidates: Vec<u8> = state.candidates[idx].iter().collect();
@@ -38,9 +51,10 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
             // Try assigning this candidate
             let contradiction = if !trial.assign(r, c, v) {
                 true
-            } else {
-                // Propagate using all techniques except ForcingChain
+            } else if full {
                 !propagate(&mut trial)
+            } else {
+                !propagate_simple(&mut trial)
             };
 
             if contradiction {
@@ -56,7 +70,7 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
                 }];
 
                 return TechniqueResult::Progress(Step {
-                    technique: Technique::ForcingChain,
+                    technique,
                     actions,
                     reason: Reason::ForcingChainElimination {
                         assumed_cell: (r, c),
@@ -86,7 +100,14 @@ mod tests {
         let puzzle = Puzzle { board, clues };
         let mut state = SolveState::new(&puzzle).unwrap();
         // No clues, so forcing chain cannot find contradictions
-        assert!(matches!(apply(&mut state), TechniqueResult::NoProgress));
+        assert!(matches!(
+            apply_simple(&mut state),
+            TechniqueResult::NoProgress
+        ));
+        assert!(matches!(
+            apply_full(&mut state),
+            TechniqueResult::NoProgress
+        ));
     }
 
     #[test]
@@ -116,11 +137,14 @@ mod tests {
             if !propagate(&mut state) {
                 panic!("Unexpected contradiction during propagation");
             }
-            // Check if forcing chain can now make progress
-            let result = apply(&mut state);
+            // Check if forcing chain can now make progress (try full propagation)
+            let result = apply_full(&mut state);
             match result {
                 TechniqueResult::Progress(step) => {
-                    assert_eq!(step.technique, Technique::ForcingChain);
+                    assert!(matches!(
+                        step.technique,
+                        Technique::SimpleForcingChain | Technique::FullForcingChain
+                    ));
                     assert!(!step.actions.is_empty());
                     return; // success
                 }

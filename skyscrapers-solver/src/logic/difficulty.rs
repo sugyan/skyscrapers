@@ -9,8 +9,10 @@ pub enum Difficulty {
     Hard,
     /// Requires visibility chain reasoning or permutation enumeration.
     Expert,
-    /// Requires forcing chain (assumption-based reasoning).
+    /// Requires simple forcing chain (basic propagation only).
     Master,
+    /// Requires full forcing chain (all techniques in propagation).
+    Grandmaster,
 }
 
 /// Identifies a specific solving technique.
@@ -23,7 +25,9 @@ pub enum Technique {
     HiddenSets,
     XWing,
     PermutationEnumeration,
-    ForcingChain,
+    DualCluePermutation,
+    SimpleForcingChain,
+    FullForcingChain,
 }
 
 impl Technique {
@@ -32,8 +36,9 @@ impl Technique {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning => Difficulty::Medium,
             Self::NakedSets | Self::HiddenSets | Self::XWing => Difficulty::Hard,
-            Self::PermutationEnumeration => Difficulty::Expert,
-            Self::ForcingChain => Difficulty::Master,
+            Self::PermutationEnumeration | Self::DualCluePermutation => Difficulty::Expert,
+            Self::SimpleForcingChain => Difficulty::Master,
+            Self::FullForcingChain => Difficulty::Grandmaster,
         }
     }
 }
@@ -78,6 +83,12 @@ pub enum Reason {
     },
     /// Permutation enumeration elimination.
     PermutationElimination { line: Line, clue: CluePosition },
+    /// Dual-clue permutation enumeration elimination.
+    DualCluePermutationElimination {
+        line: Line,
+        clue_a: CluePosition,
+        clue_b: CluePosition,
+    },
     /// Forcing chain: assuming a value led to a contradiction.
     ForcingChainElimination {
         assumed_cell: (usize, usize),

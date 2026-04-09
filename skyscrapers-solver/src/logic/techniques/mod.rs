@@ -1,4 +1,5 @@
 pub(crate) mod clue_pruning;
+pub(crate) mod dual_clue_permutation;
 pub(crate) mod forcing_chain;
 pub(crate) mod hidden_sets;
 pub(crate) mod hidden_singles;
@@ -28,7 +29,9 @@ const TECHNIQUES: &[Technique] = &[
     Technique::HiddenSets,
     Technique::XWing,
     Technique::PermutationEnumeration,
-    Technique::ForcingChain,
+    Technique::DualCluePermutation,
+    Technique::SimpleForcingChain,
+    Technique::FullForcingChain,
 ];
 
 /// Try all techniques in order. Returns the first one that makes progress.
@@ -51,18 +54,55 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::HiddenSets => hidden_sets::apply(state),
         Technique::XWing => x_wing::apply(state),
         Technique::PermutationEnumeration => permutation::apply(state),
-        Technique::ForcingChain => forcing_chain::apply(state),
+        Technique::DualCluePermutation => dual_clue_permutation::apply(state),
+        Technique::SimpleForcingChain => forcing_chain::apply_simple(state),
+        Technique::FullForcingChain => forcing_chain::apply_full(state),
         Technique::CluePruning => TechniqueResult::NoProgress, // applied during initialization
     }
 }
 
-/// Run all techniques except ForcingChain in a loop until no more progress.
+/// Run only NakedSingles and HiddenSingles in a loop until no more progress.
+/// Used by SimpleForcingChain for basic propagation.
+/// Returns false if a contradiction is detected.
+pub(crate) fn propagate_simple(state: &mut SolveState) -> bool {
+    const SIMPLE_TECHNIQUES: &[Technique] = &[Technique::NakedSingles, Technique::HiddenSingles];
+    loop {
+        let mut progress = false;
+        for &technique in SIMPLE_TECHNIQUES {
+            match apply_technique(technique, state) {
+                TechniqueResult::Contradiction => return false,
+                TechniqueResult::Progress(_) => {
+                    progress = true;
+                    break;
+                }
+                TechniqueResult::NoProgress => continue,
+            }
+        }
+        if !progress {
+            break;
+        }
+    }
+    for idx in 0..state.n * state.n {
+        if state.grid[idx].is_none() && state.candidates[idx].is_empty() {
+            return false;
+        }
+    }
+    if state.is_complete() && !state.verify_clues() {
+        return false;
+    }
+    true
+}
+
+/// Run all techniques except ForcingChain variants in a loop until no more progress.
 /// Returns false if a contradiction is detected.
 pub(crate) fn propagate(state: &mut SolveState) -> bool {
     loop {
         let mut progress = false;
         for &technique in TECHNIQUES {
-            if technique == Technique::ForcingChain {
+            if matches!(
+                technique,
+                Technique::SimpleForcingChain | Technique::FullForcingChain
+            ) {
                 continue;
             }
             match apply_technique(technique, state) {
