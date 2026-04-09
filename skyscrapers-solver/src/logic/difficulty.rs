@@ -24,8 +24,10 @@ pub enum Technique {
     NakedSets,
     HiddenSets,
     XWing,
+    XYWing,
     PermutationEnumeration,
     DualCluePermutation,
+    CrossLinePermutation,
     SimpleForcingChain,
     FullForcingChain,
 }
@@ -35,8 +37,10 @@ impl Technique {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning => Difficulty::Medium,
-            Self::NakedSets | Self::HiddenSets | Self::XWing => Difficulty::Hard,
-            Self::PermutationEnumeration | Self::DualCluePermutation => Difficulty::Expert,
+            Self::NakedSets | Self::HiddenSets | Self::XWing | Self::XYWing => Difficulty::Hard,
+            Self::PermutationEnumeration
+            | Self::DualCluePermutation
+            | Self::CrossLinePermutation => Difficulty::Expert,
             Self::SimpleForcingChain => Difficulty::Master,
             Self::FullForcingChain => Difficulty::Grandmaster,
         }
@@ -88,6 +92,18 @@ pub enum Reason {
         line: Line,
         clue_a: CluePosition,
         clue_b: CluePosition,
+    },
+    /// XY-Wing: three bivalue cells eliminate a candidate.
+    XYWingElimination {
+        pivot: (usize, usize),
+        wing_a: (usize, usize),
+        wing_b: (usize, usize),
+        eliminated_value: u8,
+    },
+    /// Cross-line permutation: row and column clue constraints intersected.
+    CrossLinePermutationElimination {
+        row_clue: CluePosition,
+        col_clue: CluePosition,
     },
     /// Forcing chain: assuming a value led to a contradiction.
     ForcingChainElimination {
