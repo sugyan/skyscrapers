@@ -248,10 +248,7 @@ mod tests {
 
     #[test]
     fn board_from_solution_fills_all_cells() {
-        let sol = Solution::new(
-            3,
-            vec![vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]],
-        );
+        let sol = Solution::new(3, vec![vec![1, 2, 3], vec![2, 3, 1], vec![3, 1, 2]]);
         let board = board_from_solution(&sol);
         assert_eq!(board.n(), 3);
         for r in 0..3 {
@@ -329,5 +326,100 @@ mod tests {
 
         assert_eq!(puzzle1, puzzle2);
         assert_eq!(sol1, sol2);
+    }
+
+    #[test]
+    fn logic_solver_solution_matches_backtracking_when_solvable() {
+        use skyscrapers_solver::LogicSolver;
+
+        let params = make_generator_params(5);
+        // Test multiple seeds to cover different puzzle configurations
+        for seed in 0..10 {
+            let mut rng = ChaCha20Rng::seed_from_u64(seed);
+            let (puzzle, expected_solution) = generate(&mut rng, &params);
+
+            let bt_solutions = BacktrackingSolver.solve(&puzzle, 2);
+            assert_eq!(
+                bt_solutions.len(),
+                1,
+                "seed {seed}: BT should find exactly 1 solution"
+            );
+            assert_eq!(
+                bt_solutions[0], expected_solution,
+                "seed {seed}: BT solution mismatch"
+            );
+
+            let logic_result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+            if !logic_result.solutions.is_empty() {
+                let logic_sol = &logic_result.solutions[0];
+                let n = puzzle.board.n();
+                // Verify the logic solver's solution is actually valid:
+                // it must be a valid Latin square that satisfies all clues
+                let derived = Clues::from_solution(logic_sol);
+                for idx in 0..n {
+                    if let Some(c) = puzzle.clues.top(idx) {
+                        assert_eq!(
+                            derived.top(idx),
+                            Some(c),
+                            "seed {seed}: Logic solver solution violates top clue at col {idx}"
+                        );
+                    }
+                    if let Some(c) = puzzle.clues.bottom(idx) {
+                        assert_eq!(
+                            derived.bottom(idx),
+                            Some(c),
+                            "seed {seed}: Logic solver solution violates bottom clue at col {idx}"
+                        );
+                    }
+                    if let Some(c) = puzzle.clues.left(idx) {
+                        assert_eq!(
+                            derived.left(idx),
+                            Some(c),
+                            "seed {seed}: Logic solver solution violates left clue at row {idx}"
+                        );
+                    }
+                    if let Some(c) = puzzle.clues.right(idx) {
+                        assert_eq!(
+                            derived.right(idx),
+                            Some(c),
+                            "seed {seed}: Logic solver solution violates right clue at row {idx}"
+                        );
+                    }
+                }
+                // Also verify board cells are respected
+                for r in 0..n {
+                    for c in 0..n {
+                        if let Some(v) = puzzle.board.get(r, c) {
+                            assert_eq!(
+                                logic_sol.get(r, c),
+                                v,
+                                "seed {seed}: Logic solver doesn't match board at ({r},{c})"
+                            );
+                        }
+                    }
+                }
+                // Double-check uniqueness with higher limit
+                let all_solutions = BacktrackingSolver.solve(&puzzle, 10);
+                assert_eq!(
+                    all_solutions.len(),
+                    1,
+                    "seed {seed}: BT finds {} solutions, puzzle not unique!\nPuzzle:\n{puzzle}\nLogic sol: {:?}\nBT sol: {:?}",
+                    all_solutions.len(),
+                    logic_sol,
+                    expected_solution
+                );
+                // Must match the expected unique solution
+                assert_eq!(
+                    *logic_sol, expected_solution,
+                    "seed {seed}: Logic solver found different solution"
+                );
+                assert!(
+                    logic_result.difficulty.is_some(),
+                    "seed {seed}: Difficulty should be reported"
+                );
+            }
+            // If logic solver can't solve it, that's OK — it just means the puzzle
+            // requires techniques not yet implemented
+        }
     }
 }
