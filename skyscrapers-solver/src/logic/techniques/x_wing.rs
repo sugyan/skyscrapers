@@ -291,6 +291,90 @@ mod tests {
     }
 
     #[test]
+    fn finds_x_wing_in_cols() {
+        // 5×5 board. Value 2 appears in exactly rows {0, 3} in cols 1 and 4.
+        // Should eliminate 2 from rows 0 and 3 in cols other than 1 and 4.
+        let board = Board::new_empty(5);
+        let clues = Clues::new_all_none(5);
+        let puzzle = Puzzle { board, clues };
+        let mut state = SolveState::new(&puzzle).unwrap();
+
+        // In cols 1 and 4, restrict value 2 to rows 0 and 3 only
+        for r in 0..5 {
+            if r != 0 && r != 3 {
+                state.candidates[r * 5 + 1] = state.candidates[r * 5 + 1].remove(2);
+                state.candidates[r * 5 + 4] = state.candidates[r * 5 + 4].remove(2);
+            }
+        }
+
+        let result = apply(&mut state);
+        match result {
+            TechniqueResult::Progress(step) => {
+                assert_eq!(step.technique, Technique::XWing);
+                // Should eliminate 2 from rows 0 and 3 in cols other than 1 and 4
+                for action in &step.actions {
+                    if let Action::Eliminate { row, col, value } = action {
+                        assert_eq!(*value, 2);
+                        assert!(*row == 0 || *row == 3);
+                        assert!(*col != 1 && *col != 4);
+                    }
+                }
+            }
+            _ => panic!("Expected column-based X-Wing to be found"),
+        }
+    }
+
+    #[test]
+    fn finds_swordfish_in_rows() {
+        // 6×6 board. Value 1 appears in at most 3 columns across 3 rows,
+        // and the union of those columns has exactly 3 elements.
+        // Row 0: cols {0, 2}
+        // Row 2: cols {0, 4}
+        // Row 4: cols {2, 4}
+        // Union = {0, 2, 4} — Swordfish pattern.
+        // Should eliminate 1 from cols 0, 2, 4 in rows 1, 3, 5.
+        let board = Board::new_empty(6);
+        let clues = Clues::new_all_none(6);
+        let puzzle = Puzzle { board, clues };
+        let mut state = SolveState::new(&puzzle).unwrap();
+
+        // Row 0: keep 1 only in cols 0 and 2
+        for c in 0..6 {
+            if c != 0 && c != 2 {
+                state.candidates[0 * 6 + c] = state.candidates[0 * 6 + c].remove(1);
+            }
+        }
+        // Row 2: keep 1 only in cols 0 and 4
+        for c in 0..6 {
+            if c != 0 && c != 4 {
+                state.candidates[2 * 6 + c] = state.candidates[2 * 6 + c].remove(1);
+            }
+        }
+        // Row 4: keep 1 only in cols 2 and 4
+        for c in 0..6 {
+            if c != 2 && c != 4 {
+                state.candidates[4 * 6 + c] = state.candidates[4 * 6 + c].remove(1);
+            }
+        }
+
+        let result = apply(&mut state);
+        match result {
+            TechniqueResult::Progress(step) => {
+                assert_eq!(step.technique, Technique::XWing);
+                for action in &step.actions {
+                    if let Action::Eliminate { row, col, value } = action {
+                        assert_eq!(*value, 1);
+                        assert!(*col == 0 || *col == 2 || *col == 4);
+                        assert!(*row != 0 && *row != 2 && *row != 4);
+                    }
+                }
+                assert!(!step.actions.is_empty());
+            }
+            _ => panic!("Expected Swordfish to be found"),
+        }
+    }
+
+    #[test]
     fn no_x_wing_in_empty_board() {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);

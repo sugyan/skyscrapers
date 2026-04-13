@@ -12,6 +12,7 @@ impl Candidates {
     }
 
     /// Creates an empty candidate set.
+    #[cfg(test)]
     pub(crate) fn empty() -> Self {
         Self(0)
     }
