@@ -68,6 +68,16 @@ impl Candidates {
     pub(crate) fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
+
+    /// Returns the raw bit representation.
+    pub(crate) fn raw(self) -> u16 {
+        self.0
+    }
+
+    /// Creates a candidate set from a raw bit representation.
+    pub(crate) fn from_raw(bits: u16) -> Self {
+        Self(bits)
+    }
 }
 
 pub(crate) struct CandidatesIter(u16);

@@ -1,3 +1,4 @@
+pub(crate) mod als_xz;
 pub(crate) mod clue_pruning;
 
 pub(crate) mod dual_clue_permutation;
@@ -33,6 +34,7 @@ const TECHNIQUES: &[Technique] = &[
     Technique::XWing,
     Technique::XYWing,
     Technique::WWing,
+    Technique::AlsXz,
     Technique::PermutationEnumeration,
     Technique::DualCluePermutation,
 
@@ -61,6 +63,7 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::XWing => x_wing::apply(state),
         Technique::XYWing => xy_wing::apply(state),
         Technique::WWing => w_wing::apply(state),
+        Technique::AlsXz => als_xz::apply(state),
         Technique::PermutationEnumeration => permutation::apply(state),
         Technique::DualCluePermutation => dual_clue_permutation::apply(state),
 
