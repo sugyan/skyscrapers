@@ -1,12 +1,54 @@
 # skyscrapers-solver
 
-Solver for Skyscrapers puzzles. Provides the `Solver` trait and a backtracking implementation.
+Solver for Skyscrapers puzzles. Provides the `Solver` trait with two implementations: a backtracking solver for fast uniqueness verification and a logic solver that uses human-like techniques for difficulty rating.
 
-## Solver implementation
+## Solver implementations
 
 ### BacktrackingSolver
 
-Backtracking solver with constraint propagation and MRV (Minimum Remaining Values) heuristic. Fast for grid sizes n≤7.
+Backtracking solver with constraint propagation and MRV (Minimum Remaining Values) heuristic. Used by the generator to verify solution uniqueness. Fast for grid sizes n<=7.
+
+### LogicSolver
+
+Applies human-traceable techniques in order of difficulty. Does not use backtracking — if no technique can make progress, the puzzle is reported as unsolvable. Returns the difficulty rating based on the hardest technique required.
+
+#### Techniques (in application order)
+
+| Technique | Difficulty | Description |
+|---|---|---|
+| NakedSingles | Easy | Cell with only one candidate remaining |
+| HiddenSingles | Easy | Value that fits only one cell in a row/column |
+| CluePruning | Medium | Initial candidate reduction from edge clues |
+| NakedSets | Hard | k cells in a line sharing exactly k candidates |
+| HiddenSets | Hard | k values in a line fitting only k cells |
+| XWing / Swordfish | Hard | Fish pattern elimination (k=2, k=3) |
+| XYWing | Hard | Three bivalue cells forming an elimination pattern |
+| WWing | Hard | Two bivalue cells connected by a strong link |
+| ALS-XZ | Hard | Two almost locked sets with a restricted common candidate |
+| PermutationEnumeration | Expert | Enumerate valid permutations for a single clue |
+| DualCluePermutation | Expert | Enumerate permutations using both opposing clues |
+| SimpleForcingChain | Master | Assume a candidate, propagate with basic techniques |
+| FullForcingChain | Grandmaster | Assume a candidate, propagate with all techniques |
+
+#### Difficulty levels
+
+- **Easy** — Naked/hidden singles only
+- **Medium** — Requires clue-based pruning
+- **Hard** — Requires set-based, fish, wing, or ALS techniques
+- **Expert** — Requires clue permutation enumeration
+- **Master** — Requires simple forcing chain (depth-1 assumption with basic propagation)
+- **Grandmaster** — Requires full forcing chain (depth-1 assumption with full propagation)
+
+#### Success rates (100 puzzles per size)
+
+| n | Easy | Expert | Master | Grandmaster | Unsolved |
+|---|---:|---:|---:|---:|---:|
+| 4 | 7% | 89% | 3% | 1% | 0% |
+| 5 | 0% | 81% | 9% | 10% | 0% |
+| 6 | 0% | 50% | 10% | 36% | 4% |
+| 7 | 0% | 16% | 9% | 60% | 15% |
+
+See [docs/logic-solver-analysis.md](../docs/logic-solver-analysis.md) for detailed per-puzzle results.
 
 ## Benchmarks
 
@@ -14,4 +56,4 @@ Backtracking solver with constraint propagation and MRV (Minimum Remaining Value
 
 | Solver | n=4 | n=5 | n=6 | n=7 |
 |---|---:|---:|---:|---:|
-| BacktrackingSolver | 1.7 µs | 29 µs | 3.3 ms | 13.7 ms |
+| BacktrackingSolver | 1.7 us | 29 us | 3.3 ms | 13.7 ms |

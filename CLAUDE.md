@@ -93,8 +93,8 @@ The generator has two stages:
 
 | Step | Status |
 |------|--------|
-| `skyscrapers-logic` (human-technique solver) | Not started |
-| Difficulty scoring | Not started |
+| `skyscrapers-logic` (human-technique solver) | Done (in skyscrapers-solver) |
+| Difficulty scoring | Done |
 
 ### Phase 4: CLI
 
