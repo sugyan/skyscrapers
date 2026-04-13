@@ -114,6 +114,10 @@ impl SolveState {
         self.candidates[idx] = new;
 
         // Naked single propagation
+        // TODO: This implicit assignment means Step.actions may not fully describe
+        // the state transition — a technique reporting only eliminations can also
+        // cause unreported placements. Consider separating propagation from the
+        // low-level state mutation, or recording the implied placements.
         if let Some(sv) = new.singleton() {
             if !self.assign(r, c, sv) {
                 return false;

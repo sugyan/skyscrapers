@@ -329,7 +329,7 @@ mod tests {
     }
 
     #[test]
-    fn logic_solver_matches_backtracking() {
+    fn logic_solver_solution_matches_backtracking_when_solvable() {
         use skyscrapers_solver::LogicSolver;
 
         let params = make_generator_params(5);

@@ -174,25 +174,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn finds_hidden_pair_in_row() {
-        // 5×5 board. In row 0, values 4 and 5 can only go in cols 3 and 4.
-        // Other candidates in cols 3 and 4 should be eliminated.
+    fn no_contradiction_on_partially_filled_row() {
+        // Smoke test: hidden-sets processing handles a partially filled row
+        // without reporting a contradiction. After placing 1,2,3 in a 5×5 row,
+        // propagation already resolves remaining cells to {4,5}, so no hidden
+        // pair is needed.
         let mut board = Board::new_empty(5);
         board.set(0, 0, Some(1));
         board.set(0, 1, Some(2));
         board.set(0, 2, Some(3));
-        // Cols 3 and 4 have candidates {4, 5} left — but let's make it interesting
-        // by adding extra candidates to trigger a hidden pair
         let clues = Clues::new_all_none(5);
         let puzzle = Puzzle { board, clues };
         let mut state = SolveState::new(&puzzle).unwrap();
 
-        // After placing 1,2,3, cols 3 and 4 should already be {4,5} by propagation
-        // which means a hidden pair won't add value. Let's test with a wider board.
-
-        // Instead, check that the function doesn't crash on normal input
         let result = apply(&mut state);
-        // No hidden pair needed since naked singles resolve it
         assert!(!matches!(result, TechniqueResult::Contradiction));
     }
 

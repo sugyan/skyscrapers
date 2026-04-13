@@ -36,18 +36,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn finds_naked_single() {
-        // Place all but one value in a row to force a naked single
+    fn init_propagation_resolves_forced_single() {
+        // Place all but one value in a row. SolveState::new propagation
+        // forces (0,3) = 4 during initialization (not via naked_singles::apply).
         let mut board = Board::new_empty(4);
         board.set(0, 0, Some(1));
         board.set(0, 1, Some(2));
         board.set(0, 2, Some(3));
-        // (0,3) must be 4 — naked single
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
         let state = SolveState::new(&puzzle).unwrap();
 
-        // Constraint propagation during init resolves the naked single
         assert_eq!(state.grid[state.idx(0, 3)], Some(4));
     }
 

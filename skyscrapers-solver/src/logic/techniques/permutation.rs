@@ -169,6 +169,13 @@ fn can_satisfy_clue(
         .filter(|&p| p != target_pos)
         .collect();
 
+    // Precompute pos -> depth mapping to avoid repeated linear scans
+    let n = indices.len();
+    let mut pos_to_depth = vec![usize::MAX; n];
+    for (depth, &pos) in other_free.iter().enumerate() {
+        pos_to_depth[pos] = depth;
+    }
+
     // Track which values are used (fixed values + the target value)
     let mut value_used = used.to_vec();
     value_used[val as usize] = true;
@@ -180,6 +187,7 @@ fn can_satisfy_clue(
         state,
         indices,
         &other_free,
+        &pos_to_depth,
         0,
         target_pos,
         val,
@@ -196,6 +204,7 @@ fn backtrack(
     state: &SolveState,
     indices: &[usize],
     other_free: &[usize],
+    pos_to_depth: &[usize],
     depth: usize,
     target_pos: usize,
     target_val: u8,
@@ -208,7 +217,7 @@ fn backtrack(
         return compute_visibility(
             state,
             indices,
-            other_free,
+            pos_to_depth,
             target_pos,
             target_val,
             assignments,
@@ -229,6 +238,7 @@ fn backtrack(
             state,
             indices,
             other_free,
+            pos_to_depth,
             depth + 1,
             target_pos,
             target_val,
@@ -246,10 +256,12 @@ fn backtrack(
 }
 
 /// Compute visibility count for a fully assigned line (in viewing order).
+/// `pos_to_depth[pos]` maps a line position to its index in `assignments`,
+/// or `usize::MAX` if the position is not a free cell.
 fn compute_visibility(
     state: &SolveState,
     indices: &[usize],
-    other_free: &[usize],
+    pos_to_depth: &[usize],
     target_pos: usize,
     target_val: u8,
     assignments: &[u8],
@@ -263,9 +275,7 @@ fn compute_visibility(
         } else if let Some(v) = state.grid[idx] {
             v
         } else {
-            // Find this position in other_free and get its assignment
-            let depth = other_free.iter().position(|&p| p == pos).unwrap();
-            assignments[depth]
+            assignments[pos_to_depth[pos]]
         };
 
         if height > max_height {

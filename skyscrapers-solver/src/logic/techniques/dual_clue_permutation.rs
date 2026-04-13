@@ -154,6 +154,13 @@ fn can_satisfy_dual_clue(
         .filter(|&p| p != target_pos)
         .collect();
 
+    // Precompute pos -> depth mapping to avoid repeated linear scans
+    let n = indices.len();
+    let mut pos_to_depth = vec![usize::MAX; n];
+    for (depth, &pos) in other_free.iter().enumerate() {
+        pos_to_depth[pos] = depth;
+    }
+
     let mut value_used = used.to_vec();
     value_used[val as usize] = true;
 
@@ -163,6 +170,7 @@ fn can_satisfy_dual_clue(
         state,
         indices,
         &other_free,
+        &pos_to_depth,
         0,
         target_pos,
         val,
@@ -180,6 +188,7 @@ fn backtrack_dual(
     state: &SolveState,
     indices: &[usize],
     other_free: &[usize],
+    pos_to_depth: &[usize],
     depth: usize,
     target_pos: usize,
     target_val: u8,
@@ -190,7 +199,7 @@ fn backtrack_dual(
 ) -> bool {
     if depth == other_free.len() {
         let (vis_fwd, vis_rev) =
-            compute_visibility_both(state, indices, other_free, target_pos, target_val, assignments);
+            compute_visibility_both(state, indices, pos_to_depth, target_pos, target_val, assignments);
         return vis_fwd == expected_fwd && vis_rev == expected_rev;
     }
 
@@ -208,6 +217,7 @@ fn backtrack_dual(
             state,
             indices,
             other_free,
+            pos_to_depth,
             depth + 1,
             target_pos,
             target_val,
@@ -227,10 +237,12 @@ fn backtrack_dual(
 
 /// Compute visibility count from both directions for a fully assigned line.
 /// Returns (forward_count, reverse_count).
+/// `pos_to_depth[pos]` maps a line position to its index in `assignments`,
+/// or `usize::MAX` if the position is not a free cell.
 fn compute_visibility_both(
     state: &SolveState,
     indices: &[usize],
-    other_free: &[usize],
+    pos_to_depth: &[usize],
     target_pos: usize,
     target_val: u8,
     assignments: &[u8],
@@ -245,8 +257,7 @@ fn compute_visibility_both(
             } else if let Some(v) = state.grid[idx] {
                 v
             } else {
-                let depth = other_free.iter().position(|&p| p == pos).unwrap();
-                assignments[depth]
+                assignments[pos_to_depth[pos]]
             }
         })
         .collect();
