@@ -99,8 +99,12 @@ impl SolveState {
     }
 
     /// Remove value `v` from candidates of cell (r, c).
-    /// If this leaves a naked single, assign it.
     /// Returns false if contradiction (empty candidate set).
+    ///
+    /// Note: if this leaves a cell with a single candidate, the cell is **not**
+    /// auto-assigned here. The outer solver loop will pick up the naked single
+    /// on the next iteration via `NakedSingles`, so each placement is recorded
+    /// as its own explicit `Step`.
     pub fn eliminate(&mut self, r: usize, c: usize, v: u8) -> bool {
         let idx = r * self.n + c;
         if self.grid[idx].is_some() || !self.candidates[idx].contains(v) {
@@ -112,17 +116,6 @@ impl SolveState {
             return false;
         }
         self.candidates[idx] = new;
-
-        // Naked single propagation
-        // TODO: This implicit assignment means Step.actions may not fully describe
-        // the state transition — a technique reporting only eliminations can also
-        // cause unreported placements. Consider separating propagation from the
-        // low-level state mutation, or recording the implied placements.
-        if let Some(sv) = new.singleton() {
-            if !self.assign(r, c, sv) {
-                return false;
-            }
-        }
 
         true
     }
