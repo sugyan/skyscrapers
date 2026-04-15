@@ -255,7 +255,8 @@ mod tests {
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
         let mut state = SolveState::new(&puzzle).unwrap();
-        // All cells have 4 candidates, every subset is a locked set, not ALS
+        // On an empty 4x4 board, some subsets of cells satisfy this implementation's
+        // ALS definition, but no valid ALS-XZ elimination exists.
         assert!(matches!(apply(&mut state), TechniqueResult::NoProgress));
     }
 
@@ -263,94 +264,15 @@ mod tests {
     fn finds_als_xz_pattern() {
         // 5x5 board with manually set candidates to create an ALS-XZ pattern.
         //
-        // Row 0: cells (0,0)={1,2,3} (0,1)={1,2} → ALS A in row 0:
-        //   2 cells with 3 values {1,2,3}
+        //   ALS A in row 0: (0,0)={1,3}, (0,1)={1,2}  → 2 cells, values {1,2,3}
+        //   ALS B in col 0: (1,0)={3,4}, (2,0)={2,4}  → 2 cells, values {2,3,4}
+        //   Common values: {2, 3}
         //
-        // Col 2: cells (1,2)={2,3,4} (2,2)={3,4} → ALS B in col 2:
-        //   2 cells with 3 values {2,3,4}
-        //
-        // Common values: {2, 3}
-        // RCC = 3: cell (0,0) has 3 in row 0, cells (1,2) and (2,2) have 3 in col 2.
-        //   (0,0) sees (1,2)? No (different row and column). Hmm, need to fix.
-        //
-        // Let me rethink: ALS A in row 0, ALS B in col 0.
-        // Row 0: (0,1)={1,2,3}, (0,2)={1,3} → ALS: 2 cells, values {1,2,3}
-        // Col 0: (1,0)={2,3,4}, (2,0)={2,4} → ALS: 2 cells, values {2,3,4}
-        // Common: {2, 3}
-        // RCC = 3: 3-cells in A = {(0,1)}, 3-cells in B = {(1,0)}.
-        //   (0,1) sees (1,0)? No (row 0 vs row 1, col 1 vs col 0). Not restricted.
-        //
-        // For RCC, we need x-cells in A and B to share a line.
-        // Easiest: A in row r, B in col c, and the RCC x only appears at the
-        // intersection cell area.
-        //
-        // ALS A in row 2: (2,0)={1,2,3}, (2,1)={1,2} → values {1,2,3}
-        // ALS B in col 0: (0,0)={3,4,5}, (1,0)={3,5} → values {3,4,5}
-        // Common: {3}. But we need at least 2 common values for RCC + elimination.
-        //
-        // Let me try a simpler setup:
-        // ALS A in row 0: (0,0)={1,2,3}, (0,1)={2,3} → values {1,2,3}
-        // ALS B in row 1: (1,0)={2,3,4}, (1,1)={3,4} → values {2,3,4}
-        // Common: {2,3}
-        // RCC = 2: 2-cells in A = {(0,0),(0,1)}, 2-cells in B = {(1,0)}.
-        //   (0,0) sees (1,0) via col 0. (0,1) sees (1,0)? No (col 1 vs col 0).
-        //   Not all see each other → not restricted.
-        // RCC = 2: only (0,0) and (1,0) → but we need ALL 2-cells in A to see all in B.
-        //
-        // Simpler: make the RCC value appear in only one cell per ALS.
-        // ALS A in row 0: (0,0)={1,2,3}, (0,1)={1,2} → values {1,2,3}, 3 only in (0,0)
-        // ALS B in col 0: (1,0)={3,4,5}, (2,0)={4,5} → values {3,4,5}, 3 only in (1,0)
-        // Common: {3}. Only 1 common value, need 2.
-        //
-        // ALS A in row 0: (0,0)={1,3,4}, (0,1)={1,3} → values {1,3,4}, 4 only in (0,0)
-        // ALS B in col 0: (1,0)={2,3,4}, (2,0)={2,3} → values {2,3,4}, 4 only in (1,0)
-        // Common: {3, 4}
-        // RCC = 4: 4-cells in A = {(0,0)}, 4-cells in B = {(1,0)}.
-        //   (0,0) sees (1,0) via col 0. ✓ Restricted!
-        // z = 3: 3-cells in A = {(0,0),(0,1)}, 3-cells in B = {(1,0),(2,0)}.
-        //   Eliminate 3 from cells seeing all of {(0,0),(0,1)} and all of {(1,0),(2,0)}.
-        //   Seeing (0,0) and (0,1) → must be in row 0 (or in both col 0 and col 1).
-        //   Seeing (1,0) and (2,0) → must be in col 0 (or in both row 1 and row 2).
-        //   Row 0 + col 0 → (0,0) but that's in ALS A. No external eliminations.
-        //
-        // Need z-cells concentrated. Let me try:
-        // ALS A in row 0: (0,0)={1,3,4}, (0,1)={1,4} → values {1,3,4}
-        // ALS B in col 0: (1,0)={2,3,4}, (2,0)={2,4} → values {2,3,4}
-        // Common: {3, 4}
-        // RCC = 3: 3-cells in A = {(0,0)}, 3-cells in B = {(1,0)}.
-        //   (0,0) sees (1,0) via col 0. ✓
-        // z = 4: 4-cells in A = {(0,0),(0,1)}, 4-cells in B = {(1,0),(2,0)}.
-        //   Same problem as above.
-        //
-        // RCC = 4: 4-cells in A = {(0,0),(0,1)}, not all see 4-cells in B.
-        //   Not restricted.
-        //
-        // Let me try with z appearing in only one cell per ALS:
-        // ALS A in row 0: (0,0)={1,2,3}, (0,1)={1,2} → values {1,2,3}, 3 in (0,0) only
-        // ALS B in col 0: (1,0)={2,3,4}, (2,0)={2,4} → values {2,3,4}, 3 in (1,0) only
-        // Common: {2, 3}
-        // RCC = 2: 2-cells in A = {(0,0),(0,1)}, 2-cells in B = {(1,0),(2,0)}.
-        //   (0,1) does not see (1,0) or (2,0). Not restricted.
-        // RCC = 3: 3-cells in A = {(0,0)}, 3-cells in B = {(1,0)}.
-        //   (0,0) sees (1,0) via col 0. ✓
-        // z = 2: 2-cells in A = {(0,0),(0,1)}, 2-cells in B = {(1,0),(2,0)}.
-        //   Need to see all of them. Not practical with single cell.
-        //
-        // OK this is getting complex for a unit test. Let me use a larger grid
-        // and set it up so z is in one cell per ALS.
-        //
-        // 5x5 grid:
-        // ALS A in row 0: (0,0)={1,3}, (0,1)={1,4}, (0,2)={3,4} → 3 cells, values {1,3,4}
-        // ALS B in col 0: (1,0)={2,3}, (2,0)={2,5}, (3,0)={3,5} → 3 cells, values {2,3,5}
-        // Common: {3}. Only 1. Need 2.
-        //
-        // I'll just verify with a concrete 6x6 setup.
-        // ALS A in row 0: (0,2)={1,2,4}, (0,3)={1,4} → 2 cells, values {1,2,4}
-        // ALS B in col 2: (3,2)={2,3,5}, (4,2)={3,5} → 2 cells, values {2,3,5}
-        // Common: {2}. Only 1.
-        //
-        // This is hard to construct by hand. Let me just verify collect_als works
-        // and test the full pipeline on a real puzzle.
+        //   RCC x = 3: 3-cells in A = {(0,0)}, 3-cells in B = {(1,0)}.
+        //     (0,0) and (1,0) share col 0, so x is restricted. ✓
+        //   z = 2: 2-cells in A = {(0,1)}, 2-cells in B = {(2,0)}.
+        //     Any cell that sees both (0,1) and (2,0) cannot be 2.
+        //     (2,1) sees (0,1) via col 1 and (2,0) via row 2 → 2 is eliminated from (2,1).
 
         let board = Board::new_empty(5);
         let clues = Clues::new_all_none(5);
@@ -366,15 +288,7 @@ mod tests {
         state.candidates[1 * n + 0] = Candidates::single(3).union(Candidates::single(4));
         state.candidates[2 * n + 0] = Candidates::single(2).union(Candidates::single(4));
 
-        // Common values: {2, 3}
-        // RCC = 3: 3-cells in A = {(0,0)}, 3-cells in B = {(1,0)}.
-        //   (0,0) sees (1,0) via col 0. ✓
-        // z = 2: 2-cells in A = {(0,1)}, 2-cells in B = {(2,0)}.
-        //   Cell must see (0,1) (row 0 or col 1) AND (2,0) (row 2 or col 0).
-        //   (0,0) is in ALS A, skip.
-        //   (2,1) → row 2 sees (2,0) ✓, col 1 sees (0,1) ✓. If has candidate 2 → eliminate!
-
-        // Make sure (2,1) has candidate 2
+        // (2,1) starts with full candidates including 2; the elimination should remove it.
         assert!(state.candidates[2 * n + 1].contains(2));
 
         let result = apply(&mut state);
