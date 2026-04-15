@@ -26,6 +26,7 @@ pub enum Technique {
     XWing,
     XYWing,
     WWing,
+    AlsXz,
     PermutationEnumeration,
     DualCluePermutation,
 
@@ -38,9 +39,12 @@ impl Technique {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning => Difficulty::Medium,
-            Self::NakedSets | Self::HiddenSets | Self::XWing | Self::XYWing | Self::WWing => {
-                Difficulty::Hard
-            }
+            Self::NakedSets
+            | Self::HiddenSets
+            | Self::XWing
+            | Self::XYWing
+            | Self::WWing
+            | Self::AlsXz => Difficulty::Hard,
             Self::PermutationEnumeration
             | Self::DualCluePermutation => Difficulty::Expert,
             Self::SimpleForcingChain => Difficulty::Master,
@@ -110,6 +114,13 @@ pub enum Reason {
         link_c: (usize, usize),
         link_d: (usize, usize),
         link_value: u8,
+        eliminated_value: u8,
+    },
+    /// ALS-XZ: two almost locked sets connected by a restricted common candidate.
+    AlsXzElimination {
+        als_a: Vec<(usize, usize)>,
+        als_b: Vec<(usize, usize)>,
+        rcc_value: u8,
         eliminated_value: u8,
     },
     /// Forcing chain: assuming a value led to a contradiction.
