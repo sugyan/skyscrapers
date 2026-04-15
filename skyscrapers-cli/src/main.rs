@@ -111,6 +111,21 @@ fn solve_backtracking(puzzle: &Puzzle) {
 }
 
 fn solve_logic(puzzle: &Puzzle) {
+    // Reject non-unique puzzles up front so --logic behaves consistently with
+    // the default (BacktrackingSolver) path. The logic solver itself never
+    // verifies uniqueness — it just stops when no technique makes progress.
+    match BacktrackingSolver.solve(puzzle, 2).len() {
+        0 => {
+            eprintln!("error: no solution found");
+            process::exit(1);
+        }
+        1 => {}
+        _ => {
+            eprintln!("error: multiple solutions found (not a valid puzzle)");
+            process::exit(1);
+        }
+    }
+
     let result = LogicSolver.solve_with_difficulty(puzzle, 1);
 
     for step in &result.steps {
@@ -123,7 +138,7 @@ fn solve_logic(puzzle: &Puzzle) {
             println!("{sol}");
         }
         _ => {
-            println!(
+            eprintln!(
                 "Logic solver could not solve this puzzle (stuck after {} steps).",
                 result.steps.len()
             );
@@ -132,7 +147,9 @@ fn solve_logic(puzzle: &Puzzle) {
     }
 }
 
-/// Format one trace line: `[Technique] <actions>  (<reason>)`.
+/// Format one trace line:
+/// - placement steps: `[Technique] <actions>  (<reason>)`
+/// - elimination-only steps: `[Technique] <reason>  ->  <eliminations>`
 fn format_step(step: &Step, puzzle: &Puzzle) -> String {
     let tech = technique_name(step.technique);
     let has_place = step
