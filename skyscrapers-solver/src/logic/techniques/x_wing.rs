@@ -268,7 +268,7 @@ mod tests {
         // Set up: in rows 0 and 2, restrict value 3 to cols 1 and 3 only
         for c in 0..5 {
             if c != 1 && c != 3 {
-                state.candidates[0 * 5 + c] = state.candidates[0 * 5 + c].remove(3);
+                state.candidates[c] = state.candidates[c].remove(3);
                 state.candidates[2 * 5 + c] = state.candidates[2 * 5 + c].remove(3);
             }
         }
@@ -341,7 +341,7 @@ mod tests {
         // Row 0: keep 1 only in cols 0 and 2
         for c in 0..6 {
             if c != 0 && c != 2 {
-                state.candidates[0 * 6 + c] = state.candidates[0 * 6 + c].remove(1);
+                state.candidates[c] = state.candidates[c].remove(1);
             }
         }
         // Row 2: keep 1 only in cols 0 and 4

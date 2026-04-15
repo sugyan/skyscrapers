@@ -108,9 +108,8 @@ fn collect_als_from_cells(
         let mut union_bits = 0u16;
         let mut subset_cells = Vec::with_capacity(size);
 
-        for bit in 0..len {
+        for (bit, &(r, c)) in cells.iter().enumerate().take(len) {
             if mask & (1 << bit) != 0 {
-                let (r, c) = cells[bit];
                 let idx = state.idx(r, c);
                 union_bits |= state.candidates[idx].raw();
                 subset_cells.push((r, c));
@@ -285,8 +284,8 @@ mod tests {
         state.candidates[1] = Candidates::single(1).union(Candidates::single(2));
 
         // Set up ALS B in col 0: (1,0)={3,4}, (2,0)={2,4} → 2 cells, values {2,3,4}
-        state.candidates[1 * n + 0] = Candidates::single(3).union(Candidates::single(4));
-        state.candidates[2 * n + 0] = Candidates::single(2).union(Candidates::single(4));
+        state.candidates[n] = Candidates::single(3).union(Candidates::single(4));
+        state.candidates[2 * n] = Candidates::single(2).union(Candidates::single(4));
 
         // (2,1) starts with full candidates including 2; the elimination should remove it.
         assert!(state.candidates[2 * n + 1].contains(2));
