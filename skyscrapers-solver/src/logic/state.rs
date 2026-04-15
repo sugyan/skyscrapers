@@ -207,7 +207,7 @@ impl SolveState {
     /// yield right-to-left indices). Used by single-clue permutation enumeration.
     pub(crate) fn clued_lines(&self) -> Vec<CluedLine> {
         let n = self.n;
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(4 * n);
         for i in 0..n {
             if let Some(expected) = self.left[i] {
                 out.push(CluedLine {
@@ -252,7 +252,7 @@ impl SolveState {
     /// Right/Bottom clue. Used by dual-clue permutation enumeration.
     pub(crate) fn dual_clued_lines(&self) -> Vec<DualCluedLine> {
         let n = self.n;
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(2 * n);
         for i in 0..n {
             if let (Some(fwd), Some(rev)) = (self.left[i], self.right[i]) {
                 out.push(DualCluedLine {
