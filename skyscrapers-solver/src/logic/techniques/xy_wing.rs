@@ -1,5 +1,5 @@
 use crate::logic::difficulty::{Action, Reason, Step, Technique};
-use crate::logic::state::SolveState;
+use crate::logic::state::{SolveState, sees};
 use crate::logic::techniques::TechniqueResult;
 
 /// XY-Wing: three bivalue cells forming a pattern that eliminates a candidate.
@@ -32,7 +32,7 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
                 continue;
             }
             // B must see A (same row or column)
-            if br != pr && bc != pc {
+            if !sees((br, bc), (pr, pc)) {
                 continue;
             }
             // B must share exactly one value with A, and the shared value must be x or y
@@ -57,7 +57,7 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
                     continue;
                 }
                 // C must see A (same row or column)
-                if cr != pr && cc != pc {
+                if !sees((cr, cc), (pr, pc)) {
                     continue;
                 }
                 // C must be on a different line from the B-pivot connection
@@ -74,8 +74,7 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
                 }
 
                 // Found XY-Wing pattern! Eliminate z from cells that see both B and C
-                let result =
-                    eliminate_xy_wing(state, (pr, pc), (br, bc), (cr, cc), z);
+                let result = eliminate_xy_wing(state, (pr, pc), (br, bc), (cr, cc), z);
                 if !matches!(result, TechniqueResult::NoProgress) {
                     return result;
                 }
@@ -107,9 +106,7 @@ fn eliminate_xy_wing(
                 continue;
             }
             // Must see both wing_a and wing_b (share row or col with each)
-            let sees_a = r == wing_a.0 || c == wing_a.1;
-            let sees_b = r == wing_b.0 || c == wing_b.1;
-            if sees_a && sees_b {
+            if sees((r, c), wing_a) && sees((r, c), wing_b) {
                 actions.push(Action::Eliminate {
                     row: r,
                     col: c,
@@ -179,12 +176,9 @@ mod tests {
         }
 
         // Set bivalue cells
-        state.candidates[0] =
-            Candidates::single(1).union(Candidates::single(2)); // (0,0) = {1,2}
-        state.candidates[1] =
-            Candidates::single(1).union(Candidates::single(3)); // (0,1) = {1,3}
-        state.candidates[n] =
-            Candidates::single(2).union(Candidates::single(3)); // (1,0) = {2,3}
+        state.candidates[0] = Candidates::single(1).union(Candidates::single(2)); // (0,0) = {1,2}
+        state.candidates[1] = Candidates::single(1).union(Candidates::single(3)); // (0,1) = {1,3}
+        state.candidates[n] = Candidates::single(2).union(Candidates::single(3)); // (1,0) = {2,3}
 
         // (1,1) should have 3 as candidate so it can be eliminated
         // It sees wing A (0,1) via col 1, and wing C (1,0) via row 1

@@ -161,5 +161,4 @@ mod tests {
             "Expected forcing chain to make progress or puzzle to be solved"
         );
     }
-
 }

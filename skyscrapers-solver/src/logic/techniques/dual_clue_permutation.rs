@@ -8,52 +8,30 @@ use crate::logic::techniques::TechniqueResult;
 /// enumerate valid permutations that satisfy BOTH clues at once. This can
 /// eliminate candidates that single-clue permutation enumeration cannot.
 pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
-    let n = state.n;
-
-    for i in 0..n {
-        // Row: Left + Right
-        if let (Some(expected_left), Some(expected_right)) = (state.left[i], state.right[i]) {
-            let indices: Vec<usize> = (0..n).map(|c| i * n + c).collect();
-            let result = check_line_dual(
-                state,
-                &indices,
-                expected_left,
-                expected_right,
-                Line::Row(i),
-                CluePosition::Left(i),
-                CluePosition::Right(i),
-            );
-            if !matches!(result, TechniqueResult::NoProgress) {
-                return result;
-            }
-        }
-
-        // Column: Top + Bottom
-        if let (Some(expected_top), Some(expected_bottom)) = (state.top[i], state.bottom[i]) {
-            let indices: Vec<usize> = (0..n).map(|r| r * n + i).collect();
-            let result = check_line_dual(
-                state,
-                &indices,
-                expected_top,
-                expected_bottom,
-                Line::Col(i),
-                CluePosition::Top(i),
-                CluePosition::Bottom(i),
-            );
-            if !matches!(result, TechniqueResult::NoProgress) {
-                return result;
-            }
+    for dl in state.dual_clued_lines() {
+        let result = enumerate_and_prune_dual(
+            state,
+            &dl.indices,
+            dl.expected_fwd,
+            dl.expected_rev,
+            dl.line,
+            dl.clue_fwd,
+            dl.clue_rev,
+        );
+        if !matches!(result, TechniqueResult::NoProgress) {
+            return result;
         }
     }
-
     TechniqueResult::NoProgress
 }
 
-/// Check a single line against both opposing clues.
+/// Enumerate permutations of a single line against both opposing clues and
+/// eliminate any candidate that no valid permutation can support.
+///
 /// `indices` is in natural order (left-to-right or top-to-bottom).
 /// `expected_fwd` is the clue from the start (Left/Top).
 /// `expected_rev` is the clue from the end (Right/Bottom).
-fn check_line_dual(
+fn enumerate_and_prune_dual(
     state: &mut SolveState,
     indices: &[usize],
     expected_fwd: u8,
@@ -198,8 +176,14 @@ fn backtrack_dual(
     expected_rev: u8,
 ) -> bool {
     if depth == other_free.len() {
-        let (vis_fwd, vis_rev) =
-            compute_visibility_both(state, indices, pos_to_depth, target_pos, target_val, assignments);
+        let (vis_fwd, vis_rev) = compute_visibility_both(
+            state,
+            indices,
+            pos_to_depth,
+            target_pos,
+            target_val,
+            assignments,
+        );
         return vis_fwd == expected_fwd && vis_rev == expected_rev;
     }
 

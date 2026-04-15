@@ -261,12 +261,6 @@ fn format_reason(reason: &Reason, puzzle: &Puzzle) -> String {
         Reason::UniqueInLine { line, value } => {
             format!("{value} is unique in {}", line_name(*line))
         }
-        Reason::ClueConstraint { clue, expected } => {
-            format!(
-                "clue constraint ({}, expected={expected})",
-                clue_with_value(*clue, &puzzle.clues),
-            )
-        }
         Reason::SetInLine {
             line,
             cells,

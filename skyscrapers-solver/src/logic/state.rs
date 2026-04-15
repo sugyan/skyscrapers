@@ -1,6 +1,7 @@
 use skyscrapers_core::Puzzle;
 
 use crate::candidates::Candidates;
+use crate::logic::difficulty::{CluePosition, Line};
 
 /// Mutable solving state for the logic solver.
 ///
@@ -68,8 +69,12 @@ impl SolveState {
         Some(state)
     }
 
-    /// Assign value `v` to cell (r, c) and propagate constraints.
-    /// Returns false if contradiction detected.
+    /// Assign value `v` to cell (r, c) and propagate Latin-square constraints
+    /// (eliminate `v` from all peers in the same row and column).
+    ///
+    /// Returns false if this assignment contradicts the current state (the
+    /// cell is already set to a different value, `v` is not a candidate, or
+    /// propagation empties another cell's candidate set).
     pub fn assign(&mut self, r: usize, c: usize, v: u8) -> bool {
         let idx = r * self.n + c;
 
@@ -195,6 +200,110 @@ impl SolveState {
     pub fn idx(&self, r: usize, c: usize) -> usize {
         r * self.n + c
     }
+
+    /// Iterate every row/column that has a clue set on at least one side.
+    ///
+    /// `indices` are in viewing order for the given clue (e.g., Right-clue lines
+    /// yield right-to-left indices). Used by single-clue permutation enumeration.
+    pub(crate) fn clued_lines(&self) -> Vec<CluedLine> {
+        let n = self.n;
+        let mut out = Vec::new();
+        for i in 0..n {
+            if let Some(expected) = self.left[i] {
+                out.push(CluedLine {
+                    indices: (0..n).map(|c| i * n + c).collect(),
+                    expected,
+                    line: Line::Row(i),
+                    clue_pos: CluePosition::Left(i),
+                });
+            }
+            if let Some(expected) = self.right[i] {
+                out.push(CluedLine {
+                    indices: (0..n).rev().map(|c| i * n + c).collect(),
+                    expected,
+                    line: Line::Row(i),
+                    clue_pos: CluePosition::Right(i),
+                });
+            }
+            if let Some(expected) = self.top[i] {
+                out.push(CluedLine {
+                    indices: (0..n).map(|r| r * n + i).collect(),
+                    expected,
+                    line: Line::Col(i),
+                    clue_pos: CluePosition::Top(i),
+                });
+            }
+            if let Some(expected) = self.bottom[i] {
+                out.push(CluedLine {
+                    indices: (0..n).rev().map(|r| r * n + i).collect(),
+                    expected,
+                    line: Line::Col(i),
+                    clue_pos: CluePosition::Bottom(i),
+                });
+            }
+        }
+        out
+    }
+
+    /// Iterate every row/column that has both opposing clues set.
+    ///
+    /// `indices` are in natural order (left-to-right for rows, top-to-bottom for
+    /// columns); `expected_fwd` is the Left/Top clue, `expected_rev` is the
+    /// Right/Bottom clue. Used by dual-clue permutation enumeration.
+    pub(crate) fn dual_clued_lines(&self) -> Vec<DualCluedLine> {
+        let n = self.n;
+        let mut out = Vec::new();
+        for i in 0..n {
+            if let (Some(fwd), Some(rev)) = (self.left[i], self.right[i]) {
+                out.push(DualCluedLine {
+                    indices: (0..n).map(|c| i * n + c).collect(),
+                    expected_fwd: fwd,
+                    expected_rev: rev,
+                    line: Line::Row(i),
+                    clue_fwd: CluePosition::Left(i),
+                    clue_rev: CluePosition::Right(i),
+                });
+            }
+            if let (Some(fwd), Some(rev)) = (self.top[i], self.bottom[i]) {
+                out.push(DualCluedLine {
+                    indices: (0..n).map(|r| r * n + i).collect(),
+                    expected_fwd: fwd,
+                    expected_rev: rev,
+                    line: Line::Col(i),
+                    clue_fwd: CluePosition::Top(i),
+                    clue_rev: CluePosition::Bottom(i),
+                });
+            }
+        }
+        out
+    }
+}
+
+/// A row or column with a single clue, prepared for permutation enumeration.
+pub(crate) struct CluedLine {
+    pub indices: Vec<usize>,
+    pub expected: u8,
+    pub line: Line,
+    pub clue_pos: CluePosition,
+}
+
+/// A row or column with both opposing clues, prepared for dual-clue enumeration.
+pub(crate) struct DualCluedLine {
+    pub indices: Vec<usize>,
+    pub expected_fwd: u8,
+    pub expected_rev: u8,
+    pub line: Line,
+    pub clue_fwd: CluePosition,
+    pub clue_rev: CluePosition,
+}
+
+/// Two cells "see" each other iff they share a row or column.
+///
+/// Used by peer-based techniques (XY-Wing, W-Wing, ALS-XZ) to check whether
+/// an elimination target is linked to a pattern's anchor cells.
+#[inline]
+pub(crate) fn sees(a: (usize, usize), b: (usize, usize)) -> bool {
+    a.0 == b.0 || a.1 == b.1
 }
 
 #[cfg(test)]

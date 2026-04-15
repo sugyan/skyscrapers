@@ -9,71 +9,18 @@ use crate::logic::techniques::TechniqueResult;
 /// values (respecting per-cell candidates and value uniqueness) can produce
 /// a visibility count matching the clue. If not, eliminate the candidate.
 pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
-    let n = state.n;
-
-    for i in 0..n {
-        if let Some(expected) = state.left[i] {
-            let indices: Vec<usize> = (0..n).map(|c| i * n + c).collect();
-            let result = check_line(
-                state,
-                &indices,
-                expected,
-                Line::Row(i),
-                CluePosition::Left(i),
-            );
-            if !matches!(result, TechniqueResult::NoProgress) {
-                return result;
-            }
-        }
-
-        if let Some(expected) = state.right[i] {
-            let indices: Vec<usize> = (0..n).rev().map(|c| i * n + c).collect();
-            let result = check_line(
-                state,
-                &indices,
-                expected,
-                Line::Row(i),
-                CluePosition::Right(i),
-            );
-            if !matches!(result, TechniqueResult::NoProgress) {
-                return result;
-            }
-        }
-
-        if let Some(expected) = state.top[i] {
-            let indices: Vec<usize> = (0..n).map(|r| r * n + i).collect();
-            let result = check_line(
-                state,
-                &indices,
-                expected,
-                Line::Col(i),
-                CluePosition::Top(i),
-            );
-            if !matches!(result, TechniqueResult::NoProgress) {
-                return result;
-            }
-        }
-
-        if let Some(expected) = state.bottom[i] {
-            let indices: Vec<usize> = (0..n).rev().map(|r| r * n + i).collect();
-            let result = check_line(
-                state,
-                &indices,
-                expected,
-                Line::Col(i),
-                CluePosition::Bottom(i),
-            );
-            if !matches!(result, TechniqueResult::NoProgress) {
-                return result;
-            }
+    for cl in state.clued_lines() {
+        let result = enumerate_and_prune(state, &cl.indices, cl.expected, cl.line, cl.clue_pos);
+        if !matches!(result, TechniqueResult::NoProgress) {
+            return result;
         }
     }
-
     TechniqueResult::NoProgress
 }
 
-/// Check a single line (in viewing order) against its clue.
-fn check_line(
+/// Enumerate permutations of a single line (in viewing order) and eliminate
+/// any candidate that cannot possibly satisfy the line's clue.
+fn enumerate_and_prune(
     state: &mut SolveState,
     indices: &[usize],
     expected: u8,

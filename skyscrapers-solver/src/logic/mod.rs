@@ -24,6 +24,11 @@ pub struct LogicSolver;
 
 impl LogicSolver {
     /// Solve the puzzle and return solutions, difficulty, and steps.
+    ///
+    /// The logic solver never branches, so it returns either 0 or 1 solution.
+    /// `limit == 0` is the only value that short-circuits to an empty result;
+    /// any positive `limit` runs the full solve. The parameter exists for
+    /// [`Solver`] trait compatibility with [`BacktrackingSolver`](crate::BacktrackingSolver).
     pub fn solve_with_difficulty(&self, puzzle: &Puzzle, limit: usize) -> SolveResult {
         if limit == 0 {
             return SolveResult {
@@ -337,5 +342,4 @@ mod tests {
         let step = step.unwrap();
         assert!(!step.actions.is_empty());
     }
-
 }

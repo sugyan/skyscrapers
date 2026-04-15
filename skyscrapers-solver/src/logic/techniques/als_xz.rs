@@ -1,6 +1,6 @@
 use crate::candidates::Candidates;
 use crate::logic::difficulty::{Action, Reason, Step, Technique};
-use crate::logic::state::SolveState;
+use crate::logic::state::{SolveState, sees};
 use crate::logic::techniques::TechniqueResult;
 
 /// An Almost Locked Set: k cells with k+1 candidate values in a single line.
@@ -85,11 +85,7 @@ fn collect_all_als(state: &SolveState) -> Vec<Als> {
 }
 
 /// Enumerate subsets of `cells` that form ALSs (k cells, k+1 candidates).
-fn collect_als_from_cells(
-    state: &SolveState,
-    cells: &[(usize, usize)],
-    out: &mut Vec<Als>,
-) {
+fn collect_als_from_cells(state: &SolveState, cells: &[(usize, usize)], out: &mut Vec<Als>) {
     let len = cells.len();
     if len < 2 {
         return;
@@ -154,9 +150,9 @@ fn is_restricted_common(state: &SolveState, a: &Als, b: &Als, x: u8) -> bool {
     }
 
     // Every cell in x_cells_a must see every cell in x_cells_b
-    for &(ar, ac) in &x_cells_a {
-        for &(br, bc) in &x_cells_b {
-            if ar != br && ac != bc {
+    for &a_cell in &x_cells_a {
+        for &b_cell in &x_cells_b {
+            if !sees(a_cell, b_cell) {
                 return false;
             }
         }
@@ -205,8 +201,8 @@ fn try_eliminate(
                 continue;
             }
             // Must see all z-cells in A and all z-cells in B
-            let sees_all_a = z_cells_a.iter().all(|&(zr, zc)| r == zr || c == zc);
-            let sees_all_b = z_cells_b.iter().all(|&(zr, zc)| r == zr || c == zc);
+            let sees_all_a = z_cells_a.iter().all(|&zc| sees((r, c), zc));
+            let sees_all_b = z_cells_b.iter().all(|&zc| sees((r, c), zc));
             if sees_all_a && sees_all_b {
                 actions.push(Action::Eliminate {
                     row: r,
@@ -296,9 +292,20 @@ mod tests {
                 assert_eq!(step.technique, Technique::AlsXz);
                 // Should eliminate 2 from (2,1) at minimum
                 let has_target = step.actions.iter().any(|a| {
-                    matches!(a, Action::Eliminate { row: 2, col: 1, value: 2 })
+                    matches!(
+                        a,
+                        Action::Eliminate {
+                            row: 2,
+                            col: 1,
+                            value: 2
+                        }
+                    )
                 });
-                assert!(has_target, "Expected elimination of 2 from (2,1), got: {:?}", step.actions);
+                assert!(
+                    has_target,
+                    "Expected elimination of 2 from (2,1), got: {:?}",
+                    step.actions
+                );
             }
             _ => panic!("Expected ALS-XZ to find a pattern"),
         }

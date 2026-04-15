@@ -37,7 +37,6 @@ const TECHNIQUES: &[Technique] = &[
     Technique::AlsXz,
     Technique::PermutationEnumeration,
     Technique::DualCluePermutation,
-
     Technique::SimpleForcingChain,
     Technique::FullForcingChain,
 ];
@@ -69,7 +68,8 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
 
         Technique::SimpleForcingChain => forcing_chain::apply_simple(state),
         Technique::FullForcingChain => forcing_chain::apply_full(state),
-        Technique::CluePruning => TechniqueResult::NoProgress, // applied during initialization
+        // CluePruning runs only once during `SolveState::new` and is never dispatched here.
+        Technique::CluePruning => unreachable!("CluePruning is applied during SolveState::new"),
     }
 }
 
@@ -78,45 +78,35 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
 /// Returns false if a contradiction is detected.
 pub(crate) fn propagate_simple(state: &mut SolveState) -> bool {
     const SIMPLE_TECHNIQUES: &[Technique] = &[Technique::NakedSingles, Technique::HiddenSingles];
-    loop {
-        let mut progress = false;
-        for &technique in SIMPLE_TECHNIQUES {
-            match apply_technique(technique, state) {
-                TechniqueResult::Contradiction => return false,
-                TechniqueResult::Progress(_) => {
-                    progress = true;
-                    break;
-                }
-                TechniqueResult::NoProgress => continue,
-            }
-        }
-        if !progress {
-            break;
-        }
-    }
-    for idx in 0..state.n * state.n {
-        if state.grid[idx].is_none() && state.candidates[idx].is_empty() {
-            return false;
-        }
-    }
-    if state.is_complete() && !state.verify_clues() {
-        return false;
-    }
-    true
+    propagate_with(state, SIMPLE_TECHNIQUES)
 }
 
 /// Run all techniques except ForcingChain variants in a loop until no more progress.
+/// Used by FullForcingChain for full propagation (no ForcingChain recursion).
 /// Returns false if a contradiction is detected.
 pub(crate) fn propagate(state: &mut SolveState) -> bool {
+    const FULL_TECHNIQUES: &[Technique] = &[
+        Technique::NakedSingles,
+        Technique::HiddenSingles,
+        Technique::NakedSets,
+        Technique::HiddenSets,
+        Technique::XWing,
+        Technique::XYWing,
+        Technique::WWing,
+        Technique::AlsXz,
+        Technique::PermutationEnumeration,
+        Technique::DualCluePermutation,
+    ];
+    propagate_with(state, FULL_TECHNIQUES)
+}
+
+/// Repeatedly apply the given techniques in order until no technique makes progress.
+/// Returns false if a contradiction is detected during propagation, if any unassigned
+/// cell has no remaining candidates, or if the grid is complete but violates a clue.
+fn propagate_with(state: &mut SolveState, techniques: &[Technique]) -> bool {
     loop {
         let mut progress = false;
-        for &technique in TECHNIQUES {
-            if matches!(
-                technique,
-                Technique::SimpleForcingChain | Technique::FullForcingChain
-            ) {
-                continue;
-            }
+        for &technique in techniques {
             match apply_technique(technique, state) {
                 TechniqueResult::Contradiction => return false,
                 TechniqueResult::Progress(_) => {
@@ -130,13 +120,11 @@ pub(crate) fn propagate(state: &mut SolveState) -> bool {
             break;
         }
     }
-    // Check for empty candidates in unassigned cells
     for idx in 0..state.n * state.n {
         if state.grid[idx].is_none() && state.candidates[idx].is_empty() {
             return false;
         }
     }
-    // If complete, verify clues
     if state.is_complete() && !state.verify_clues() {
         return false;
     }
