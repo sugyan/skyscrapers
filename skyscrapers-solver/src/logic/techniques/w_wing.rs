@@ -2,6 +2,10 @@ use crate::logic::difficulty::{Action, Reason, Step, Technique};
 use crate::logic::state::SolveState;
 use crate::logic::techniques::TechniqueResult;
 
+/// A strong link: two cells in the same row or column where some value appears
+/// as a candidate in exactly those two cells.
+type StrongLink = ((usize, usize), (usize, usize));
+
 /// W-Wing: two bivalue cells with the same candidate pair, connected by a strong link.
 ///
 /// Cells A = {x, y} and B = {x, y}. A strong link on value v exists in some line
@@ -29,8 +33,7 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
     }
 
     // Precompute strong links: for each value v, lines where v appears in exactly 2 cells.
-    // Each strong link is ((r1,c1), (r2,c2)).
-    let mut strong_links: Vec<Vec<((usize, usize), (usize, usize))>> = vec![Vec::new(); n + 1];
+    let mut strong_links: Vec<Vec<StrongLink>> = vec![Vec::new(); n + 1];
     for v in 1..=n as u8 {
         // Check rows
         for r in 0..n {
@@ -61,10 +64,8 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
     }
 
     // Try each pair of bivalue cells with the same candidate pair
-    for i in 0..bivalues.len() {
-        let (ar, ac, ax, ay) = bivalues[i];
-        for j in (i + 1)..bivalues.len() {
-            let (br, bc, bx, by) = bivalues[j];
+    for (i, &(ar, ac, ax, ay)) in bivalues.iter().enumerate() {
+        for &(br, bc, bx, by) in bivalues.iter().skip(i + 1) {
             // Must have the same candidate pair
             if !(ax == bx && ay == by) {
                 continue;

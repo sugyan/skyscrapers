@@ -133,33 +133,28 @@ mod tests {
         let mut state = SolveState::new(&puzzle).unwrap();
 
         // Run simpler techniques first to get to a state where forcing chain is needed
-        let mut found_forcing_chain = false;
-        loop {
-            if !propagate(&mut state) {
-                panic!("Unexpected contradiction during propagation");
-            }
-            // Check if forcing chain can now make progress (try full propagation)
-            let result = apply_full(&mut state);
-            match result {
-                TechniqueResult::Progress(step) => {
-                    assert!(matches!(
-                        step.technique,
-                        Technique::SimpleForcingChain | Technique::FullForcingChain
-                    ));
-                    assert!(!step.actions.is_empty());
-                    found_forcing_chain = true;
-                    break;
-                }
-                TechniqueResult::NoProgress => {
-                    // Propagation didn't help and forcing chain found nothing.
-                    // The state may already be fully reduced by other techniques.
-                    break;
-                }
-                TechniqueResult::Contradiction => {
-                    panic!("Unexpected contradiction from forcing chain");
-                }
-            }
+        if !propagate(&mut state) {
+            panic!("Unexpected contradiction during propagation");
         }
+        // Check if forcing chain can now make progress (try full propagation)
+        let found_forcing_chain = match apply_full(&mut state) {
+            TechniqueResult::Progress(step) => {
+                assert!(matches!(
+                    step.technique,
+                    Technique::SimpleForcingChain | Technique::FullForcingChain
+                ));
+                assert!(!step.actions.is_empty());
+                true
+            }
+            TechniqueResult::NoProgress => {
+                // Propagation didn't help and forcing chain found nothing.
+                // The state may already be fully reduced by other techniques.
+                false
+            }
+            TechniqueResult::Contradiction => {
+                panic!("Unexpected contradiction from forcing chain");
+            }
+        };
         // Either forcing chain fired, or the puzzle was solved without it
         assert!(
             found_forcing_chain || state.is_complete(),

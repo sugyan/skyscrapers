@@ -187,7 +187,7 @@ mod tests {
         for r in 0..4 {
             for c in 0..4 {
                 let v = sol.get(r, c);
-                assert!(v >= 1 && v <= 4, "cell ({r},{c}) = {v}, expected 1..=4");
+                assert!((1..=4).contains(&v), "cell ({r},{c}) = {v}, expected 1..=4");
                 assert_eq!(v, ls.get(r, c) + 1);
             }
         }
@@ -222,7 +222,7 @@ mod tests {
             for v in [clues.top(i), clues.bottom(i), clues.left(i), clues.right(i)] {
                 assert!(v.is_some());
                 let v = v.unwrap();
-                assert!(v >= 1 && v <= 4, "clue value {v} out of range");
+                assert!((1..=4).contains(&v), "clue value {v} out of range");
             }
         }
     }
