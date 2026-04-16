@@ -7,7 +7,7 @@ use rand_chacha::ChaCha20Rng;
 use skyscrapers_core::{Clues, Puzzle};
 use skyscrapers_generator::{GeneratorParams, generate};
 use skyscrapers_solver::logic::difficulty::{Action, CluePosition, Line, Reason, Step, Technique};
-use skyscrapers_solver::{BacktrackingSolver, LogicSolver, Solver};
+use skyscrapers_solver::{BacktrackingSolver, Difficulty, LogicSolver, Solver};
 
 #[derive(Parser)]
 #[command(
@@ -30,6 +30,10 @@ enum Command {
         /// RNG seed (random if omitted)
         #[arg(long)]
         seed: Option<u64>,
+
+        /// Target difficulty level (easy, medium, hard, expert, master, grandmaster)
+        #[arg(long)]
+        difficulty: Option<Difficulty>,
     },
     /// Solve a Skyscrapers puzzle
     Solve {
@@ -46,7 +50,11 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::Generate { n, seed } => {
+        Command::Generate {
+            n,
+            seed,
+            difficulty,
+        } => {
             let n = n as usize;
             let seed = seed.unwrap_or_else(|| {
                 let s = rand::random::<u64>();
@@ -54,9 +62,22 @@ fn main() {
                 s
             });
             let mut rng = ChaCha20Rng::seed_from_u64(seed);
-            let params = GeneratorParams::new(n, BacktrackingSolver);
-            let (puzzle, _solution) = generate(&mut rng, &params);
-            println!("{puzzle}");
+            let mut params = GeneratorParams::new(n);
+            if let Some(d) = difficulty {
+                params = params.with_target_difficulty(d);
+            }
+            match generate(&mut rng, &params) {
+                Ok((puzzle, _solution)) => {
+                    if let Some(d) = difficulty {
+                        eprintln!("difficulty: {d}");
+                    }
+                    println!("{puzzle}");
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    process::exit(1);
+                }
+            }
         }
         Command::Solve { file, logic } => {
             let input = read_input(file.as_deref());
