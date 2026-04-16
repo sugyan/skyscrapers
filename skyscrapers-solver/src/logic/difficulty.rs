@@ -45,8 +45,7 @@ impl Technique {
             | Self::XYWing
             | Self::WWing
             | Self::AlsXz => Difficulty::Hard,
-            Self::PermutationEnumeration
-            | Self::DualCluePermutation => Difficulty::Expert,
+            Self::PermutationEnumeration | Self::DualCluePermutation => Difficulty::Expert,
             Self::SimpleForcingChain => Difficulty::Master,
             Self::FullForcingChain => Difficulty::Grandmaster,
         }
@@ -77,8 +76,6 @@ pub enum Reason {
     SingleCandidate { row: usize, col: usize },
     /// Value can only go in one cell within a line (Hidden Single).
     UniqueInLine { line: Line, value: u8 },
-    /// Clue constrains candidates.
-    ClueConstraint { clue: CluePosition, expected: u8 },
     /// Set-based reasoning within a line (Naked/Hidden Sets).
     SetInLine {
         line: Line,

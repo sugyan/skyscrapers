@@ -1,5 +1,5 @@
 use crate::logic::difficulty::{Action, Reason, Step, Technique};
-use crate::logic::state::SolveState;
+use crate::logic::state::{SolveState, sees};
 use crate::logic::techniques::TechniqueResult;
 
 /// A strong link: two cells in the same row or column where some value appears
@@ -44,8 +44,7 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
                 })
                 .collect();
             if cells_with_v.len() == 2 {
-                strong_links[v as usize]
-                    .push(((r, cells_with_v[0]), (r, cells_with_v[1])));
+                strong_links[v as usize].push(((r, cells_with_v[0]), (r, cells_with_v[1])));
             }
         }
         // Check columns
@@ -57,8 +56,7 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
                 })
                 .collect();
             if cells_with_v.len() == 2 {
-                strong_links[v as usize]
-                    .push(((cells_with_v[0], c), (cells_with_v[1], c)));
+                strong_links[v as usize].push(((cells_with_v[0], c), (cells_with_v[1], c)));
             }
         }
     }
@@ -85,12 +83,11 @@ pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
                         continue;
                     }
 
-                    // Check: C sees A and D sees B
-                    let c_sees_a = c_cell.0 == ar || c_cell.1 == ac;
-                    let d_sees_b = d_cell.0 == br || d_cell.1 == bc;
-                    // Or: C sees B and D sees A
-                    let c_sees_b = c_cell.0 == br || c_cell.1 == bc;
-                    let d_sees_a = d_cell.0 == ar || d_cell.1 == ac;
+                    // Check: C sees A and D sees B, or C sees B and D sees A
+                    let c_sees_a = sees(c_cell, (ar, ac));
+                    let d_sees_b = sees(d_cell, (br, bc));
+                    let c_sees_b = sees(c_cell, (br, bc));
+                    let d_sees_a = sees(d_cell, (ar, ac));
 
                     if !((c_sees_a && d_sees_b) || (c_sees_b && d_sees_a)) {
                         continue;
@@ -140,9 +137,7 @@ fn eliminate_w_wing(
                 continue;
             }
             // Must see both A and B (share row or col with each)
-            let sees_a = r == cell_a.0 || c == cell_a.1;
-            let sees_b = r == cell_b.0 || c == cell_b.1;
-            if sees_a && sees_b {
+            if sees((r, c), cell_a) && sees((r, c), cell_b) {
                 actions.push(Action::Eliminate {
                     row: r,
                     col: c,
