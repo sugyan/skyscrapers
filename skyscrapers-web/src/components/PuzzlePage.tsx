@@ -1,5 +1,6 @@
 import { useReducer, useCallback, useEffect } from "react";
 import type { Puzzle, GameState, GameAction, BoardCell } from "../types";
+import type { Difficulty } from "../wasm";
 import { validateBoard } from "../validation";
 import { PuzzleGrid } from "./PuzzleGrid";
 import { NumberPad } from "./NumberPad";
@@ -145,6 +146,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 interface PuzzlePageProps {
   puzzle: Puzzle;
   solution: number[][];
+  difficulty?: Difficulty | null;
   onNewPuzzle: () => void;
   onShowHowToPlay: () => void;
 }
@@ -152,6 +154,7 @@ interface PuzzlePageProps {
 export function PuzzlePage({
   puzzle,
   solution,
+  difficulty,
   onNewPuzzle,
   onShowHowToPlay,
 }: PuzzlePageProps) {
@@ -262,6 +265,11 @@ export function PuzzlePage({
     <div className="flex flex-col items-center p-5 sm:p-8">
       <div className="flex items-center gap-3 mb-5">
         <h1 className="text-2xl font-bold">Skyscrapers</h1>
+        {difficulty && (
+          <span className="text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 capitalize">
+            {difficulty}
+          </span>
+        )}
         <button
           onClick={onShowHowToPlay}
           className="w-7 h-7 rounded-full border border-gray-400 dark:border-slate-500 text-sm font-bold text-gray-500 dark:text-gray-400 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700"
