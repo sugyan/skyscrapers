@@ -38,10 +38,11 @@ function parseUrlParams(): {
   if (!Number.isInteger(n) || n < 4 || n > 8) return null;
   try {
     const seed = BigInt(seedStr);
-    const diffStr = params.get("difficulty");
-    const difficulty = DIFFICULTIES.includes(diffStr as Difficulty)
-      ? (diffStr as Difficulty)
-      : undefined;
+    const diffStr = params.get("difficulty")?.toLowerCase();
+    const difficulty =
+      diffStr && DIFFICULTIES.includes(diffStr as Difficulty)
+        ? (diffStr as Difficulty)
+        : undefined;
     return { n, seed, difficulty };
   } catch {
     return null;
@@ -79,7 +80,11 @@ function formatGenerateError(
 ): string {
   const message = e instanceof Error ? e.message : String(e);
   if (difficulty && message.includes("failed to generate puzzle at target")) {
-    return `Couldn't find a ${difficulty} puzzle for size ${n} in 100 attempts. Try another seed, a different size, or a lower difficulty.`;
+    const attemptsMatch = message.match(/(\d+)\s+attempts?/i);
+    const attemptsText = attemptsMatch
+      ? `${attemptsMatch[1]} attempts`
+      : "the configured number of attempts";
+    return `Couldn't find a ${difficulty} puzzle for size ${n} in ${attemptsText}. Try another seed, a different size, or a lower difficulty.`;
   }
   return message;
 }

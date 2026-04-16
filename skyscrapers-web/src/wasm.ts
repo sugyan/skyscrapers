@@ -2,22 +2,16 @@ import init, { generate_puzzle } from "skyscrapers-generator";
 import type { Puzzle } from "./types";
 
 /** Supported difficulty levels, matching the Rust `Difficulty` enum. */
-export type Difficulty =
-  | "easy"
-  | "medium"
-  | "hard"
-  | "expert"
-  | "master"
-  | "grandmaster";
-
-export const DIFFICULTIES: readonly Difficulty[] = [
+export const DIFFICULTIES = [
   "easy",
   "medium",
   "hard",
   "expert",
   "master",
   "grandmaster",
-];
+] as const;
+
+export type Difficulty = (typeof DIFFICULTIES)[number];
 
 /**
  * Shape returned by WASM generate_puzzle (via serde-wasm-bindgen).
