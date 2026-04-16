@@ -4,8 +4,8 @@ import type { SamplePuzzle } from "./samples";
 import { PuzzlePage } from "./components/PuzzlePage";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 import type { Puzzle } from "./types";
-import { generatePuzzle, randomSeed } from "./wasm";
-import type { GenerateResult } from "./wasm";
+import { generatePuzzle, randomSeed, DIFFICULTIES } from "./wasm";
+import type { GenerateResult, Difficulty } from "./wasm";
 import "./styles/app.css";
 
 function puzzleFromSample(sample: SamplePuzzle): GenerateResult {
@@ -25,7 +25,11 @@ function puzzleFromSample(sample: SamplePuzzle): GenerateResult {
   };
 }
 
-function parseUrlParams(): { n: number; seed: bigint } | null {
+function parseUrlParams(): {
+  n: number;
+  seed: bigint;
+  difficulty?: Difficulty;
+} | null {
   const params = new URLSearchParams(window.location.search);
   const nStr = params.get("n");
   const seedStr = params.get("seed");
@@ -33,16 +37,26 @@ function parseUrlParams(): { n: number; seed: bigint } | null {
   const n = Number(nStr);
   if (!Number.isInteger(n) || n < 4 || n > 8) return null;
   try {
-    return { n, seed: BigInt(seedStr) };
+    const seed = BigInt(seedStr);
+    const diffStr = params.get("difficulty");
+    const difficulty = DIFFICULTIES.includes(diffStr as Difficulty)
+      ? (diffStr as Difficulty)
+      : undefined;
+    return { n, seed, difficulty };
   } catch {
     return null;
   }
 }
 
-function updateUrl(n: number, seed: string) {
+function updateUrl(n: number, seed: string, difficulty: Difficulty | null) {
   const url = new URL(window.location.href);
   url.searchParams.set("n", String(n));
   url.searchParams.set("seed", seed);
+  if (difficulty) {
+    url.searchParams.set("difficulty", difficulty);
+  } else {
+    url.searchParams.delete("difficulty");
+  }
   window.history.pushState({}, "", url);
 }
 
@@ -54,6 +68,22 @@ function clearUrl() {
 
 const SIZES = [4, 5, 6, 7, 8] as const;
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatGenerateError(
+  e: unknown,
+  n: number,
+  difficulty: Difficulty | null,
+): string {
+  const message = e instanceof Error ? e.message : String(e);
+  if (difficulty && message.includes("failed to generate puzzle at target")) {
+    return `Couldn't find a ${difficulty} puzzle for size ${n} in 100 attempts. Try another seed, a different size, or a lower difficulty.`;
+  }
+  return message;
+}
+
 function App() {
   const [current, setCurrent] = useState<{
     puzzle: Puzzle;
@@ -62,7 +92,9 @@ function App() {
   const [generating, setGenerating] = useState(false);
   const [size, setSize] = useState<number>(5);
   const [seedInput, setSeedInput] = useState("");
+  const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [lastSeed, setLastSeed] = useState<string | null>(null);
+  const [lastDifficulty, setLastDifficulty] = useState<Difficulty | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
 
@@ -72,14 +104,22 @@ function App() {
     if (params) {
       setSize(params.n);
       setSeedInput(params.seed.toString());
+      setDifficulty(params.difficulty ?? "");
       setGenerating(true);
-      generatePuzzle(params.n, params.seed)
+      generatePuzzle(params.n, params.seed, params.difficulty)
         .then((result) => {
           setLastSeed(params.seed.toString());
+          setLastDifficulty(params.difficulty ?? null);
           setCurrent(result);
         })
         .catch((e) => {
-          setError(e instanceof Error ? e.message : String(e));
+          setError(
+            formatGenerateError(
+              e,
+              params.n,
+              params.difficulty ? params.difficulty : null,
+            ),
+          );
         })
         .finally(() => setGenerating(false));
     }
@@ -88,15 +128,17 @@ function App() {
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
+    const target: Difficulty | null = difficulty || null;
     try {
       const seed = seedInput.trim() ? BigInt(seedInput.trim()) : randomSeed();
       const seedStr = seed.toString();
       setLastSeed(seedStr);
-      const result = await generatePuzzle(size, seed);
+      const result = await generatePuzzle(size, seed, target ?? undefined);
+      setLastDifficulty(target);
       setCurrent(result);
-      updateUrl(size, seedStr);
+      updateUrl(size, seedStr, target);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatGenerateError(e, size, target));
     } finally {
       setGenerating(false);
     }
@@ -114,6 +156,7 @@ function App() {
           key={`${current.puzzle.n}-${lastSeed}`}
           puzzle={current.puzzle}
           solution={current.solution}
+          difficulty={lastDifficulty}
           onNewPuzzle={handleNewPuzzle}
           onShowHowToPlay={() => setShowHowToPlay(true)}
         />
@@ -169,6 +212,24 @@ function App() {
             className="flex-1 px-3 py-1.5 border border-gray-400 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-sm"
           />
         </div>
+        <div className="flex items-center gap-3 mb-3">
+          <label htmlFor="difficulty-select" className="text-sm">
+            Difficulty:
+          </label>
+          <select
+            id="difficulty-select"
+            value={difficulty}
+            onChange={(e) => setDifficulty(e.target.value as Difficulty | "")}
+            className="px-3 py-1.5 border border-gray-400 dark:border-slate-600 rounded bg-white dark:bg-slate-800"
+          >
+            <option value="">Any</option>
+            {DIFFICULTIES.map((d) => (
+              <option key={d} value={d}>
+                {capitalize(d)}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           onClick={handleGenerate}
           disabled={generating}
@@ -178,7 +239,10 @@ function App() {
         </button>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         {lastSeed && !current && (
-          <p className="mt-2 text-xs text-gray-500">Last seed: {lastSeed}</p>
+          <p className="mt-2 text-xs text-gray-500">
+            Last seed: {lastSeed}
+            {lastDifficulty ? ` · ${capitalize(lastDifficulty)}` : ""}
+          </p>
         )}
       </section>
 

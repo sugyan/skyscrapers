@@ -1,6 +1,24 @@
 import init, { generate_puzzle } from "skyscrapers-generator";
 import type { Puzzle } from "./types";
 
+/** Supported difficulty levels, matching the Rust `Difficulty` enum. */
+export type Difficulty =
+  | "easy"
+  | "medium"
+  | "hard"
+  | "expert"
+  | "master"
+  | "grandmaster";
+
+export const DIFFICULTIES: readonly Difficulty[] = [
+  "easy",
+  "medium",
+  "hard",
+  "expert",
+  "master",
+  "grandmaster",
+];
+
 /**
  * Shape returned by WASM generate_puzzle (via serde-wasm-bindgen).
  * Note: serde-wasm-bindgen serializes `None` as `undefined`, not `null`.
@@ -57,9 +75,10 @@ async function ensureInit(): Promise<void> {
 export async function generatePuzzle(
   n: number,
   seed: bigint,
+  difficulty?: Difficulty,
 ): Promise<GenerateResult> {
   await ensureInit();
-  const raw = generate_puzzle(n, seed) as WasmPuzzleResult;
+  const raw = generate_puzzle(n, seed, difficulty) as WasmPuzzleResult;
   return convertWasmResult(raw);
 }
 
