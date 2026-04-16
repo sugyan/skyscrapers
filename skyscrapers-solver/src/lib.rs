@@ -4,6 +4,7 @@ pub mod logic;
 
 pub use backtracking::BacktrackingSolver;
 pub use logic::LogicSolver;
+pub use logic::difficulty::Difficulty;
 use skyscrapers_core::{Puzzle, Solution};
 
 /// A solver that finds solutions to a Skyscrapers puzzle.

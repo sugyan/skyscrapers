@@ -134,6 +134,36 @@ pub enum Line {
     Col(usize),
 }
 
+impl std::fmt::Display for Difficulty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Easy => "easy",
+            Self::Medium => "medium",
+            Self::Hard => "hard",
+            Self::Expert => "expert",
+            Self::Master => "master",
+            Self::Grandmaster => "grandmaster",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for Difficulty {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "easy" => Ok(Self::Easy),
+            "medium" => Ok(Self::Medium),
+            "hard" => Ok(Self::Hard),
+            "expert" => Ok(Self::Expert),
+            "master" => Ok(Self::Master),
+            "grandmaster" => Ok(Self::Grandmaster),
+            _ => Err(format!("unknown difficulty: {s}")),
+        }
+    }
+}
+
 /// Identifies a clue position.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CluePosition {

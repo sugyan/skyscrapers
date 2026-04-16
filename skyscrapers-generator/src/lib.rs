@@ -4,7 +4,7 @@ mod wasm;
 use latin_sampler::LatinSquare;
 use rand::seq::SliceRandom;
 use skyscrapers_core::{Board, Clues, Puzzle, Solution};
-use skyscrapers_solver::Solver;
+use skyscrapers_solver::{BacktrackingSolver, Difficulty, LogicSolver, Solver};
 
 /// Converts a `LatinSquare` (0-based symbols) into a `Solution` (1-based heights).
 pub fn solution_from_latin_square(ls: &LatinSquare) -> Solution {
@@ -64,20 +64,40 @@ fn set_clue(clues: &mut Clues, target: RemovalTarget, value: Option<u8>) {
     }
 }
 
+/// Checks whether a removal is acceptable.
+///
+/// When `target_difficulty` is `None`, only uniqueness is checked via `solver`.
+/// When `target_difficulty` is `Some(target)`, uniqueness is checked first,
+/// then the logic solver verifies the puzzle is solvable within the target difficulty.
+fn is_removal_ok(
+    puzzle: &Puzzle,
+    solver: &dyn Solver,
+    target_difficulty: Option<Difficulty>,
+) -> bool {
+    if solver.solve(puzzle, 2).len() != 1 {
+        return false;
+    }
+    if let Some(target) = target_difficulty {
+        let result = LogicSolver.solve_with_difficulty(puzzle, 1);
+        matches!(result.difficulty, Some(d) if d <= target)
+    } else {
+        true
+    }
+}
+
 /// Greedy removal of board cells and clues while preserving uniqueness.
 ///
 /// Strategy: remove board cells first, then clues.
 /// Each removal is tested by temporarily clearing the value and checking
-/// uniqueness. If uniqueness is lost, the original value is restored.
-///
-/// NOTE: This two-phase strategy may be changed in the future to a mixed
-/// strategy where board cells and clues are interleaved randomly.
+/// acceptability. If the removal breaks uniqueness or exceeds the target
+/// difficulty, the original value is restored.
 fn greedy_remove<R: rand::Rng>(
     rng: &mut R,
     board: Board,
     clues: Clues,
     solver: &dyn Solver,
-) -> Puzzle {
+    target_difficulty: Option<Difficulty>,
+) -> (Puzzle, Option<Difficulty>) {
     let n = board.n();
     let mut puzzle = Puzzle { board, clues };
 
@@ -96,7 +116,7 @@ fn greedy_remove<R: rand::Rng>(
             continue;
         }
         puzzle.board.set(r, c, None);
-        if solver.solve(&puzzle, 2).len() != 1 {
+        if !is_removal_ok(&puzzle, solver, target_difficulty) {
             puzzle.board.set(r, c, saved);
         }
     }
@@ -120,33 +140,83 @@ fn greedy_remove<R: rand::Rng>(
             continue;
         }
         set_clue(&mut puzzle.clues, *target, None);
-        if solver.solve(&puzzle, 2).len() != 1 {
+        if !is_removal_ok(&puzzle, solver, target_difficulty) {
             set_clue(&mut puzzle.clues, *target, saved);
         }
     }
 
-    puzzle
+    let difficulty = if target_difficulty.is_some() {
+        LogicSolver.solve_with_difficulty(&puzzle, 1).difficulty
+    } else {
+        None
+    };
+
+    (puzzle, difficulty)
 }
+
+/// Error returned when puzzle generation fails.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GenerateError {
+    /// Could not generate a puzzle at the target difficulty within the attempt limit.
+    MaxAttemptsExceeded { attempts: usize, target: Difficulty },
+}
+
+impl std::fmt::Display for GenerateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MaxAttemptsExceeded { attempts, target } => {
+                write!(
+                    f,
+                    "failed to generate puzzle at target difficulty {target} after {attempts} attempts"
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for GenerateError {}
 
 /// Parameters for puzzle generation.
 pub struct GeneratorParams {
     pub n: usize,
     pub solver: Box<dyn Solver>,
     pub sampler_params: latin_sampler::SamplerParams,
+    pub target_difficulty: Option<Difficulty>,
+    pub max_attempts: usize,
 }
 
 impl GeneratorParams {
-    /// Creates new generator parameters with default sampler settings.
+    /// Creates new generator parameters with default settings.
+    ///
+    /// Uses `BacktrackingSolver` for uniqueness checking, default sampler params,
+    /// no target difficulty, and 100 max attempts.
     ///
     /// # Panics
     /// Panics if `n` is not in `1..=9`.
-    pub fn new(n: usize, solver: impl Solver + 'static) -> Self {
+    pub fn new(n: usize) -> Self {
         assert!((1..=9).contains(&n), "n must be in range 1..=9");
         Self {
             n,
-            solver: Box::new(solver),
+            solver: Box::new(BacktrackingSolver),
             sampler_params: latin_sampler::SamplerParams::default(),
+            target_difficulty: None,
+            max_attempts: 100,
         }
+    }
+
+    pub fn with_solver(mut self, solver: impl Solver + 'static) -> Self {
+        self.solver = Box::new(solver);
+        self
+    }
+
+    pub fn with_target_difficulty(mut self, difficulty: Difficulty) -> Self {
+        self.target_difficulty = Some(difficulty);
+        self
+    }
+
+    pub fn with_max_attempts(mut self, max_attempts: usize) -> Self {
+        self.max_attempts = max_attempts;
+        self
     }
 }
 
@@ -154,15 +224,50 @@ impl GeneratorParams {
 ///
 /// Returns the puzzle and its solution.
 ///
+/// When `target_difficulty` is set, retries with different latin squares
+/// until a puzzle matching the target difficulty is produced, or returns
+/// an error after `max_attempts`.
+///
 /// Pipeline: sample latin square → convert to solution → derive board + clues
 /// → greedy removal → (puzzle, solution)
-pub fn generate<R: rand::Rng>(rng: &mut R, params: &GeneratorParams) -> (Puzzle, Solution) {
-    let ls = latin_sampler::sample(params.n, rng, &params.sampler_params);
-    let solution = solution_from_latin_square(&ls);
-    let board = board_from_solution(&solution);
-    let clues = derive_clues(&solution);
-    let puzzle = greedy_remove(rng, board, clues, params.solver.as_ref());
-    (puzzle, solution)
+pub fn generate<R: rand::Rng>(
+    rng: &mut R,
+    params: &GeneratorParams,
+) -> Result<(Puzzle, Solution), GenerateError> {
+    let attempts = if params.target_difficulty.is_some() {
+        params.max_attempts
+    } else {
+        1
+    };
+
+    for _ in 0..attempts {
+        let ls = latin_sampler::sample(params.n, rng, &params.sampler_params);
+        let solution = solution_from_latin_square(&ls);
+        let board = board_from_solution(&solution);
+        let clues = derive_clues(&solution);
+        let (puzzle, difficulty) = greedy_remove(
+            rng,
+            board,
+            clues,
+            params.solver.as_ref(),
+            params.target_difficulty,
+        );
+
+        match params.target_difficulty {
+            None => return Ok((puzzle, solution)),
+            Some(target) if difficulty == Some(target) => return Ok((puzzle, solution)),
+            _ => continue,
+        }
+    }
+
+    // Reached only when target_difficulty is Some — the None branch above
+    // always returns on the first iteration.
+    Err(GenerateError::MaxAttemptsExceeded {
+        attempts: params.max_attempts,
+        target: params
+            .target_difficulty
+            .expect("loop only exits here when target_difficulty is Some"),
+    })
 }
 
 #[cfg(test)]
@@ -171,7 +276,6 @@ mod tests {
     use latin_sampler::SamplerParams;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use skyscrapers_solver::BacktrackingSolver;
 
     fn sample_latin_square(n: usize, seed: u64) -> LatinSquare {
         let mut rng = ChaCha20Rng::seed_from_u64(seed);
@@ -259,18 +363,14 @@ mod tests {
     }
 
     fn make_generator_params(n: usize) -> GeneratorParams {
-        GeneratorParams {
-            n,
-            solver: Box::new(BacktrackingSolver),
-            sampler_params: SamplerParams::default(),
-        }
+        GeneratorParams::new(n)
     }
 
     #[test]
     fn generate_produces_unique_solution() {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let params = make_generator_params(4);
-        let (puzzle, _solution) = generate(&mut rng, &params);
+        let (puzzle, _solution) = generate(&mut rng, &params).unwrap();
 
         let solutions = BacktrackingSolver.solve(&puzzle, 2);
         assert_eq!(solutions.len(), 1);
@@ -280,7 +380,7 @@ mod tests {
     fn generate_removes_some_cells_and_clues() {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let params = make_generator_params(4);
-        let (puzzle, _solution) = generate(&mut rng, &params);
+        let (puzzle, _solution) = generate(&mut rng, &params).unwrap();
         let n = puzzle.board.n();
 
         let mut given_count = 0;
@@ -321,8 +421,8 @@ mod tests {
     fn generate_deterministic_with_seed() {
         let params = make_generator_params(4);
 
-        let (puzzle1, sol1) = generate(&mut ChaCha20Rng::seed_from_u64(99), &params);
-        let (puzzle2, sol2) = generate(&mut ChaCha20Rng::seed_from_u64(99), &params);
+        let (puzzle1, sol1) = generate(&mut ChaCha20Rng::seed_from_u64(99), &params).unwrap();
+        let (puzzle2, sol2) = generate(&mut ChaCha20Rng::seed_from_u64(99), &params).unwrap();
 
         assert_eq!(puzzle1, puzzle2);
         assert_eq!(sol1, sol2);
@@ -336,7 +436,7 @@ mod tests {
         // Test multiple seeds to cover different puzzle configurations
         for seed in 0..10 {
             let mut rng = ChaCha20Rng::seed_from_u64(seed);
-            let (puzzle, expected_solution) = generate(&mut rng, &params);
+            let (puzzle, expected_solution) = generate(&mut rng, &params).unwrap();
 
             let bt_solutions = BacktrackingSolver.solve(&puzzle, 2);
             assert_eq!(
@@ -421,5 +521,50 @@ mod tests {
             // If logic solver can't solve it, that's OK — it just means the puzzle
             // requires techniques not yet implemented
         }
+    }
+
+    #[test]
+    fn generate_with_target_difficulty_easy() {
+        let params = GeneratorParams::new(4)
+            .with_target_difficulty(Difficulty::Easy)
+            .with_max_attempts(50);
+        let mut rng = ChaCha20Rng::seed_from_u64(0);
+        let (puzzle, _solution) = generate(&mut rng, &params).expect("should find an Easy puzzle");
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        assert_eq!(result.difficulty, Some(Difficulty::Easy));
+        assert_eq!(result.solutions.len(), 1);
+    }
+
+    #[test]
+    fn generate_with_target_difficulty_unique_solution() {
+        let params = GeneratorParams::new(5)
+            .with_target_difficulty(Difficulty::Hard)
+            .with_max_attempts(50);
+        let mut rng = ChaCha20Rng::seed_from_u64(0);
+        let (puzzle, solution) =
+            generate(&mut rng, &params).expect("should find a Hard puzzle with a unique solution");
+        let bt_solutions = BacktrackingSolver.solve(&puzzle, 2);
+        assert_eq!(bt_solutions.len(), 1);
+        assert_eq!(bt_solutions[0], solution);
+    }
+
+    #[test]
+    fn generate_with_target_difficulty_deterministic() {
+        let params = GeneratorParams::new(4).with_target_difficulty(Difficulty::Easy);
+        let result1 = generate(&mut ChaCha20Rng::seed_from_u64(0), &params);
+        let result2 = generate(&mut ChaCha20Rng::seed_from_u64(0), &params);
+        assert_eq!(result1.is_ok(), result2.is_ok());
+        if let (Ok((p1, s1)), Ok((p2, s2))) = (result1, result2) {
+            assert_eq!(p1, p2);
+            assert_eq!(s1, s2);
+        }
+    }
+
+    #[test]
+    fn generate_without_target_difficulty_unchanged() {
+        let params = make_generator_params(4);
+        let mut rng = ChaCha20Rng::seed_from_u64(42);
+        let result = generate(&mut rng, &params);
+        assert!(result.is_ok());
     }
 }

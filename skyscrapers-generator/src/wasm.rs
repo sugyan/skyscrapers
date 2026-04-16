@@ -5,7 +5,6 @@ use wasm_bindgen::prelude::*;
 
 use crate::{GeneratorParams, generate};
 use skyscrapers_core::{Puzzle, Solution};
-use skyscrapers_solver::BacktrackingSolver;
 
 #[derive(Serialize)]
 struct PuzzleResult {
@@ -24,8 +23,9 @@ pub fn generate_puzzle(n: u8, seed: u64) -> Result<JsValue, JsError> {
     let n = n as usize;
 
     let mut rng = ChaCha20Rng::seed_from_u64(seed);
-    let params = GeneratorParams::new(n, BacktrackingSolver);
-    let (puzzle, solution) = generate(&mut rng, &params);
+    let params = GeneratorParams::new(n);
+    let (puzzle, solution) =
+        generate(&mut rng, &params).map_err(|e| JsError::new(&e.to_string()))?;
 
     let result = PuzzleResult { puzzle, solution };
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsError::new(&e.to_string()))
