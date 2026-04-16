@@ -158,16 +158,16 @@ fn greedy_remove<R: rand::Rng>(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GenerateError {
     /// Could not generate a puzzle at the target difficulty within the attempt limit.
-    MaxAttemptsExceeded { attempts: usize },
+    MaxAttemptsExceeded { attempts: usize, target: Difficulty },
 }
 
 impl std::fmt::Display for GenerateError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::MaxAttemptsExceeded { attempts } => {
+            Self::MaxAttemptsExceeded { attempts, target } => {
                 write!(
                     f,
-                    "failed to generate puzzle at target difficulty after {attempts} attempts"
+                    "failed to generate puzzle at target difficulty {target} after {attempts} attempts"
                 )
             }
         }
@@ -260,8 +260,13 @@ pub fn generate<R: rand::Rng>(
         }
     }
 
+    // Reached only when target_difficulty is Some — the None branch above
+    // always returns on the first iteration.
     Err(GenerateError::MaxAttemptsExceeded {
         attempts: params.max_attempts,
+        target: params
+            .target_difficulty
+            .expect("loop only exits here when target_difficulty is Some"),
     })
 }
 
@@ -536,11 +541,11 @@ mod tests {
             .with_target_difficulty(Difficulty::Hard)
             .with_max_attempts(50);
         let mut rng = ChaCha20Rng::seed_from_u64(0);
-        if let Ok((puzzle, solution)) = generate(&mut rng, &params) {
-            let bt_solutions = BacktrackingSolver.solve(&puzzle, 2);
-            assert_eq!(bt_solutions.len(), 1);
-            assert_eq!(bt_solutions[0], solution);
-        }
+        let (puzzle, solution) =
+            generate(&mut rng, &params).expect("should find a Hard puzzle with a unique solution");
+        let bt_solutions = BacktrackingSolver.solve(&puzzle, 2);
+        assert_eq!(bt_solutions.len(), 1);
+        assert_eq!(bt_solutions[0], solution);
     }
 
     #[test]
