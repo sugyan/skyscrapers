@@ -263,7 +263,7 @@ mod tests {
         let board = Board::new_empty(5);
         let clues = Clues::new_all_none(5);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         // Set up: in rows 0 and 2, restrict value 3 to cols 1 and 3 only
         for c in 0..5 {
@@ -297,7 +297,7 @@ mod tests {
         let board = Board::new_empty(5);
         let clues = Clues::new_all_none(5);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         // In cols 1 and 4, restrict value 2 to rows 0 and 3 only
         for r in 0..5 {
@@ -336,7 +336,7 @@ mod tests {
         let board = Board::new_empty(6);
         let clues = Clues::new_all_none(6);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         // Row 0: keep 1 only in cols 0 and 2
         for c in 0..6 {
@@ -379,7 +379,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         // In a completely empty 4x4, every value appears in all 4 columns per row,

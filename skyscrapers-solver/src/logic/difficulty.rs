@@ -21,6 +21,7 @@ pub enum Technique {
     NakedSingles,
     HiddenSingles,
     CluePruning,
+    VisibilityAnalysis,
     NakedSets,
     HiddenSets,
     XWing,
@@ -38,7 +39,7 @@ impl Technique {
     pub fn difficulty(self) -> Difficulty {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
-            Self::CluePruning => Difficulty::Medium,
+            Self::CluePruning | Self::VisibilityAnalysis => Difficulty::Medium,
             Self::NakedSets
             | Self::HiddenSets
             | Self::XWing
@@ -125,6 +126,28 @@ pub enum Reason {
         assumed_cell: (usize, usize),
         assumed_value: u8,
     },
+    /// Initial clue-based candidate pruning during solve state construction.
+    InitialClueConstraint { clue: CluePosition },
+    /// Visibility-based analytical forcing (dead-zone / saturation / bracket).
+    VisibilityForcing {
+        line: Line,
+        clue: CluePosition,
+        pattern: VisibilityPattern,
+    },
+}
+
+/// Specific analytical pattern used by [`Technique::VisibilityAnalysis`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum VisibilityPattern {
+    /// Values behind a placed `n` contribute zero visibility, so required
+    /// visibles are forced into the free positions before `n`.
+    DeadZone,
+    /// The count of still-achievable new maxima equals the count of remaining
+    /// visibles needed, forcing each viable free cell to become a new max.
+    Saturation,
+    /// A single free cell is bracketed between placed values that fully
+    /// determine its minimum and maximum (e.g., `5, ?, 7` with clue=3).
+    Bracket,
 }
 
 /// Identifies a row or column.

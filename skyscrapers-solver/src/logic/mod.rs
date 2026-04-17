@@ -38,8 +38,8 @@ impl LogicSolver {
             };
         }
 
-        let mut state = match SolveState::new(puzzle) {
-            Some(s) => s,
+        let (mut state, init_steps) = match SolveState::new(puzzle) {
+            Some(pair) => pair,
             None => {
                 return SolveResult {
                     solutions: Vec::new(),
@@ -49,8 +49,15 @@ impl LogicSolver {
             }
         };
 
-        let mut steps = Vec::new();
+        // Seed `steps` with the init-time CluePruning output so the trace
+        // shows why early cells look already-determined. Also seed
+        // Init CluePruning runs unconditionally from clue geometry and its
+        // work is implicit in the puzzle's starting state — we include its
+        // Steps in the trace for explainability but don't promote the
+        // puzzle's difficulty on their account. Difficulty is determined
+        // by the techniques the solve loop actually needs from here.
         let mut max_technique: Option<Technique> = None;
+        let mut steps = init_steps;
 
         loop {
             // Check if already complete (initial board values + propagation may solve it)
@@ -114,7 +121,7 @@ impl LogicSolver {
             clues: puzzle.clues.clone(),
         };
 
-        let mut state = SolveState::new(&hint_puzzle)?;
+        let (mut state, _init_steps) = SolveState::new(&hint_puzzle)?;
 
         match apply_next_technique(&mut state) {
             TechniqueResult::Progress(step) => Some(step),

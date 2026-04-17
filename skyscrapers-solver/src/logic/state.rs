@@ -1,7 +1,7 @@
 use skyscrapers_core::Puzzle;
 
 use crate::candidates::Candidates;
-use crate::logic::difficulty::{CluePosition, Line};
+use crate::logic::difficulty::{Action, CluePosition, Line, Reason, Step, Technique};
 
 /// Mutable solving state for the logic solver.
 ///
@@ -19,8 +19,13 @@ pub(crate) struct SolveState {
 }
 
 impl SolveState {
-    /// Build initial state from a puzzle. Returns None if contradictory.
-    pub fn new(puzzle: &Puzzle) -> Option<Self> {
+    /// Build initial state from a puzzle.
+    ///
+    /// Returns `None` if contradictory, else the state paired with any [`Step`]s
+    /// produced by the one-shot clue-based pruning performed during init.
+    /// Callers typically prepend these Steps to the solve trace so downstream
+    /// naked-singles like "R1C1 = 1" have a visible antecedent.
+    pub fn new(puzzle: &Puzzle) -> Option<(Self, Vec<Step>)> {
         let n = puzzle.board.n();
         if n == 0 || n > 9 || puzzle.clues.n() != n {
             return None;
@@ -37,12 +42,15 @@ impl SolveState {
             right: (0..n).map(|i| clues.right(i)).collect(),
         };
 
-        // Apply clue-based pruning before board values
-        if !super::techniques::clue_pruning::apply(&mut state) {
-            return None;
-        }
+        // Apply clue-based pruning before board values. This may leave some
+        // cells with a singleton candidate set (clue=1 or clue=n cases).
+        let mut init_steps = super::techniques::clue_pruning::apply(&mut state)?;
 
-        // Assign any singletons created by clue pruning
+        // Assign any singletons created by clue pruning. We attribute the
+        // resulting placements back to the clue Step(s) that caused them so
+        // the trace shows e.g. "[CluePruning] Left=5 @ Row 0: R0C0=1, ..."
+        // instead of a bare elimination list.
+        let mut placement_cells: Vec<(usize, usize, u8)> = Vec::new();
         for idx in 0..n * n {
             if state.grid[idx].is_none() {
                 if let Some(v) = state.candidates[idx].singleton() {
@@ -51,9 +59,11 @@ impl SolveState {
                     if !state.assign(r, c, v) {
                         return None;
                     }
+                    placement_cells.push((r, c, v));
                 }
             }
         }
+        attribute_placements_to_steps(&mut init_steps, &placement_cells, n);
 
         // Place board values with constraint propagation
         for r in 0..n {
@@ -66,7 +76,7 @@ impl SolveState {
             }
         }
 
-        Some(state)
+        Some((state, init_steps))
     }
 
     /// Assign value `v` to cell (r, c) and propagate Latin-square constraints
@@ -279,6 +289,59 @@ impl SolveState {
     }
 }
 
+/// Attach `Action::Place` entries to whichever clue-pruning `Step` first
+/// touched the given cell. If no existing Step mentions the cell (rare — would
+/// require a singleton from an empty init), the placements are folded into
+/// the last Step as a best-effort.
+fn attribute_placements_to_steps(
+    steps: &mut Vec<Step>,
+    placements: &[(usize, usize, u8)],
+    n: usize,
+) {
+    if placements.is_empty() {
+        return;
+    }
+    for &(r, c, v) in placements {
+        let cell_idx = r * n + c;
+        let mut attached = false;
+        for step in steps.iter_mut() {
+            if step_touches_cell(step, cell_idx, n) {
+                step.actions.push(Action::Place {
+                    row: r,
+                    col: c,
+                    value: v,
+                });
+                attached = true;
+                break;
+            }
+        }
+        if !attached {
+            // Fallback: emit a standalone placement step. This handles the
+            // exotic case where the singleton emerged from cross-clue
+            // elimination but the original Steps were coalesced away.
+            steps.push(Step {
+                technique: Technique::CluePruning,
+                actions: vec![Action::Place {
+                    row: r,
+                    col: c,
+                    value: v,
+                }],
+                reason: Reason::InitialClueConstraint {
+                    clue: CluePosition::Top(c),
+                },
+            });
+        }
+    }
+}
+
+fn step_touches_cell(step: &Step, cell_idx: usize, n: usize) -> bool {
+    step.actions.iter().any(|a| match a {
+        Action::Eliminate { row, col, .. } | Action::Place { row, col, .. } => {
+            row * n + col == cell_idx
+        }
+    })
+}
+
 /// A row or column with a single clue, prepared for permutation enumeration.
 pub(crate) struct CluedLine {
     pub indices: Vec<usize>,
@@ -317,10 +380,11 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let state = SolveState::new(&puzzle).unwrap();
+        let (state, init_steps) = SolveState::new(&puzzle).unwrap();
         assert_eq!(state.n, 4);
         assert!(state.grid.iter().all(|c| c.is_none()));
         assert!(state.candidates.iter().all(|c| c.count() == 4));
+        assert!(init_steps.is_empty());
     }
 
     #[test]
@@ -328,7 +392,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         assert!(state.assign(0, 0, 3));
         // Row 0 peers should not have 3

@@ -6,7 +6,9 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use skyscrapers_core::{Clues, Puzzle};
 use skyscrapers_generator::{GeneratorParams, generate};
-use skyscrapers_solver::logic::difficulty::{Action, CluePosition, Line, Reason, Step, Technique};
+use skyscrapers_solver::logic::difficulty::{
+    Action, CluePosition, Line, Reason, Step, Technique, VisibilityPattern,
+};
 use skyscrapers_solver::{BacktrackingSolver, Difficulty, LogicSolver, Solver};
 
 #[derive(Parser)]
@@ -221,6 +223,7 @@ fn technique_name(t: Technique) -> &'static str {
         Technique::NakedSingles => "NakedSingles",
         Technique::HiddenSingles => "HiddenSingles",
         Technique::CluePruning => "CluePruning",
+        Technique::VisibilityAnalysis => "VisibilityAnalysis",
         Technique::NakedSets => "NakedSets",
         Technique::HiddenSets => "HiddenSets",
         Technique::XWing => "XWing",
@@ -358,5 +361,24 @@ fn format_reason(reason: &Reason, puzzle: &Puzzle) -> String {
             "assume {}={assumed_value} -> contradiction",
             cell_ref(assumed_cell.0, assumed_cell.1),
         ),
+        Reason::InitialClueConstraint { clue } => {
+            format!("initial {}", clue_with_value(*clue, &puzzle.clues))
+        }
+        Reason::VisibilityForcing {
+            line,
+            clue,
+            pattern,
+        } => {
+            let pat = match pattern {
+                VisibilityPattern::DeadZone => "dead-zone",
+                VisibilityPattern::Saturation => "saturation",
+                VisibilityPattern::Bracket => "bracket",
+            };
+            format!(
+                "{} ({}, {pat})",
+                line_name(*line),
+                clue_with_value(*clue, &puzzle.clues),
+            )
+        }
     }
 }
