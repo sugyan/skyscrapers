@@ -74,13 +74,21 @@ fn analyze_line(
         }
     }
 
+    // `current_visible` counts placed-only visibles. It can legitimately
+    // exceed `clue` mid-solve: future placements in earlier empty cells can
+    // hide buildings currently counted as visible, so this is NOT a sound
+    // contradiction signal here. Similarly, `needed > viable.len()` is not
+    // sound because a larger placed value further along the line can retro-
+    // actively cancel a currently-visible placement, shrinking `current_
+    // visible` and thus raising `needed`. Leave these cases to techniques
+    // that reason over full assignments (permutation / forcing chains).
     if current_visible > clue {
-        return TechniqueResult::Contradiction;
+        return TechniqueResult::NoProgress;
     }
     let needed = clue - current_visible;
 
     if (needed as usize) > viable.len() {
-        return TechniqueResult::Contradiction;
+        return TechniqueResult::NoProgress;
     }
 
     // Pattern B / C: saturation. Every viable free cell must become a new

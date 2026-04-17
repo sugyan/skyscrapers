@@ -1,7 +1,7 @@
 use skyscrapers_core::Puzzle;
 
 use crate::candidates::Candidates;
-use crate::logic::difficulty::{Action, CluePosition, Line, Reason, Step, Technique};
+use crate::logic::difficulty::{Action, CluePosition, Line, Step};
 
 /// Mutable solving state for the logic solver.
 ///
@@ -293,11 +293,7 @@ impl SolveState {
 /// touched the given cell. If no existing Step mentions the cell (rare — would
 /// require a singleton from an empty init), the placements are folded into
 /// the last Step as a best-effort.
-fn attribute_placements_to_steps(
-    steps: &mut Vec<Step>,
-    placements: &[(usize, usize, u8)],
-    n: usize,
-) {
+fn attribute_placements_to_steps(steps: &mut [Step], placements: &[(usize, usize, u8)], n: usize) {
     if placements.is_empty() {
         return;
     }
@@ -316,20 +312,23 @@ fn attribute_placements_to_steps(
             }
         }
         if !attached {
-            // Fallback: emit a standalone placement step. This handles the
-            // exotic case where the singleton emerged from cross-clue
-            // elimination but the original Steps were coalesced away.
-            steps.push(Step {
-                technique: Technique::CluePruning,
-                actions: vec![Action::Place {
+            // Fallback: fold the placement into the last Step. A cell can
+            // only become a singleton via prior eliminations, so `steps`
+            // should always contain at least one Step that touched the
+            // cell — making this branch unreachable in practice. We keep
+            // it defensively rather than inventing a bogus CluePosition.
+            if let Some(last) = steps.last_mut() {
+                last.actions.push(Action::Place {
                     row: r,
                     col: c,
                     value: v,
-                }],
-                reason: Reason::InitialClueConstraint {
-                    clue: CluePosition::Top(c),
-                },
-            });
+                });
+            } else {
+                debug_assert!(
+                    false,
+                    "placement without any prior CluePruning Step: ({r},{c})={v}"
+                );
+            }
         }
     }
 }

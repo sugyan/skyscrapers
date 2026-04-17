@@ -125,7 +125,7 @@ fn record_eliminations(
 ) {
     let r = idx / n;
     let c = idx % n;
-    for v in 1..=9u8 {
+    for v in 1..=(n as u8) {
         if before.contains(v) && !after.contains(v) {
             actions.push(Action::Eliminate {
                 row: r,

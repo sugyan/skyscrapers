@@ -50,12 +50,13 @@ impl LogicSolver {
         };
 
         // Seed `steps` with the init-time CluePruning output so the trace
-        // shows why early cells look already-determined. Also seed
-        // Init CluePruning runs unconditionally from clue geometry and its
-        // work is implicit in the puzzle's starting state — we include its
-        // Steps in the trace for explainability but don't promote the
-        // puzzle's difficulty on their account. Difficulty is determined
-        // by the techniques the solve loop actually needs from here.
+        // shows why early cells look already-determined. CluePruning runs
+        // unconditionally from clue geometry and its work is implicit in
+        // the puzzle's starting state — we include its Steps for
+        // explainability but don't promote the puzzle's difficulty on
+        // their account. Difficulty is determined purely by the techniques
+        // the solve loop actually needs from here, so `max_technique`
+        // starts as `None`.
         let mut max_technique: Option<Technique> = None;
         let mut steps = init_steps;
 
