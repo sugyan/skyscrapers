@@ -186,7 +186,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
         assert!(matches!(apply(&mut state), TechniqueResult::NoProgress));
     }
 
@@ -202,7 +202,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         // Set up bivalue cells
         state.candidates[0] = Candidates::single(1).union(Candidates::single(2)); // (0,0)

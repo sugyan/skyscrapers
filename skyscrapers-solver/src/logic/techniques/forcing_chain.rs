@@ -98,7 +98,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
         // No clues, so forcing chain cannot find contradictions
         assert!(matches!(
             apply_simple(&mut state),
@@ -130,7 +130,7 @@ mod tests {
         clues.set_left(2, Some(2));
         clues.set_bottom(2, Some(2));
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         // Run simpler techniques first to get to a state where forcing chain is needed
         if !propagate(&mut state) {

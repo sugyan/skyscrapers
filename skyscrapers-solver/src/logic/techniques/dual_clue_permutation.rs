@@ -283,7 +283,7 @@ mod tests {
         let mut clues = Clues::new_all_none(4);
         clues.set_left(0, Some(2));
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));
@@ -306,7 +306,7 @@ mod tests {
         clues.set_left(0, Some(1));
         clues.set_right(0, Some(3));
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         // Clue pruning already assigned pos 0 = 4
         assert_eq!(state.grid[state.idx(0, 0)], Some(4));
@@ -327,7 +327,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));

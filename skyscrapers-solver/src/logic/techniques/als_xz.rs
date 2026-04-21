@@ -249,7 +249,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
         // On an empty 4x4 board, some subsets of cells satisfy this implementation's
         // ALS definition, but no valid ALS-XZ elimination exists.
         assert!(matches!(apply(&mut state), TechniqueResult::NoProgress));
@@ -272,7 +272,7 @@ mod tests {
         let board = Board::new_empty(5);
         let clues = Clues::new_all_none(5);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
         let n = 5;
 
         // Set up ALS A in row 0: (0,0)={1,3}, (0,1)={1,2} → 2 cells, values {1,2,3}

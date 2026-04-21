@@ -38,8 +38,8 @@ impl LogicSolver {
             };
         }
 
-        let mut state = match SolveState::new(puzzle) {
-            Some(s) => s,
+        let (mut state, init_steps) = match SolveState::new(puzzle) {
+            Some(pair) => pair,
             None => {
                 return SolveResult {
                     solutions: Vec::new(),
@@ -49,7 +49,13 @@ impl LogicSolver {
             }
         };
 
-        let mut steps = Vec::new();
+        // Seed the trace with init-time CluePruning Steps so downstream
+        // NakedSingles placements have a visible antecedent, but do NOT
+        // promote `max_technique` from them — init pruning runs
+        // unconditionally from clue geometry and its work is implicit in
+        // the puzzle's starting state. Difficulty stays driven purely by
+        // the techniques the solve loop actually needs from here.
+        let mut steps = init_steps;
         let mut max_technique: Option<Technique> = None;
 
         loop {
@@ -114,7 +120,7 @@ impl LogicSolver {
             clues: puzzle.clues.clone(),
         };
 
-        let mut state = SolveState::new(&hint_puzzle)?;
+        let (mut state, _init_steps) = SolveState::new(&hint_puzzle)?;
 
         match apply_next_technique(&mut state) {
             TechniqueResult::Progress(step) => Some(step),

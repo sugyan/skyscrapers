@@ -185,7 +185,7 @@ mod tests {
         board.set(0, 2, Some(3));
         let clues = Clues::new_all_none(5);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(!matches!(result, TechniqueResult::Contradiction));
@@ -196,7 +196,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));

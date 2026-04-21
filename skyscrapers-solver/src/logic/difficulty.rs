@@ -21,6 +21,7 @@ pub enum Technique {
     NakedSingles,
     HiddenSingles,
     CluePruning,
+    VisibilityAnalysis,
     NakedSets,
     HiddenSets,
     XWing,
@@ -38,7 +39,7 @@ impl Technique {
     pub fn difficulty(self) -> Difficulty {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
-            Self::CluePruning => Difficulty::Medium,
+            Self::CluePruning | Self::VisibilityAnalysis => Difficulty::Medium,
             Self::NakedSets
             | Self::HiddenSets
             | Self::XWing
@@ -125,6 +126,13 @@ pub enum Reason {
         assumed_cell: (usize, usize),
         assumed_value: u8,
     },
+    /// Init-time clue pruning: the clue directly eliminated/placed values
+    /// along its line before any solve iteration ran.
+    InitialClueConstraint { clue: CluePosition },
+    /// Visibility analysis: `n` is placed in the line at position `k` (in
+    /// viewing order) and the clue requires `k + 1` visible buildings, so
+    /// the `k` cells before `n` are forced to be strictly ascending.
+    VisibilityForcing { line: Line, clue: CluePosition },
 }
 
 /// Identifies a row or column.

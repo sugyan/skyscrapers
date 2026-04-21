@@ -1,7 +1,7 @@
 use skyscrapers_core::Puzzle;
 
 use crate::candidates::Candidates;
-use crate::logic::difficulty::{CluePosition, Line};
+use crate::logic::difficulty::{CluePosition, Line, Step};
 
 /// Mutable solving state for the logic solver.
 ///
@@ -19,8 +19,14 @@ pub(crate) struct SolveState {
 }
 
 impl SolveState {
-    /// Build initial state from a puzzle. Returns None if contradictory.
-    pub fn new(puzzle: &Puzzle) -> Option<Self> {
+    /// Build initial state from a puzzle.
+    ///
+    /// Returns `None` if the clues or initial board values produce a
+    /// contradiction, otherwise the fresh state paired with any [`Step`]s
+    /// emitted by the one-shot clue-based pruning. Callers typically
+    /// prepend these Steps to the solve trace so the later [`NakedSingles`]
+    /// placements have a visible antecedent in the trace.
+    pub fn new(puzzle: &Puzzle) -> Option<(Self, Vec<Step>)> {
         let n = puzzle.board.n();
         if n == 0 || n > 9 || puzzle.clues.n() != n {
             return None;
@@ -37,12 +43,13 @@ impl SolveState {
             right: (0..n).map(|i| clues.right(i)).collect(),
         };
 
-        // Apply clue-based pruning before board values
-        if !super::techniques::clue_pruning::apply(&mut state) {
-            return None;
-        }
+        // Apply clue-based pruning before board values.
+        let init_steps = super::techniques::clue_pruning::apply(&mut state)?;
 
-        // Assign any singletons created by clue pruning
+        // Assign any singletons created by clue pruning. The trace doesn't
+        // attribute these placements back to the original pruning Steps —
+        // the normal solve loop will re-surface them as NakedSingles Steps
+        // on the first iteration.
         for idx in 0..n * n {
             if state.grid[idx].is_none() {
                 if let Some(v) = state.candidates[idx].singleton() {
@@ -55,7 +62,7 @@ impl SolveState {
             }
         }
 
-        // Place board values with constraint propagation
+        // Place board values with constraint propagation.
         for r in 0..n {
             for c in 0..n {
                 if let Some(v) = puzzle.board.get(r, c) {
@@ -66,7 +73,7 @@ impl SolveState {
             }
         }
 
-        Some(state)
+        Some((state, init_steps))
     }
 
     /// Assign value `v` to cell (r, c) and propagate Latin-square constraints
@@ -317,10 +324,11 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let state = SolveState::new(&puzzle).unwrap();
+        let (state, init_steps) = SolveState::new(&puzzle).unwrap();
         assert_eq!(state.n, 4);
         assert!(state.grid.iter().all(|c| c.is_none()));
         assert!(state.candidates.iter().all(|c| c.count() == 4));
+        assert!(init_steps.is_empty());
     }
 
     #[test]
@@ -328,7 +336,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         assert!(state.assign(0, 0, 3));
         // Row 0 peers should not have 3

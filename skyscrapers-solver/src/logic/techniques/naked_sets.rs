@@ -162,7 +162,7 @@ mod tests {
         board.set(0, 1, Some(2));
         let clues = Clues::new_all_none(5);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         // Manually restrict candidates for row 0:
         // col 2: {3, 4}, col 3: {3, 4}, col 4: {3, 4, 5}
@@ -200,7 +200,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let mut state = SolveState::new(&puzzle).unwrap();
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));
