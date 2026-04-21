@@ -99,7 +99,7 @@ mod tests {
         board.set(3, 2, Some(4));
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         // Value 4 in row 0 can only be at col 3 (eliminated from col 0,1,2 by column peers)
         let result = apply(&mut state);
@@ -121,7 +121,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));

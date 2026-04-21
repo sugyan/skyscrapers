@@ -16,17 +16,22 @@ pub(crate) struct SolveState {
     pub bottom: Vec<Option<u8>>,
     pub left: Vec<Option<u8>>,
     pub right: Vec<Option<u8>>,
+    /// [`Step`]s produced by one-shot clue-based pruning during `new`.
+    ///
+    /// The top-level logic solver drains these into the head of its
+    /// trace (see `solve_with_difficulty`); other callers that don't
+    /// care about trace output can ignore the field entirely.
+    pub init_steps: Vec<Step>,
 }
 
 impl SolveState {
     /// Build initial state from a puzzle.
     ///
-    /// Returns `None` if the clues or initial board values produce a
-    /// contradiction, otherwise the fresh state paired with any [`Step`]s
-    /// emitted by the one-shot clue-based pruning. Callers typically
-    /// prepend these Steps to the solve trace so the later [`NakedSingles`]
-    /// placements have a visible antecedent in the trace.
-    pub fn new(puzzle: &Puzzle) -> Option<(Self, Vec<Step>)> {
+    /// Returns `None` on contradiction. Any [`Step`]s produced by the
+    /// one-shot clue-based pruning are stashed on `self.init_steps` for
+    /// the logic solver to consume; callers uninterested in trace
+    /// output can ignore the field.
+    pub fn new(puzzle: &Puzzle) -> Option<Self> {
         let n = puzzle.board.n();
         if n == 0 || n > 9 || puzzle.clues.n() != n {
             return None;
@@ -41,10 +46,11 @@ impl SolveState {
             bottom: (0..n).map(|i| clues.bottom(i)).collect(),
             left: (0..n).map(|i| clues.left(i)).collect(),
             right: (0..n).map(|i| clues.right(i)).collect(),
+            init_steps: Vec::new(),
         };
 
         // Apply clue-based pruning before board values.
-        let init_steps = super::techniques::clue_pruning::apply(&mut state)?;
+        state.init_steps = super::techniques::clue_pruning::apply(&mut state)?;
 
         // Assign any singletons created by clue pruning. These placements
         // are not re-emitted as explicit `NakedSingles` Steps later — the
@@ -74,7 +80,7 @@ impl SolveState {
             }
         }
 
-        Some((state, init_steps))
+        Some(state)
     }
 
     /// Assign value `v` to cell (r, c) and propagate Latin-square constraints
@@ -325,11 +331,11 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let (state, init_steps) = SolveState::new(&puzzle).unwrap();
+        let state = SolveState::new(&puzzle).unwrap();
         assert_eq!(state.n, 4);
         assert!(state.grid.iter().all(|c| c.is_none()));
         assert!(state.candidates.iter().all(|c| c.count() == 4));
-        assert!(init_steps.is_empty());
+        assert!(state.init_steps.is_empty());
     }
 
     #[test]
@@ -337,7 +343,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         assert!(state.assign(0, 0, 3));
         // Row 0 peers should not have 3

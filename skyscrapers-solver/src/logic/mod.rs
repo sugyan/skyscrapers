@@ -38,16 +38,14 @@ impl LogicSolver {
             };
         }
 
-        let (mut state, init_steps) = match SolveState::new(puzzle) {
-            Some(pair) => pair,
-            None => {
-                return SolveResult {
-                    solutions: Vec::new(),
-                    difficulty: None,
-                    steps: Vec::new(),
-                };
-            }
+        let Some(mut state) = SolveState::new(puzzle) else {
+            return SolveResult {
+                solutions: Vec::new(),
+                difficulty: None,
+                steps: Vec::new(),
+            };
         };
+        let init_steps = std::mem::take(&mut state.init_steps);
 
         // Seed the trace with init-time CluePruning Steps so downstream
         // NakedSingles placements have a visible antecedent, but do NOT
@@ -120,7 +118,7 @@ impl LogicSolver {
             clues: puzzle.clues.clone(),
         };
 
-        let (mut state, _init_steps) = SolveState::new(&hint_puzzle)?;
+        let mut state = SolveState::new(&hint_puzzle)?;
 
         match apply_next_technique(&mut state) {
             TechniqueResult::Progress(step) => Some(step),

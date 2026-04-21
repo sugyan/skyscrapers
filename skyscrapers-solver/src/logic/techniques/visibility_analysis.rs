@@ -193,7 +193,7 @@ mod tests {
         let mut clues = Clues::new_all_none(5);
         clues.set_top(2, Some(4));
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::Progress(_)));
@@ -224,7 +224,7 @@ mod tests {
         let mut clues = Clues::new_all_none(7);
         clues.set_left(0, Some(3));
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::Progress(_)));
@@ -240,7 +240,7 @@ mod tests {
         let mut clues = Clues::new_all_none(5);
         clues.set_left(0, Some(3));
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));
@@ -254,7 +254,7 @@ mod tests {
         let mut clues = Clues::new_all_none(5);
         clues.set_left(0, Some(2));
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));
@@ -277,7 +277,7 @@ mod tests {
         let mut clues = Clues::new_all_none(5);
         clues.set_top(0, Some(4));
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::Contradiction));
@@ -294,7 +294,7 @@ mod tests {
         let mut clues = Clues::new_all_none(5);
         clues.set_left(0, Some(4));
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::Progress(_)));

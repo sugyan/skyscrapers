@@ -136,7 +136,7 @@ mod tests {
         clues.set_left(0, Some(1)); // Left clue = 1 on row 0 → (0,0) must be 4
         let board = Board::new_empty(4);
         let puzzle = Puzzle { board, clues };
-        let (state, _) = SolveState::new(&puzzle).unwrap();
+        let state = SolveState::new(&puzzle).unwrap();
         assert_eq!(state.grid[0], Some(4));
     }
 
@@ -146,7 +146,7 @@ mod tests {
         clues.set_top(0, Some(4));
         let board = Board::new_empty(4);
         let puzzle = Puzzle { board, clues };
-        let (state, _) = SolveState::new(&puzzle).unwrap();
+        let state = SolveState::new(&puzzle).unwrap();
         for r in 0..4 {
             assert_eq!(state.grid[r * 4], Some(r as u8 + 1));
         }
@@ -158,7 +158,7 @@ mod tests {
         clues.set_left(0, Some(2));
         let board = Board::new_empty(5);
         let puzzle = Puzzle { board, clues };
-        let (state, _) = SolveState::new(&puzzle).unwrap();
+        let state = SolveState::new(&puzzle).unwrap();
         assert!(!state.candidates[0].contains(5));
         assert!(state.candidates[0].contains(4));
         assert!(state.candidates[1].contains(5));
@@ -182,7 +182,7 @@ mod tests {
         clues.set_left(0, Some(5));
         let board = Board::new_empty(5);
         let puzzle = Puzzle { board, clues };
-        let (_, init_steps) = SolveState::new(&puzzle).unwrap();
+        let init_steps = SolveState::new(&puzzle).unwrap().init_steps;
         assert_eq!(init_steps.len(), 1);
         let step = &init_steps[0];
         assert_eq!(step.technique, Technique::CluePruning);
@@ -202,7 +202,7 @@ mod tests {
         clues.set_top(2, Some(3));
         let board = Board::new_empty(5);
         let puzzle = Puzzle { board, clues };
-        let (_, init_steps) = SolveState::new(&puzzle).unwrap();
+        let init_steps = SolveState::new(&puzzle).unwrap().init_steps;
         assert_eq!(init_steps.len(), 1);
         assert_eq!(init_steps[0].actions.len(), 3);
     }

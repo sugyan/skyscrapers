@@ -46,7 +46,7 @@ mod tests {
         board.set(0, 2, Some(3));
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         // After init, (0,3) has single candidate 4 but is not placed yet.
         assert_eq!(state.grid[state.idx(0, 3)], None);
@@ -67,7 +67,7 @@ mod tests {
         let board = Board::new_empty(4);
         let clues = Clues::new_all_none(4);
         let puzzle = Puzzle { board, clues };
-        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+        let mut state = SolveState::new(&puzzle).unwrap();
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));
