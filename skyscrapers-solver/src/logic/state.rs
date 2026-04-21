@@ -46,10 +46,11 @@ impl SolveState {
         // Apply clue-based pruning before board values.
         let init_steps = super::techniques::clue_pruning::apply(&mut state)?;
 
-        // Assign any singletons created by clue pruning. The trace doesn't
-        // attribute these placements back to the original pruning Steps —
-        // the normal solve loop will re-surface them as NakedSingles Steps
-        // on the first iteration.
+        // Assign any singletons created by clue pruning. These placements
+        // are not re-emitted as explicit `NakedSingles` Steps later — the
+        // solve loop's NakedSingles pass skips already-assigned cells. In
+        // the trace they're explained indirectly by the CluePruning
+        // elimination Steps that produced the singletons.
         for idx in 0..n * n {
             if state.grid[idx].is_none() {
                 if let Some(v) = state.candidates[idx].singleton() {

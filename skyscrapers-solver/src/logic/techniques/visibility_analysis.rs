@@ -122,9 +122,15 @@ fn analyze_line(
 
     for &idx in &indices[..k] {
         if let Some(v) = state.grid[idx] {
-            // Already placed; it's a running-max by saturation, so update.
-            // (The saturation conclusion itself guarantees v > running_max.)
-            running_max = running_max.max(v);
+            // In the exact-saturation case, every placed pre-`n` value must
+            // already be a strict new running-max and must remain below `n`.
+            // If a user-provided board violates this (e.g. a non-ascending
+            // prefix), init-time clue pruning won't catch it — per-position
+            // caps alone don't enforce monotonicity — so flag it here.
+            if v <= running_max || v >= n_val {
+                return TechniqueResult::Contradiction;
+            }
+            running_max = v;
             continue;
         }
         // Candidate must be > running_max and < n. Collect eliminations.
@@ -252,6 +258,29 @@ mod tests {
 
         let result = apply(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));
+    }
+
+    #[test]
+    fn contradiction_when_pre_n_prefix_not_ascending() {
+        // n=5, Top=4, Col 0 in viewing order = [2, 1, _, 5, _].
+        // k=3, clue-1=3==k → saturation, which requires the pre-n prefix
+        // to be strictly ascending. 2 then 1 violates that — no Latin
+        // filling can satisfy Top=4 here, so we must report Contradiction.
+        //
+        // Init-time clue pruning alone doesn't catch this: per-position
+        // caps for Top=4 on n=5 are pos0≤2, pos1≤3, pos2≤4, all satisfied
+        // by 2 and 1. It's the monotonicity requirement that fails.
+        let mut board = Board::new_empty(5);
+        board.set(0, 0, Some(2));
+        board.set(1, 0, Some(1));
+        board.set(3, 0, Some(5));
+        let mut clues = Clues::new_all_none(5);
+        clues.set_top(0, Some(4));
+        let puzzle = Puzzle { board, clues };
+        let (mut state, _) = SolveState::new(&puzzle).unwrap();
+
+        let result = apply(&mut state);
+        assert!(matches!(result, TechniqueResult::Contradiction));
     }
 
     #[test]
