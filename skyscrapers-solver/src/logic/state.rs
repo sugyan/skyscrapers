@@ -1,7 +1,7 @@
 use skyscrapers_core::Puzzle;
 
 use crate::candidates::Candidates;
-use crate::logic::difficulty::{CluePosition, Line};
+use crate::logic::difficulty::{CluePosition, Line, Step};
 
 /// Mutable solving state for the logic solver.
 ///
@@ -16,10 +16,21 @@ pub(crate) struct SolveState {
     pub bottom: Vec<Option<u8>>,
     pub left: Vec<Option<u8>>,
     pub right: Vec<Option<u8>>,
+    /// [`Step`]s produced by one-shot clue-based pruning during `new`.
+    ///
+    /// The top-level logic solver drains these into the head of its
+    /// trace (see `solve_with_difficulty`); other callers that don't
+    /// care about trace output can ignore the field entirely.
+    pub init_steps: Vec<Step>,
 }
 
 impl SolveState {
-    /// Build initial state from a puzzle. Returns None if contradictory.
+    /// Build initial state from a puzzle.
+    ///
+    /// Returns `None` on contradiction. Any [`Step`]s produced by the
+    /// one-shot clue-based pruning are stashed on `self.init_steps` for
+    /// the logic solver to consume; callers uninterested in trace
+    /// output can ignore the field.
     pub fn new(puzzle: &Puzzle) -> Option<Self> {
         let n = puzzle.board.n();
         if n == 0 || n > 9 || puzzle.clues.n() != n {
@@ -35,14 +46,17 @@ impl SolveState {
             bottom: (0..n).map(|i| clues.bottom(i)).collect(),
             left: (0..n).map(|i| clues.left(i)).collect(),
             right: (0..n).map(|i| clues.right(i)).collect(),
+            init_steps: Vec::new(),
         };
 
-        // Apply clue-based pruning before board values
-        if !super::techniques::clue_pruning::apply(&mut state) {
-            return None;
-        }
+        // Apply clue-based pruning before board values.
+        state.init_steps = super::techniques::clue_pruning::apply(&mut state)?;
 
-        // Assign any singletons created by clue pruning
+        // Assign any singletons created by clue pruning. These placements
+        // are not re-emitted as explicit `NakedSingles` Steps later — the
+        // solve loop's NakedSingles pass skips already-assigned cells. In
+        // the trace they're explained indirectly by the CluePruning
+        // elimination Steps that produced the singletons.
         for idx in 0..n * n {
             if state.grid[idx].is_none() {
                 if let Some(v) = state.candidates[idx].singleton() {
@@ -55,7 +69,7 @@ impl SolveState {
             }
         }
 
-        // Place board values with constraint propagation
+        // Place board values with constraint propagation.
         for r in 0..n {
             for c in 0..n {
                 if let Some(v) = puzzle.board.get(r, c) {
@@ -321,6 +335,7 @@ mod tests {
         assert_eq!(state.n, 4);
         assert!(state.grid.iter().all(|c| c.is_none()));
         assert!(state.candidates.iter().all(|c| c.count() == 4));
+        assert!(state.init_steps.is_empty());
     }
 
     #[test]

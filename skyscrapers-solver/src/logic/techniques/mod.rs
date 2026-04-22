@@ -8,6 +8,7 @@ pub(crate) mod hidden_singles;
 pub(crate) mod naked_sets;
 pub(crate) mod naked_singles;
 pub(crate) mod permutation;
+pub(crate) mod visibility_analysis;
 pub(crate) mod w_wing;
 pub(crate) mod x_wing;
 pub(crate) mod xy_wing;
@@ -29,6 +30,7 @@ pub(crate) enum TechniqueResult {
 const TECHNIQUES: &[Technique] = &[
     Technique::NakedSingles,
     Technique::HiddenSingles,
+    Technique::VisibilityAnalysis,
     Technique::NakedSets,
     Technique::HiddenSets,
     Technique::XWing,
@@ -57,6 +59,7 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
     match technique {
         Technique::NakedSingles => naked_singles::apply(state),
         Technique::HiddenSingles => hidden_singles::apply(state),
+        Technique::VisibilityAnalysis => visibility_analysis::apply(state),
         Technique::NakedSets => naked_sets::apply(state),
         Technique::HiddenSets => hidden_sets::apply(state),
         Technique::XWing => x_wing::apply(state),
@@ -88,6 +91,7 @@ pub(crate) fn propagate(state: &mut SolveState) -> bool {
     const FULL_TECHNIQUES: &[Technique] = &[
         Technique::NakedSingles,
         Technique::HiddenSingles,
+        Technique::VisibilityAnalysis,
         Technique::NakedSets,
         Technique::HiddenSets,
         Technique::XWing,
