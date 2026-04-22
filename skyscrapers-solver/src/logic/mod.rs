@@ -120,6 +120,15 @@ impl LogicSolver {
 
         let mut state = SolveState::new(&hint_puzzle)?;
 
+        // Mirror `solve_with_difficulty`'s trace ordering: init-time
+        // CluePruning Steps come first, then whatever the solve loop
+        // would produce. Without this the hint API would jump straight
+        // into HiddenSingles on an effectively-hydrated state and
+        // return conclusions the user hasn't been shown the premise for.
+        if let Some(step) = state.init_steps.drain(..).next() {
+            return Some(step);
+        }
+
         match apply_next_technique(&mut state) {
             TechniqueResult::Progress(step) => Some(step),
             _ => None,
@@ -345,5 +354,26 @@ mod tests {
         assert!(step.is_some());
         let step = step.unwrap();
         assert!(!step.actions.is_empty());
+    }
+
+    #[test]
+    fn next_step_returns_init_clue_pruning_before_solve_loop() {
+        // A pristine board with an actionable clue (Left=5 on n=5 saturates
+        // Row 0). The hint should surface CluePruning first, not skip ahead
+        // to a HiddenSingle derived from the hydrated state.
+        let board = Board::new_empty(5);
+        let mut clues = Clues::new_all_none(5);
+        clues.set_left(0, Some(5));
+        let puzzle = Puzzle {
+            board: board.clone(),
+            clues,
+        };
+
+        let step = LogicSolver.next_step(&puzzle, &board).unwrap();
+        assert_eq!(step.technique, Technique::CluePruning);
+        assert!(matches!(
+            step.reason,
+            difficulty::Reason::InitialClueConstraint { .. }
+        ));
     }
 }
