@@ -23,7 +23,6 @@ Applies human-traceable techniques in order of difficulty. Does not use backtrac
 | HiddenSets | Hard | k values in a line fitting only k cells |
 | XWing / Swordfish | Hard | Fish pattern elimination (k=2, k=3) |
 | XYWing | Hard | Three bivalue cells forming an elimination pattern |
-| WWing | Hard | Two bivalue cells connected by a strong link |
 | ALS-XZ | Hard | Two almost locked sets with a restricted common candidate |
 | PermutationEnumeration | Expert | Enumerate valid permutations for a single clue |
 | DualCluePermutation | Expert | Enumerate permutations using both opposing clues |

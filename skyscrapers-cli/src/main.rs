@@ -226,7 +226,6 @@ fn technique_name(t: Technique) -> &'static str {
         Technique::HiddenSets => "HiddenSets",
         Technique::XWing => "XWing",
         Technique::XYWing => "XYWing",
-        Technique::WWing => "WWing",
         Technique::AlsXz => "ALS-XZ",
         Technique::PermutationEnumeration => "PermutationEnumeration",
         Technique::DualCluePermutation => "DualCluePermutation",
@@ -327,20 +326,6 @@ fn format_reason(reason: &Reason, puzzle: &Puzzle) -> String {
             cell_ref(pivot.0, pivot.1),
             cell_ref(wing_a.0, wing_a.1),
             cell_ref(wing_b.0, wing_b.1),
-        ),
-        Reason::WWingElimination {
-            cell_a,
-            cell_b,
-            link_c,
-            link_d,
-            link_value,
-            eliminated_value,
-        } => format!(
-            "W-Wing {},{} via link {},{}={link_value} eliminates {eliminated_value}",
-            cell_ref(cell_a.0, cell_a.1),
-            cell_ref(cell_b.0, cell_b.1),
-            cell_ref(link_c.0, link_c.1),
-            cell_ref(link_d.0, link_d.1),
         ),
         Reason::AlsXzElimination {
             als_a,

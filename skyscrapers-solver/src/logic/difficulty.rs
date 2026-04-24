@@ -26,7 +26,6 @@ pub enum Technique {
     HiddenSets,
     XWing,
     XYWing,
-    WWing,
     AlsXz,
     PermutationEnumeration,
     DualCluePermutation,
@@ -40,12 +39,9 @@ impl Technique {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning | Self::VisibilityAnalysis => Difficulty::Medium,
-            Self::NakedSets
-            | Self::HiddenSets
-            | Self::XWing
-            | Self::XYWing
-            | Self::WWing
-            | Self::AlsXz => Difficulty::Hard,
+            Self::NakedSets | Self::HiddenSets | Self::XWing | Self::XYWing | Self::AlsXz => {
+                Difficulty::Hard
+            }
             Self::PermutationEnumeration | Self::DualCluePermutation => Difficulty::Expert,
             Self::SimpleForcingChain => Difficulty::Master,
             Self::FullForcingChain => Difficulty::Grandmaster,
@@ -105,15 +101,6 @@ pub enum Reason {
         eliminated_value: u8,
     },
 
-    /// W-Wing: two bivalue cells connected by a strong link eliminate a candidate.
-    WWingElimination {
-        cell_a: (usize, usize),
-        cell_b: (usize, usize),
-        link_c: (usize, usize),
-        link_d: (usize, usize),
-        link_value: u8,
-        eliminated_value: u8,
-    },
     /// ALS-XZ: two almost locked sets connected by a restricted common candidate.
     AlsXzElimination {
         als_a: Vec<(usize, usize)>,
