@@ -293,7 +293,6 @@ dependencies = [
  "clap",
  "rand",
  "rand_chacha",
- "skyscrapers-core",
  "skyscrapers-generator",
  "skyscrapers-solver",
 ]

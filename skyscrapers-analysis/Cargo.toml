@@ -11,7 +11,6 @@ name = "skyscrapers-analysis"
 path = "src/main.rs"
 
 [dependencies]
-skyscrapers-core = { path = "../skyscrapers-core" }
 skyscrapers-solver = { path = "../skyscrapers-solver" }
 skyscrapers-generator = { path = "../skyscrapers-generator" }
 clap = { workspace = true }
