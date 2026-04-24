@@ -287,6 +287,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "skyscrapers-analysis"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "rand",
+ "rand_chacha",
+ "skyscrapers-core",
+ "skyscrapers-generator",
+ "skyscrapers-solver",
+]
+
+[[package]]
 name = "skyscrapers-cli"
 version = "0.1.0"
 dependencies = [

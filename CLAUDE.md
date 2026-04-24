@@ -23,7 +23,8 @@ skyscrapers/
 ├── skyscrapers-solver/       Uniqueness verifier (backtracking)
 ├── skyscrapers-generator/    Puzzle generator
 ├── skyscrapers-logic/        Logic solver + difficulty rating           [planned]
-└── skyscrapers-cli/          CLI binary (generate + solve)
+├── skyscrapers-cli/          CLI binary (generate + solve)
+└── skyscrapers-analysis/     Dev-only analysis/benchmarking tools (not shipped)
 ```
 
 ### Dependency Graph
@@ -34,9 +35,13 @@ skyscrapers-solver       ← depends on core
 skyscrapers-generator    ← depends on core, solver, latin-sampler
 skyscrapers-logic        ← depends on core (future)
 skyscrapers-cli          ← depends on core, solver, generator, clap
+skyscrapers-analysis     ← depends on core, solver, generator, clap
 ```
 
 No circular dependencies. Flow is always: core → solver → generator → cli.
+`skyscrapers-analysis` is a development crate for running workspace-wide
+analyses (e.g. regenerating `docs/logic-solver-analysis.md`); it is
+`publish = false` and not part of the end-user surface.
 
 ### External Dependencies
 
