@@ -1,0 +1,18 @@
+[package]
+name = "skyscrapers-analysis"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "skyscrapers-analysis"
+path = "src/main.rs"
+
+[dependencies]
+skyscrapers-solver = { path = "../skyscrapers-solver" }
+skyscrapers-generator = { path = "../skyscrapers-generator" }
+clap = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
