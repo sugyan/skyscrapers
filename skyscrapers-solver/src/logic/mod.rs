@@ -5,7 +5,7 @@ mod techniques;
 use skyscrapers_core::{Puzzle, Solution};
 
 use crate::Solver;
-use difficulty::{Difficulty, Step, Technique};
+use difficulty::{Action, Difficulty, Step, Technique};
 use state::SolveState;
 use techniques::{TechniqueResult, apply_next_technique};
 
@@ -112,7 +112,7 @@ impl LogicSolver {
 
     /// Get the next logical step from the current board state (for hints).
     pub fn next_step(&self, puzzle: &Puzzle, board: &skyscrapers_core::Board) -> Option<Step> {
-        self.next_step_with_candidates(puzzle, board)
+        self.next_step_with_candidates(puzzle, board, None)
             .map(|(step, _)| step)
     }
 
@@ -122,10 +122,22 @@ impl LogicSolver {
     /// The candidate grid is `n × n`; each cell lists the values the solver
     /// considers possible there. Hint UIs use this to compare against the
     /// user's pencil marks and surface missing/extra candidates.
+    ///
+    /// `user_candidates` is an optional `n × n` grid of the values the user
+    /// has currently pencilled in. When supplied, steps whose every
+    /// elimination action is already absorbed by the user's pencil marks
+    /// (i.e. the eliminated value is absent from a non-empty user candidate
+    /// set) are skipped — the solver still applies them internally so its
+    /// state advances, but they are not surfaced as hints. This prevents
+    /// the same hint from being returned over and over after the user has
+    /// already syncd or applied it. User candidates are used purely as a
+    /// filter; they never feed back into the solver's deductions, so wrong
+    /// pencil marks cannot poison the reasoning.
     pub fn next_step_with_candidates(
         &self,
         puzzle: &Puzzle,
         board: &skyscrapers_core::Board,
+        user_candidates: Option<&[Vec<Vec<u8>>]>,
     ) -> Option<(Step, Vec<Vec<Vec<u8>>>)> {
         let hint_puzzle = Puzzle {
             board: board.clone(),
@@ -134,23 +146,64 @@ impl LogicSolver {
 
         let mut state = SolveState::new(&hint_puzzle)?;
 
-        // Snapshot AFTER the step is selected/applied so the candidate grid
-        // reflects the post-step "correct" state — i.e. what the user's
-        // pencil marks should look like once the hint has been applied.
-        let init_step = state.init_steps.drain(..).next();
-        if let Some(step) = init_step {
-            let candidates = state.candidates_snapshot();
-            return Some((step, candidates));
-        }
-
-        match apply_next_technique(&mut state) {
-            TechniqueResult::Progress(step) => {
-                let candidates = state.candidates_snapshot();
-                Some((step, candidates))
+        // Walk init-time CluePruning steps first, then drive the solve loop.
+        // For each produced step, skip it if every action is already
+        // absorbed by the user's pencil marks; the state has still been
+        // mutated, so the next call will pick up where we left off.
+        loop {
+            let init_step = state.init_steps.drain(..).next();
+            if let Some(step) = init_step {
+                if !is_step_absorbed(&step, board, user_candidates) {
+                    let candidates = state.candidates_snapshot();
+                    return Some((step, candidates));
+                }
+                continue;
             }
-            _ => None,
+
+            match apply_next_technique(&mut state) {
+                TechniqueResult::Progress(step) => {
+                    if is_step_absorbed(&step, board, user_candidates) {
+                        continue;
+                    }
+                    let candidates = state.candidates_snapshot();
+                    return Some((step, candidates));
+                }
+                _ => return None,
+            }
         }
     }
+}
+
+/// True iff every action in `step` is already reflected by the user's state.
+///
+/// A `Place` action is never considered absorbed here: if the user had
+/// already entered the value, [`SolveState::new`] would have applied it via
+/// `assign` and the technique loop wouldn't re-emit the placement. An
+/// `Eliminate` action is absorbed when the cell is unconfirmed and the
+/// value is missing from a *non-empty* user candidate set (an empty user
+/// candidate set means "no pencil marks yet", which we cannot interpret as
+/// an absorption).
+fn is_step_absorbed(
+    step: &Step,
+    board: &skyscrapers_core::Board,
+    user_candidates: Option<&[Vec<Vec<u8>>]>,
+) -> bool {
+    let Some(uc) = user_candidates else {
+        return false;
+    };
+    if step.actions.is_empty() {
+        return false;
+    }
+    step.actions.iter().all(|action| match *action {
+        Action::Place { .. } => false,
+        Action::Eliminate { row, col, value } => {
+            if board.get(row, col).is_some() {
+                return true;
+            }
+            let cell = &uc[row][col];
+            !cell.is_empty() && !cell.contains(&value)
+        }
+    })
 }
 
 impl Solver for LogicSolver {
@@ -392,5 +445,51 @@ mod tests {
             step.reason,
             difficulty::Reason::InitialClueConstraint { .. }
         ));
+    }
+
+    #[test]
+    fn absorbed_init_step_is_skipped() {
+        // Same setup as the previous test: Left=5 on a 5×5 prunes Row 0
+        // into the strictly ascending sequence 1..=5. Once the user has
+        // pencilled in those exact candidates for Row 0, the CluePruning
+        // step's eliminations are all "absorbed" — calling the hint API
+        // again should look past this absorbed init step and either
+        // surface a different step or return None when nothing's left.
+        let board = Board::new_empty(5);
+        let mut clues = Clues::new_all_none(5);
+        clues.set_left(0, Some(5));
+        let puzzle = Puzzle {
+            board: board.clone(),
+            clues,
+        };
+
+        // Mirror the post-CluePruning candidates the user would Sync into.
+        // Row 0 is forced into the strictly ascending sequence 1..=5; peers
+        // in each column lose the corresponding value via propagation.
+        let user_candidates: Vec<Vec<Vec<u8>>> = (0..5)
+            .map(|r| {
+                (0..5)
+                    .map(|c| {
+                        let v = (c as u8) + 1;
+                        if r == 0 {
+                            vec![v]
+                        } else {
+                            (1..=5).filter(|&x| x != v).collect()
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+
+        let step = LogicSolver
+            .next_step_with_candidates(&puzzle, &board, Some(&user_candidates))
+            .map(|(s, _)| s);
+
+        // The absorbed CluePruning step is gone. Whatever the next
+        // emitted step is (if any), it must NOT be the same
+        // InitialClueConstraint we just absorbed.
+        if let Some(step) = step {
+            assert_ne!(step.technique, Technique::CluePruning);
+        }
     }
 }

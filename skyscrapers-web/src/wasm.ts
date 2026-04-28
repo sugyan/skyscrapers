@@ -204,11 +204,22 @@ function puzzleToWasm(puzzle: Puzzle): {
   };
 }
 
+/** Extract user pencil marks as the n × n × values grid the solver expects. */
+function userCandidatesToWasm(board: BoardCell[][]): number[][][] {
+  return board.map((row) =>
+    row.map((cell) => [...cell.candidates].sort((a, b) => a - b)),
+  );
+}
+
 export async function requestHint(
   puzzle: Puzzle,
   board: BoardCell[][],
 ): Promise<HintResult | null> {
   await ensureInit();
-  const result = next_hint(puzzleToWasm(puzzle), boardToWasm(board));
+  const result = next_hint(
+    puzzleToWasm(puzzle),
+    boardToWasm(board),
+    userCandidatesToWasm(board),
+  );
   return (result as HintResult | null) ?? null;
 }
