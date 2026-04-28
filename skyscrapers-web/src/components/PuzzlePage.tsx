@@ -1,10 +1,13 @@
-import { useReducer, useCallback, useEffect } from "react";
+import { useReducer, useCallback, useEffect, useState } from "react";
 import type { Puzzle, GameState, GameAction, BoardCell } from "../types";
-import type { Difficulty } from "../wasm";
+import type { Difficulty, HintResult } from "../wasm";
+import { requestHint } from "../wasm";
+import { relevantCells } from "../hint";
 import { validateBoard } from "../validation";
 import { PuzzleGrid } from "./PuzzleGrid";
 import { NumberPad } from "./NumberPad";
 import { GameControls } from "./GameControls";
+import { HintPanel } from "./HintPanel";
 
 function deepCopyBoard(board: BoardCell[][]): BoardCell[][] {
   return board.map((row) =>
@@ -138,6 +141,40 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "APPLY_HINT": {
+      const newBoard = deepCopyBoard(state.board);
+      for (const a of action.actions) {
+        if (newBoard[a.row][a.col].given) continue;
+        if (a.kind === "place") {
+          newBoard[a.row][a.col] = {
+            value: a.value,
+            given: false,
+            candidates: new Set(),
+          };
+        } else {
+          if (newBoard[a.row][a.col].value !== null) continue;
+          newBoard[a.row][a.col].candidates.delete(a.value);
+        }
+      }
+      const errors = validateBoard(n, newBoard);
+      return {
+        ...state,
+        board: newBoard,
+        errors,
+        completed: checkCompleted(n, newBoard, errors),
+      };
+    }
+
+    case "SYNC_CANDIDATES": {
+      const newBoard = deepCopyBoard(state.board);
+      for (const [r, c] of action.cells) {
+        const cell = newBoard[r][c];
+        if (cell.given || cell.value !== null) continue;
+        cell.candidates = new Set(action.candidates[r][c]);
+      }
+      return { ...state, board: newBoard };
+    }
+
     default:
       return state;
   }
@@ -158,11 +195,90 @@ export function PuzzlePage({
   onNewPuzzle,
   onShowHowToPlay,
 }: PuzzlePageProps) {
-  const [state, dispatch] = useReducer(
+  const [state, rawDispatch] = useReducer(
     gameReducer,
     { puzzle, solution },
     ({ puzzle, solution }) => createInitialState(puzzle, solution),
   );
+
+  const [hint, setHint] = useState<HintResult | null>(null);
+  const [hintError, setHintError] = useState<string | null>(null);
+
+  const dispatch = useCallback(
+    (action: GameAction) => {
+      // Any board-modifying action invalidates the current hint.
+      switch (action.type) {
+        case "SET_VALUE":
+        case "CLEAR_CELL":
+        case "TOGGLE_CANDIDATE":
+        case "CLEAR_CANDIDATES":
+        case "RESET":
+        case "APPLY_HINT":
+        case "SYNC_CANDIDATES":
+          setHint(null);
+          setHintError(null);
+          break;
+        default:
+          break;
+      }
+      rawDispatch(action);
+    },
+    [rawDispatch],
+  );
+
+  const handleHint = useCallback(async () => {
+    // Pre-check: any user-placed value disagreeing with the solution makes
+    // the solver's "next step" reasoning unsound — surface that first.
+    const errors = new Set<string>();
+    const n = puzzle.n;
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const v = state.board[r][c].value;
+        if (v !== null && !state.board[r][c].given && v !== solution[r][c]) {
+          errors.add(`${r},${c}`);
+        }
+      }
+    }
+    if (errors.size > 0) {
+      rawDispatch({ type: "CHECK" });
+      setHint(null);
+      setHintError("Fix incorrect entries first.");
+      return;
+    }
+
+    try {
+      const result = await requestHint(puzzle, state.board);
+      if (result === null) {
+        setHint(null);
+        setHintError("No hint available.");
+      } else {
+        setHint(result);
+        setHintError(null);
+      }
+    } catch (e) {
+      setHint(null);
+      setHintError(`Hint failed: ${(e as Error).message}`);
+    }
+  }, [puzzle, solution, state.board]);
+
+  const handleApplyHint = useCallback(() => {
+    if (!hint) return;
+    dispatch({ type: "APPLY_HINT", actions: hint.step.actions });
+  }, [hint, dispatch]);
+
+  const handleSyncCandidates = useCallback(() => {
+    if (!hint) return;
+    dispatch({
+      type: "SYNC_CANDIDATES",
+      cells: relevantCells(hint),
+      candidates: hint.candidates,
+    });
+  }, [hint, dispatch]);
+
+  const handleCloseHint = useCallback(() => {
+    setHint(null);
+    setHintError(null);
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -248,7 +364,7 @@ export function PuzzlePage({
         }
       }
     },
-    [puzzle.n, state.selectedCell, state.board, state.inputMode],
+    [puzzle.n, state.selectedCell, state.board, state.inputMode, dispatch],
   );
 
   useEffect(() => {
@@ -289,6 +405,7 @@ export function PuzzlePage({
         selectedCell={state.selectedCell}
         errors={state.errors}
         completed={state.completed}
+        hint={hint}
         onCellClick={(row, col) => dispatch({ type: "SELECT_CELL", row, col })}
       />
       <NumberPad
@@ -311,8 +428,17 @@ export function PuzzlePage({
       />
       <GameControls
         onReset={() => dispatch({ type: "RESET" })}
+        onHint={handleHint}
         onCheck={() => dispatch({ type: "CHECK" })}
         onNewPuzzle={onNewPuzzle}
+      />
+      <HintPanel
+        hint={hint}
+        error={hintError}
+        board={state.board}
+        onApply={handleApplyHint}
+        onSyncCandidates={handleSyncCandidates}
+        onClose={handleCloseHint}
       />
     </div>
   );

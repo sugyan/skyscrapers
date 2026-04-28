@@ -1,5 +1,7 @@
 /// The difficulty level of a puzzle, determined by the hardest technique required.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Difficulty {
     /// Solvable with naked singles and hidden singles only.
     Easy,
@@ -17,6 +19,8 @@ pub enum Difficulty {
 
 /// Identifies a specific solving technique.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Technique {
     NakedSingles,
     HiddenSingles,
@@ -51,6 +55,8 @@ impl Technique {
 
 /// A single action performed by a technique.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind", rename_all = "kebab-case"))]
 pub enum Action {
     /// A value was placed in a cell.
     Place { row: usize, col: usize, value: u8 },
@@ -60,6 +66,7 @@ pub enum Action {
 
 /// One step of logical reasoning (the unit for hints).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Step {
     pub technique: Technique,
     pub actions: Vec<Action>,
@@ -68,6 +75,8 @@ pub struct Step {
 
 /// The reasoning behind a step (for UI highlighting).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "kind", rename_all = "kebab-case"))]
 pub enum Reason {
     /// Cell has only one candidate (Naked Single).
     SingleCandidate { row: usize, col: usize },
@@ -124,6 +133,8 @@ pub enum Reason {
 
 /// Identifies a row or column.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Line {
     Row(usize),
     Col(usize),
@@ -161,6 +172,8 @@ impl std::str::FromStr for Difficulty {
 
 /// Identifies a clue position.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum CluePosition {
     Top(usize),
     Bottom(usize),

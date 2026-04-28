@@ -335,6 +335,7 @@ dependencies = [
 name = "skyscrapers-solver"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "skyscrapers-core",
 ]
 

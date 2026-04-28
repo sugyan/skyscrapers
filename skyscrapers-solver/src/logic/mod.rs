@@ -112,7 +112,21 @@ impl LogicSolver {
 
     /// Get the next logical step from the current board state (for hints).
     pub fn next_step(&self, puzzle: &Puzzle, board: &skyscrapers_core::Board) -> Option<Step> {
-        // Build a puzzle from the original clues + current board state
+        self.next_step_with_candidates(puzzle, board)
+            .map(|(step, _)| step)
+    }
+
+    /// Like [`Self::next_step`], but also returns the solver's candidate
+    /// snapshot at the moment the step was produced.
+    ///
+    /// The candidate grid is `n × n`; each cell lists the values the solver
+    /// considers possible there. Hint UIs use this to compare against the
+    /// user's pencil marks and surface missing/extra candidates.
+    pub fn next_step_with_candidates(
+        &self,
+        puzzle: &Puzzle,
+        board: &skyscrapers_core::Board,
+    ) -> Option<(Step, Vec<Vec<Vec<u8>>>)> {
         let hint_puzzle = Puzzle {
             board: board.clone(),
             clues: puzzle.clues.clone(),
@@ -120,17 +134,16 @@ impl LogicSolver {
 
         let mut state = SolveState::new(&hint_puzzle)?;
 
-        // Mirror `solve_with_difficulty`'s trace ordering: init-time
-        // CluePruning Steps come first, then whatever the solve loop
-        // would produce. Without this the hint API would jump straight
-        // into HiddenSingles on an effectively-hydrated state and
-        // return conclusions the user hasn't been shown the premise for.
+        // Snapshot candidates BEFORE consuming the next step so the UI sees
+        // the state the step is about to act on.
+        let candidates = state.candidates_snapshot();
+
         if let Some(step) = state.init_steps.drain(..).next() {
-            return Some(step);
+            return Some((step, candidates));
         }
 
         match apply_next_technique(&mut state) {
-            TechniqueResult::Progress(step) => Some(step),
+            TechniqueResult::Progress(step) => Some((step, candidates)),
             _ => None,
         }
     }

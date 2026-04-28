@@ -6,8 +6,8 @@ use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 use crate::{GeneratorParams, generate};
-use skyscrapers_core::{Puzzle, Solution};
-use skyscrapers_solver::Difficulty;
+use skyscrapers_core::{Board, Puzzle, Solution};
+use skyscrapers_solver::{Difficulty, LogicSolver, logic::difficulty::Step};
 
 #[derive(Serialize)]
 struct PuzzleResult {
@@ -47,4 +47,31 @@ pub fn generate_puzzle(n: u8, seed: u64, difficulty: Option<String>) -> Result<J
 
     let result = PuzzleResult { puzzle, solution };
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsError::new(&e.to_string()))
+}
+
+#[derive(Serialize)]
+struct HintResult {
+    step: Step,
+    candidates: Vec<Vec<Vec<u8>>>,
+}
+
+/// Compute the next logical hint for the current board state.
+///
+/// `puzzle` carries the original clues; `board` is the user's current
+/// confirmed values (givens + user-placed digits). The function returns
+/// `null` when no further logical step is available.
+#[wasm_bindgen]
+pub fn next_hint(puzzle: JsValue, board: JsValue) -> Result<JsValue, JsError> {
+    let puzzle: Puzzle =
+        serde_wasm_bindgen::from_value(puzzle).map_err(|e| JsError::new(&e.to_string()))?;
+    let board: Board =
+        serde_wasm_bindgen::from_value(board).map_err(|e| JsError::new(&e.to_string()))?;
+
+    match LogicSolver.next_step_with_candidates(&puzzle, &board) {
+        Some((step, candidates)) => {
+            let result = HintResult { step, candidates };
+            serde_wasm_bindgen::to_value(&result).map_err(|e| JsError::new(&e.to_string()))
+        }
+        None => Ok(JsValue::NULL),
+    }
 }
