@@ -99,12 +99,18 @@ export function HintPanel({
   const n = board.length;
   const diffs = candidateDiffs(hint, board);
   const showSync = hasCandidateMismatch(diffs);
+  const isActionNoOp = (a: HintResult["step"]["actions"][number]): boolean => {
+    const cell = board[a.row][a.col];
+    if (a.kind === "place") {
+      return cell.value === a.value;
+    }
+    if (cell.value !== null) return true;
+    return !cell.candidates.has(a.value);
+  };
   const eliminateNoOps = hint.step.actions.filter(
-    (a) =>
-      a.kind === "eliminate" &&
-      !board[a.row][a.col].candidates.has(a.value) &&
-      board[a.row][a.col].value === null,
+    (a) => a.kind === "eliminate" && isActionNoOp(a),
   );
+  const allNoOp = hint.step.actions.every(isActionNoOp);
 
   return (
     <div className="w-full max-w-md mt-3 p-3 border border-amber-400 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700 rounded text-sm">
@@ -162,8 +168,9 @@ export function HintPanel({
 
       {eliminateNoOps.length > 0 && (
         <p className="text-xs text-amber-700 dark:text-amber-300/80 mb-2">
-          Note: this hint removes candidates that aren't currently marked. Apply
-          will be a no-op until you sync or fill candidates.
+          {allNoOp
+            ? "This hint removes candidates that aren't currently marked. Use Sync candidates to fill in the expected pencil marks (which already exclude the eliminated value)."
+            : "Note: some eliminations target candidates that aren't currently marked — those parts of Apply will be no-ops."}
         </p>
       )}
 
@@ -173,7 +180,15 @@ export function HintPanel({
             Sync candidates
           </button>
         )}
-        <button onClick={onApply} className={primaryBtn}>
+        <button
+          onClick={onApply}
+          disabled={allNoOp}
+          className={
+            allNoOp
+              ? "px-3 py-1 text-sm border border-gray-300 dark:border-slate-700 rounded bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed"
+              : primaryBtn
+          }
+        >
           Apply
         </button>
       </div>
