@@ -38,4 +38,16 @@ export type GameAction =
   | { type: "CLEAR_CANDIDATES" }
   | { type: "SET_INPUT_MODE"; mode: InputMode }
   | { type: "RESET" }
-  | { type: "CHECK" };
+  | { type: "CHECK" }
+  | {
+      type: "APPLY_HINT";
+      actions: ReadonlyArray<
+        | { kind: "place"; row: number; col: number; value: number }
+        | { kind: "eliminate"; row: number; col: number; value: number }
+      >;
+    }
+  | {
+      type: "SYNC_CANDIDATES";
+      cells: ReadonlyArray<[number, number]>;
+      candidates: number[][][];
+    };

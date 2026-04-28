@@ -1,11 +1,13 @@
 interface GameControlsProps {
   onReset: () => void;
+  onHint: () => void;
   onCheck: () => void;
   onNewPuzzle: () => void;
 }
 
 export function GameControls({
   onReset,
+  onHint,
   onCheck,
   onNewPuzzle,
 }: GameControlsProps) {
@@ -16,6 +18,9 @@ export function GameControls({
     <div className="flex gap-3 justify-center items-center my-4">
       <button className={btnClass} onClick={onReset}>
         Reset
+      </button>
+      <button className={btnClass} onClick={onHint}>
+        Hint
       </button>
       <button className={btnClass} onClick={onCheck}>
         Check

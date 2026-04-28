@@ -215,6 +215,21 @@ impl SolveState {
         r * self.n + c
     }
 
+    /// Snapshot the candidate set for every cell as `n × n` lists of values.
+    ///
+    /// Used by hint APIs that need to surface the solver's view of "correct"
+    /// candidates back to a UI alongside a [`Step`]. Confirmed cells contain
+    /// just the assigned value.
+    pub fn candidates_snapshot(&self) -> Vec<Vec<Vec<u8>>> {
+        (0..self.n)
+            .map(|r| {
+                (0..self.n)
+                    .map(|c| self.candidates[self.idx(r, c)].iter().collect())
+                    .collect()
+            })
+            .collect()
+    }
+
     /// Iterate every row/column that has a clue set on at least one side.
     ///
     /// `indices` are in viewing order for the given clue (e.g., Right-clue lines

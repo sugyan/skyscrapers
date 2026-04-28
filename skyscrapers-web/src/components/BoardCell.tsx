@@ -7,6 +7,8 @@ interface BoardCellProps {
   sameRowOrCol: boolean;
   hasError: boolean;
   completed: boolean;
+  hintTarget?: boolean;
+  hintLine?: boolean;
   row: number;
   col: number;
   n: number;
@@ -56,6 +58,8 @@ export function BoardCell({
   sameRowOrCol,
   hasError,
   completed,
+  hintTarget = false,
+  hintLine = false,
   row,
   col,
   n,
@@ -72,13 +76,17 @@ export function BoardCell({
         ? "bg-error-bg dark:bg-error-bg-dark"
         : selected
           ? "bg-selected-bg dark:bg-selected-bg-dark ring-2 ring-selected-ring dark:ring-selected-ring-dark ring-inset z-10"
-          : sameValue
-            ? "bg-blue-200 dark:bg-blue-900/40"
-            : sameRowOrCol
-              ? "bg-blue-100/60 dark:bg-slate-600/40"
-              : given
-                ? "bg-given-bg dark:bg-given-bg-dark"
-                : "bg-board-bg dark:bg-board-bg-dark";
+          : hintTarget
+            ? "bg-amber-200 dark:bg-amber-700/50 ring-2 ring-amber-500 ring-inset z-10"
+            : hintLine
+              ? "bg-amber-100/60 dark:bg-amber-900/30"
+              : sameValue
+                ? "bg-blue-200 dark:bg-blue-900/40"
+                : sameRowOrCol
+                  ? "bg-blue-100/60 dark:bg-slate-600/40"
+                  : given
+                    ? "bg-given-bg dark:bg-given-bg-dark"
+                    : "bg-board-bg dark:bg-board-bg-dark";
 
   const font = given
     ? "font-bold text-gray-800 dark:text-slate-100"

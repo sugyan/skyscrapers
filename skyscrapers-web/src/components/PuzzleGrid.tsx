@@ -1,4 +1,6 @@
 import type { BoardCell as BoardCellType, Puzzle } from "../types";
+import type { HintResult } from "../wasm";
+import { relevantCells, relevantLines } from "../hint";
 import { ClueCell } from "./ClueCell";
 import { BoardCell } from "./BoardCell";
 
@@ -8,6 +10,7 @@ interface PuzzleGridProps {
   selectedCell: [number, number] | null;
   errors: Set<string>;
   completed: boolean;
+  hint: HintResult | null;
   onCellClick: (row: number, col: number) => void;
 }
 
@@ -17,8 +20,19 @@ export function PuzzleGrid({
   selectedCell,
   errors,
   completed,
+  hint,
   onCellClick,
 }: PuzzleGridProps) {
+  const hintCells = new Set<string>();
+  const hintRows = new Set<number>();
+  const hintCols = new Set<number>();
+  if (hint) {
+    relevantCells(hint).forEach(([r, c]) => hintCells.add(`${r},${c}`));
+    relevantLines(hint).forEach((line) => {
+      if ("row" in line) hintRows.add(line.row);
+      else hintCols.add(line.col);
+    });
+  }
   const { n, clues } = puzzle;
   const selectedValue =
     selectedCell !== null
@@ -99,6 +113,9 @@ export function PuzzleGrid({
         selectedCell !== null &&
         (selectedCell[0] === r || selectedCell[1] === c);
 
+      const inHintCell = hintCells.has(`${r},${c}`);
+      const inHintLine = hintRows.has(r) || hintCols.has(c);
+
       cells.push(
         <BoardCell
           key={key}
@@ -110,6 +127,8 @@ export function PuzzleGrid({
           sameRowOrCol={isSameRowOrCol}
           hasError={errors.has(`${r},${c}`)}
           completed={completed}
+          hintTarget={inHintCell}
+          hintLine={inHintLine && !inHintCell}
           row={r}
           col={c}
           n={n}
