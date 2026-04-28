@@ -130,7 +130,7 @@ impl LogicSolver {
     /// set) are skipped — the solver still applies them internally so its
     /// state advances, but they are not surfaced as hints. This prevents
     /// the same hint from being returned over and over after the user has
-    /// already syncd or applied it. User candidates are used purely as a
+    /// already synced or applied it. User candidates are used purely as a
     /// filter; they never feed back into the solver's deductions, so wrong
     /// pencil marks cannot poison the reasoning.
     pub fn next_step_with_candidates(
@@ -149,10 +149,12 @@ impl LogicSolver {
         // Walk init-time CluePruning steps first, then drive the solve loop.
         // For each produced step, skip it if every action is already
         // absorbed by the user's pencil marks; the state has still been
-        // mutated, so the next call will pick up where we left off.
+        // mutated, so the next call will pick up where we left off. Move
+        // init_steps out into a queue so absorbed entries can be popped
+        // one at a time without dropping the rest.
+        let mut init_steps = std::mem::take(&mut state.init_steps).into_iter();
         loop {
-            let init_step = state.init_steps.drain(..).next();
-            if let Some(step) = init_step {
+            if let Some(step) = init_steps.next() {
                 if !is_step_absorbed(&step, board, user_candidates) {
                     let candidates = state.candidates_snapshot();
                     return Some((step, candidates));
