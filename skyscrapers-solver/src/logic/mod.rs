@@ -134,16 +134,20 @@ impl LogicSolver {
 
         let mut state = SolveState::new(&hint_puzzle)?;
 
-        // Snapshot candidates BEFORE consuming the next step so the UI sees
-        // the state the step is about to act on.
-        let candidates = state.candidates_snapshot();
-
-        if let Some(step) = state.init_steps.drain(..).next() {
+        // Snapshot AFTER the step is selected/applied so the candidate grid
+        // reflects the post-step "correct" state — i.e. what the user's
+        // pencil marks should look like once the hint has been applied.
+        let init_step = state.init_steps.drain(..).next();
+        if let Some(step) = init_step {
+            let candidates = state.candidates_snapshot();
             return Some((step, candidates));
         }
 
         match apply_next_technique(&mut state) {
-            TechniqueResult::Progress(step) => Some((step, candidates)),
+            TechniqueResult::Progress(step) => {
+                let candidates = state.candidates_snapshot();
+                Some((step, candidates))
+            }
             _ => None,
         }
     }
