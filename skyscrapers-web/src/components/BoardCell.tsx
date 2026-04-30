@@ -2,6 +2,7 @@ interface BoardCellProps {
   value: number | null;
   given: boolean;
   candidates: Set<number>;
+  blocked?: Set<number>;
   selected: boolean;
   sameValue: boolean;
   sameRowOrCol: boolean;
@@ -17,9 +18,11 @@ interface BoardCellProps {
 
 function CandidatesGrid({
   candidates,
+  blocked,
   n,
 }: {
   candidates: Set<number>;
+  blocked?: Set<number>;
   n: number;
 }) {
   if (candidates.size === 0) return null;
@@ -36,12 +39,14 @@ function CandidatesGrid({
     >
       {Array.from({ length: (n > 6 ? 2 : 1) * cols }, (_, i) => {
         const num = i + 1;
+        const present = num <= n && candidates.has(num);
+        const isBlocked = present && (blocked?.has(num) ?? false);
+        const cls = isBlocked
+          ? "text-candidate text-gray-300 line-through dark:text-slate-600"
+          : "text-candidate text-gray-500 dark:text-slate-400";
         return (
-          <span
-            key={i}
-            className="text-candidate text-gray-500 dark:text-slate-400"
-          >
-            {num <= n && candidates.has(num) ? num : ""}
+          <span key={i} className={cls}>
+            {present ? num : ""}
           </span>
         );
       })}
@@ -53,6 +58,7 @@ export function BoardCell({
   value,
   given,
   candidates,
+  blocked,
   selected,
   sameValue,
   sameRowOrCol,
@@ -102,7 +108,11 @@ export function BoardCell({
       style={style}
       onClick={onClick}
     >
-      {value != null ? value : <CandidatesGrid candidates={candidates} n={n} />}
+      {value != null ? (
+        value
+      ) : (
+        <CandidatesGrid candidates={candidates} blocked={blocked} n={n} />
+      )}
     </div>
   );
 }

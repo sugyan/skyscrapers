@@ -34,6 +34,17 @@ export function PuzzleGrid({
     });
   }
   const { n, clues } = puzzle;
+  const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
+  const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const v = board[r][c].value;
+      if (v !== null) {
+        rowVals[r].add(v);
+        colVals[c].add(v);
+      }
+    }
+  }
   const selectedValue =
     selectedCell !== null
       ? board[selectedCell[0]][selectedCell[1]].value
@@ -116,12 +127,20 @@ export function PuzzleGrid({
       const inHintCell = hintCells.has(`${r},${c}`);
       const inHintLine = hintRows.has(r) || hintCols.has(c);
 
+      let blocked: Set<number> | undefined;
+      if (cell.value === null && !cell.given && cell.candidates.size > 0) {
+        blocked = new Set<number>();
+        for (const v of rowVals[r]) blocked.add(v);
+        for (const v of colVals[c]) blocked.add(v);
+      }
+
       cells.push(
         <BoardCell
           key={key}
           value={cell.value}
           given={cell.given}
           candidates={cell.candidates}
+          blocked={blocked}
           selected={isSelected}
           sameValue={isSameValue}
           sameRowOrCol={isSameRowOrCol}
