@@ -31,25 +31,31 @@ function RemainingBars({ remaining }: { remaining: number }) {
 }
 
 /**
- * Tap-handler bundle that fires `action` on the actual touch/mouse hit, not on
- * the synthesized `click` event.
+ * Tap-handler bundle that fires `action` on the actual touch/pen hit for
+ * touch/pen input, while leaving mouse and programmatic activations on the
+ * standard `click` path.
  *
  * Background: on iOS Safari, two rapid taps on adjacent buttons can route the
  * second `click` to the previously-tapped button (gesture / focus heuristics
  * inside WebKit), so a player tapping `4` then `5` sees `4` toggled twice and
- * `5` ignored. `pointerdown` fires from the OS hit-test at finger-down time
- * and is immune to that quirk.
+ * `5` ignored. Firing on `pointerdown` for touch/pen sidesteps that quirk —
+ * the OS hit-test at finger-down time picks the right button.
+ *
+ * Mouse input is intentionally excluded from the pointerdown path so the
+ * desktop convention of "activate on click, cancel by dragging off" still
+ * works; mouse activations flow through `onClick` normally.
  *
  * Activation paths covered, matching native button semantics:
- *   - Pointer tap → `onPointerDown` (preventDefault suppresses the
+ *   - Touch / pen tap → `onPointerDown` (preventDefault suppresses the
  *     synthesized click).
- *   - Enter      → `onKeyDown`, with `e.repeat` ignored so holding the key
- *     down doesn't re-fire.
- *   - Space      → `onKeyUp` (W3C button activation timing).
+ *   - Mouse click    → `onClick`.
+ *   - Enter          → `onKeyDown`, with `e.repeat` ignored so holding the
+ *     key down doesn't re-fire.
+ *   - Space          → `onKeyUp` (W3C button activation timing).
  *   - Programmatic `.click()` / assistive tech → `onClick` fallback.
  *
  * The handler that actually ran the action sets `suppressClickUntil` so the
- * native click that follows pointer/key activation doesn't double-fire the
+ * native click that follows touch/pen/key activation doesn't double-fire the
  * action. The flag lives at module scope (not per-render closure) because
  * React re-renders between event handlers and a fresh closure would lose it.
  */
@@ -63,6 +69,9 @@ function tapProps(action: () => void, disabled: boolean) {
   return {
     onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
       if (e.button !== 0) return;
+      // Mouse keeps the standard click semantics; only touch/pen need the
+      // pointerdown shortcut to dodge iOS Safari's click-routing quirk.
+      if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
       e.preventDefault();
       suppressNextClick();
       action();
