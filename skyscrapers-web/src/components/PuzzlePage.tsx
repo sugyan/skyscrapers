@@ -212,8 +212,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "FILL_ALL_CANDIDATES": {
       const newBoard = deepCopyBoard(state.board);
-      const all: number[] = [];
-      for (let v = 1; v <= n; v++) all.push(v);
+      const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
+      const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const v = newBoard[r][c].value;
+          if (v !== null) {
+            rowVals[r].add(v);
+            colVals[c].add(v);
+          }
+        }
+      }
       let changed = false;
       for (let r = 0; r < n; r++) {
         for (let c = 0; c < n; c++) {
@@ -221,7 +230,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           if (cell.given) continue;
           if (cell.value !== null) continue;
           if (cell.candidates.size > 0) continue;
-          cell.candidates = new Set(all);
+          const candidates = new Set<number>();
+          for (let v = 1; v <= n; v++) {
+            if (!rowVals[r].has(v) && !colVals[c].has(v)) candidates.add(v);
+          }
+          if (candidates.size === 0) continue;
+          cell.candidates = candidates;
           changed = true;
         }
       }
