@@ -74,7 +74,7 @@ export function BoardCell({
   onClick,
 }: BoardCellProps) {
   const base =
-    "cell-size flex items-center justify-center border border-board-border dark:border-board-border-dark transition-colors duration-100 text-xl";
+    "cell-size flex items-center justify-center border border-board-border dark:border-board-border-dark transition-colors duration-100 text-xl touch-manipulation";
 
   const bg = completed
     ? "cell-rainbow"
