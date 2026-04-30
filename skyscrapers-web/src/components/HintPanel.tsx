@@ -4,7 +4,6 @@ import {
   TECHNIQUE_LABELS,
   candidateDiffs,
   cellLabel,
-  hasCandidateMismatch,
   reasonText,
   type CellCandidateDiff,
 } from "../hint";
@@ -14,7 +13,6 @@ interface HintPanelProps {
   error: string | null;
   board: BoardCell[][];
   onApply: () => void;
-  onSyncCandidates: () => void;
   onClose: () => void;
 }
 
@@ -71,7 +69,6 @@ export function HintPanel({
   error,
   board,
   onApply,
-  onSyncCandidates,
   onClose,
 }: HintPanelProps) {
   if (!hint && !error) return null;
@@ -98,18 +95,17 @@ export function HintPanel({
 
   const n = board.length;
   const diffs = candidateDiffs(hint, board);
-  const showSync = hasCandidateMismatch(diffs);
+  // Apply runs a candidate sync before executing the step's actions, so
+  // "candidate not currently marked" is no longer a reliable no-op signal —
+  // the sync may bring the value back. An eliminate is only a guaranteed
+  // no-op when the cell is already confirmed.
   const isActionNoOp = (a: HintResult["step"]["actions"][number]): boolean => {
     const cell = board[a.row][a.col];
     if (a.kind === "place") {
       return cell.value === a.value;
     }
-    if (cell.value !== null) return true;
-    return !cell.candidates.has(a.value);
+    return cell.value !== null;
   };
-  const eliminateNoOps = hint.step.actions.filter(
-    (a) => a.kind === "eliminate" && isActionNoOp(a),
-  );
   const allNoOp = hint.step.actions.every(isActionNoOp);
 
   return (
@@ -166,20 +162,7 @@ export function HintPanel({
         </div>
       )}
 
-      {eliminateNoOps.length > 0 && (
-        <p className="text-xs text-amber-700 dark:text-amber-300/80 mb-2">
-          {allNoOp
-            ? "This hint removes candidates that aren't currently marked. Use Sync candidates to fill in the expected pencil marks (which already exclude the eliminated value)."
-            : "Note: some eliminations target candidates that aren't currently marked — those parts of Apply will be no-ops."}
-        </p>
-      )}
-
       <div className="flex gap-2 justify-end">
-        {showSync && (
-          <button onClick={onSyncCandidates} className={btnClass}>
-            Sync candidates
-          </button>
-        )}
         <button
           onClick={onApply}
           disabled={allNoOp}

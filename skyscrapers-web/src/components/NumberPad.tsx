@@ -5,12 +5,15 @@ interface NumberPadProps {
   board: BoardCell[][];
   currentValue: number | null;
   currentCandidates: Set<number> | null;
+  filterValue: number | null;
+  filterMode: boolean;
   answerDisabled: boolean;
   memoDisabled: boolean;
   onAnswer: (value: number) => void;
   onClearAnswer: () => void;
   onToggleCandidate: (value: number) => void;
   onClearCandidates: () => void;
+  onFilter: (value: number) => void;
 }
 
 function RemainingBars({ remaining }: { remaining: number }) {
@@ -50,12 +53,15 @@ export function NumberPad({
   board,
   currentValue,
   currentCandidates,
+  filterValue,
+  filterMode,
   answerDisabled,
   memoDisabled,
   onAnswer,
   onClearAnswer,
   onToggleCandidate,
   onClearCandidates,
+  onFilter,
 }: NumberPadProps) {
   // Count how many of each digit are placed on the board
   const placedCounts = new Map<number, number>();
@@ -69,28 +75,42 @@ export function NumberPad({
   }
 
   const btnSize = "w-10 h-10 sm:w-12 sm:h-12";
-  const btnBase = `${btnSize} text-lg border rounded-md transition-colors duration-100`;
+  const btnBase = `${btnSize} text-lg border rounded-md transition-colors duration-100 touch-manipulation select-none`;
   const btnDefault =
     "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 cursor-pointer";
   const btnActiveAnswer =
     "border-blue-500 dark:border-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900/70 cursor-pointer";
   const btnActiveCandidate =
     "border-teal-500 dark:border-teal-400 bg-teal-100 dark:bg-teal-900/50 hover:bg-teal-200 dark:hover:bg-teal-900/70 cursor-pointer";
+  const btnActiveFilter =
+    "border-purple-500 dark:border-purple-400 bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900/70 cursor-pointer";
   const btnDisabled =
     "border-gray-300 dark:border-slate-700 bg-gray-100 dark:bg-slate-900 text-gray-300 dark:text-slate-600 cursor-not-allowed";
 
-  // Answer row
+  // Answer row. When `filterMode` is on (no cell selected), the row stays
+  // enabled and acts as a board-wide highlight filter instead of an input.
   const answerButtons: React.ReactNode[] = [];
   for (let i = 1; i <= n; i++) {
     const remaining = n - (placedCounts.get(i) ?? 0);
-    const isActive = !answerDisabled && currentValue === i;
+    const isAnswerActive = !filterMode && !answerDisabled && currentValue === i;
+    const isFilterActive = filterMode && filterValue === i;
+    const disabled = !filterMode && answerDisabled;
+    const stateClass = disabled
+      ? btnDisabled
+      : isFilterActive
+        ? btnActiveFilter
+        : isAnswerActive
+          ? btnActiveAnswer
+          : btnDefault;
     answerButtons.push(
       <div key={i} className="flex flex-col items-center">
         <RemainingBars remaining={remaining} />
         <button
-          className={`${btnBase} font-bold ${answerDisabled ? btnDisabled : isActive ? btnActiveAnswer : btnDefault}`}
-          disabled={answerDisabled}
-          onClick={() => onAnswer(i)}
+          className={`${btnBase} font-bold ${stateClass}`}
+          disabled={disabled}
+          onClick={() => (filterMode ? onFilter(i) : onAnswer(i))}
+          aria-pressed={isFilterActive || undefined}
+          title={filterMode ? "Highlight cells with this value" : undefined}
         >
           {i}
         </button>

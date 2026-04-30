@@ -2,8 +2,10 @@ interface BoardCellProps {
   value: number | null;
   given: boolean;
   candidates: Set<number>;
+  blocked?: Set<number>;
   selected: boolean;
   sameValue: boolean;
+  sameCandidate: boolean;
   sameRowOrCol: boolean;
   hasError: boolean;
   completed: boolean;
@@ -17,9 +19,11 @@ interface BoardCellProps {
 
 function CandidatesGrid({
   candidates,
+  blocked,
   n,
 }: {
   candidates: Set<number>;
+  blocked?: Set<number>;
   n: number;
 }) {
   if (candidates.size === 0) return null;
@@ -36,12 +40,14 @@ function CandidatesGrid({
     >
       {Array.from({ length: (n > 6 ? 2 : 1) * cols }, (_, i) => {
         const num = i + 1;
+        const present = num <= n && candidates.has(num);
+        const isBlocked = present && (blocked?.has(num) ?? false);
+        const cls = isBlocked
+          ? "text-candidate text-gray-300 line-through dark:text-slate-600"
+          : "text-candidate text-gray-500 dark:text-slate-400";
         return (
-          <span
-            key={i}
-            className="text-candidate text-gray-500 dark:text-slate-400"
-          >
-            {num <= n && candidates.has(num) ? num : ""}
+          <span key={i} className={cls}>
+            {present ? num : ""}
           </span>
         );
       })}
@@ -53,8 +59,10 @@ export function BoardCell({
   value,
   given,
   candidates,
+  blocked,
   selected,
   sameValue,
+  sameCandidate,
   sameRowOrCol,
   hasError,
   completed,
@@ -66,7 +74,7 @@ export function BoardCell({
   onClick,
 }: BoardCellProps) {
   const base =
-    "cell-size flex items-center justify-center border border-board-border dark:border-board-border-dark transition-colors duration-100 text-xl";
+    "cell-size flex items-center justify-center border border-board-border dark:border-board-border-dark transition-colors duration-100 text-xl touch-manipulation";
 
   const bg = completed
     ? "cell-rainbow"
@@ -82,11 +90,13 @@ export function BoardCell({
               ? "bg-amber-100/60 dark:bg-amber-900/30"
               : sameValue
                 ? "bg-blue-200 dark:bg-blue-900/40"
-                : sameRowOrCol
-                  ? "bg-blue-100/60 dark:bg-slate-600/40"
-                  : given
-                    ? "bg-given-bg dark:bg-given-bg-dark"
-                    : "bg-board-bg dark:bg-board-bg-dark";
+                : sameCandidate
+                  ? "bg-purple-100 dark:bg-purple-900/30"
+                  : sameRowOrCol
+                    ? "bg-blue-100/60 dark:bg-slate-600/40"
+                    : given
+                      ? "bg-given-bg dark:bg-given-bg-dark"
+                      : "bg-board-bg dark:bg-board-bg-dark";
 
   const font = given
     ? "font-bold text-gray-800 dark:text-slate-100"
@@ -102,7 +112,11 @@ export function BoardCell({
       style={style}
       onClick={onClick}
     >
-      {value != null ? value : <CandidatesGrid candidates={candidates} n={n} />}
+      {value != null ? (
+        value
+      ) : (
+        <CandidatesGrid candidates={candidates} blocked={blocked} n={n} />
+      )}
     </div>
   );
 }

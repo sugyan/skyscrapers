@@ -204,10 +204,35 @@ function puzzleToWasm(puzzle: Puzzle): {
   };
 }
 
-/** Extract user pencil marks as the n × n × values grid the solver expects. */
+/**
+ * Extract user pencil marks as the n × n × values grid the solver expects.
+ *
+ * Values that already appear as a confirmed value elsewhere in the same row
+ * or column are stripped before being sent to the solver — those candidates
+ * are visually grayed-out in the UI, so the player thinks of them as already
+ * eliminated. Trimming them here lets the solver's `is_step_absorbed` filter
+ * skip emitting trivial "eliminate X from cell where X is already in row/col"
+ * hint steps. The user's own pencil-mark state is left untouched.
+ */
 function userCandidatesToWasm(board: BoardCell[][]): number[][][] {
-  return board.map((row) =>
-    row.map((cell) => [...cell.candidates].sort((a, b) => a - b)),
+  const n = board.length;
+  const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
+  const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const v = board[r][c].value;
+      if (v !== null) {
+        rowVals[r].add(v);
+        colVals[c].add(v);
+      }
+    }
+  }
+  return board.map((row, r) =>
+    row.map((cell, c) =>
+      [...cell.candidates]
+        .filter((v) => !rowVals[r].has(v) && !colVals[c].has(v))
+        .sort((a, b) => a - b),
+    ),
   );
 }
 

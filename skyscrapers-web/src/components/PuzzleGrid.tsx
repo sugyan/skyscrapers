@@ -8,6 +8,7 @@ interface PuzzleGridProps {
   puzzle: Puzzle;
   board: BoardCellType[][];
   selectedCell: [number, number] | null;
+  highlightValue: number | null;
   errors: Set<string>;
   completed: boolean;
   hint: HintResult | null;
@@ -18,6 +19,7 @@ export function PuzzleGrid({
   puzzle,
   board,
   selectedCell,
+  highlightValue,
   errors,
   completed,
   hint,
@@ -34,10 +36,17 @@ export function PuzzleGrid({
     });
   }
   const { n, clues } = puzzle;
-  const selectedValue =
-    selectedCell !== null
-      ? board[selectedCell[0]][selectedCell[1]].value
-      : null;
+  const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
+  const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const v = board[r][c].value;
+      if (v !== null) {
+        rowVals[r].add(v);
+        colVals[c].add(v);
+      }
+    }
+  }
   const cells: React.ReactNode[] = [];
 
   for (let gridRow = 0; gridRow < n + 2; gridRow++) {
@@ -105,9 +114,16 @@ export function PuzzleGrid({
         selectedCell !== null && selectedCell[0] === r && selectedCell[1] === c;
       const isSameValue =
         !isSelected &&
-        selectedValue !== null &&
+        highlightValue !== null &&
         cell.value !== null &&
-        cell.value === selectedValue;
+        cell.value === highlightValue;
+      const isSameCandidate =
+        !isSelected &&
+        highlightValue !== null &&
+        cell.value === null &&
+        cell.candidates.has(highlightValue) &&
+        !rowVals[r].has(highlightValue) &&
+        !colVals[c].has(highlightValue);
       const isSameRowOrCol =
         !isSelected &&
         selectedCell !== null &&
@@ -116,14 +132,23 @@ export function PuzzleGrid({
       const inHintCell = hintCells.has(`${r},${c}`);
       const inHintLine = hintRows.has(r) || hintCols.has(c);
 
+      let blocked: Set<number> | undefined;
+      if (cell.value === null && !cell.given && cell.candidates.size > 0) {
+        blocked = new Set<number>();
+        for (const v of rowVals[r]) blocked.add(v);
+        for (const v of colVals[c]) blocked.add(v);
+      }
+
       cells.push(
         <BoardCell
           key={key}
           value={cell.value}
           given={cell.given}
           candidates={cell.candidates}
+          blocked={blocked}
           selected={isSelected}
           sameValue={isSameValue}
+          sameCandidate={isSameCandidate}
           sameRowOrCol={isSameRowOrCol}
           hasError={errors.has(`${r},${c}`)}
           completed={completed}
