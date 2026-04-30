@@ -180,6 +180,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "APPLY_HINT": {
       const newBoard = deepCopyBoard(state.board);
+      if (action.sync) {
+        for (const [r, c] of action.sync.cells) {
+          const cell = newBoard[r][c];
+          if (cell.given || cell.value !== null) continue;
+          cell.candidates = new Set(action.sync.candidates[r][c]);
+        }
+      }
       for (const a of action.actions) {
         if (newBoard[a.row][a.col].given) continue;
         if (a.kind === "place") {
@@ -222,16 +229,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, board: newBoard, history: pushHistory(state) };
     }
 
-    case "SYNC_CANDIDATES": {
-      const newBoard = deepCopyBoard(state.board);
-      for (const [r, c] of action.cells) {
-        const cell = newBoard[r][c];
-        if (cell.given || cell.value !== null) continue;
-        cell.candidates = new Set(action.candidates[r][c]);
-      }
-      return { ...state, board: newBoard, history: pushHistory(state) };
-    }
-
     default:
       return state;
   }
@@ -271,7 +268,6 @@ export function PuzzlePage({
         case "CLEAR_CANDIDATES":
         case "RESET":
         case "APPLY_HINT":
-        case "SYNC_CANDIDATES":
         case "FILL_ALL_CANDIDATES":
         case "UNDO":
           setHint(null);
@@ -323,15 +319,13 @@ export function PuzzlePage({
 
   const handleApplyHint = useCallback(() => {
     if (!hint) return;
-    dispatch({ type: "APPLY_HINT", actions: hint.step.actions });
-  }, [hint, dispatch]);
-
-  const handleSyncCandidates = useCallback(() => {
-    if (!hint) return;
     dispatch({
-      type: "SYNC_CANDIDATES",
-      cells: relevantCells(hint),
-      candidates: hint.candidates,
+      type: "APPLY_HINT",
+      actions: hint.step.actions,
+      sync: {
+        cells: relevantCells(hint),
+        candidates: hint.candidates,
+      },
     });
   }, [hint, dispatch]);
 
@@ -448,6 +442,19 @@ export function PuzzlePage({
       ? state.board[state.selectedCell[0]][state.selectedCell[1]]
       : null;
 
+  const allEmptyHaveCandidates = (() => {
+    const n = puzzle.n;
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const cell = state.board[r][c];
+        if (cell.given) continue;
+        if (cell.value !== null) continue;
+        if (cell.candidates.size === 0) return false;
+      }
+    }
+    return true;
+  })();
+
   return (
     <div className="flex flex-col items-center p-5 sm:p-8">
       <div className="flex items-center gap-3 mb-5 w-full max-w-md">
@@ -505,6 +512,7 @@ export function PuzzlePage({
       />
       <GameControls
         canUndo={state.history.length > 0}
+        canHint={allEmptyHaveCandidates}
         onUndo={() => dispatch({ type: "UNDO" })}
         onReset={() => dispatch({ type: "RESET" })}
         onHint={handleHint}
@@ -516,7 +524,6 @@ export function PuzzlePage({
         error={hintError}
         board={state.board}
         onApply={handleApplyHint}
-        onSyncCandidates={handleSyncCandidates}
         onClose={handleCloseHint}
       />
     </div>

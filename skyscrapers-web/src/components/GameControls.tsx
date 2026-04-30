@@ -1,5 +1,6 @@
 interface GameControlsProps {
   canUndo: boolean;
+  canHint: boolean;
   onUndo: () => void;
   onReset: () => void;
   onHint: () => void;
@@ -9,6 +10,7 @@ interface GameControlsProps {
 
 export function GameControls({
   canUndo,
+  canHint,
   onUndo,
   onReset,
   onHint,
@@ -16,14 +18,19 @@ export function GameControls({
   onFillCandidates,
 }: GameControlsProps) {
   const primaryBtn =
-    "px-4 py-2 text-base border border-gray-400 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700";
+    "px-4 py-2 text-base border border-gray-400 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed";
   const secondaryBtn =
     "px-3 py-1.5 text-sm border border-gray-400 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <div className="flex flex-col gap-2 my-4 w-full max-w-md">
       <div className="grid grid-cols-2 gap-2">
-        <button className={primaryBtn} onClick={onHint}>
+        <button
+          className={primaryBtn}
+          onClick={onHint}
+          disabled={!canHint}
+          title={canHint ? undefined : "Fill memo first to use Hint"}
+        >
           Hint
         </button>
         <button className={primaryBtn} onClick={onCheck}>

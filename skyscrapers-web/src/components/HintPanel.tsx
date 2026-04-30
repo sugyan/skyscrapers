@@ -4,7 +4,6 @@ import {
   TECHNIQUE_LABELS,
   candidateDiffs,
   cellLabel,
-  hasCandidateMismatch,
   reasonText,
   type CellCandidateDiff,
 } from "../hint";
@@ -14,7 +13,6 @@ interface HintPanelProps {
   error: string | null;
   board: BoardCell[][];
   onApply: () => void;
-  onSyncCandidates: () => void;
   onClose: () => void;
 }
 
@@ -71,7 +69,6 @@ export function HintPanel({
   error,
   board,
   onApply,
-  onSyncCandidates,
   onClose,
 }: HintPanelProps) {
   if (!hint && !error) return null;
@@ -98,7 +95,6 @@ export function HintPanel({
 
   const n = board.length;
   const diffs = candidateDiffs(hint, board);
-  const showSync = hasCandidateMismatch(diffs);
   const isActionNoOp = (a: HintResult["step"]["actions"][number]): boolean => {
     const cell = board[a.row][a.col];
     if (a.kind === "place") {
@@ -107,9 +103,6 @@ export function HintPanel({
     if (cell.value !== null) return true;
     return !cell.candidates.has(a.value);
   };
-  const eliminateNoOps = hint.step.actions.filter(
-    (a) => a.kind === "eliminate" && isActionNoOp(a),
-  );
   const allNoOp = hint.step.actions.every(isActionNoOp);
 
   return (
@@ -166,20 +159,7 @@ export function HintPanel({
         </div>
       )}
 
-      {eliminateNoOps.length > 0 && (
-        <p className="text-xs text-amber-700 dark:text-amber-300/80 mb-2">
-          {allNoOp
-            ? "This hint removes candidates that aren't currently marked. Use Sync candidates to fill in the expected pencil marks (which already exclude the eliminated value)."
-            : "Note: some eliminations target candidates that aren't currently marked — those parts of Apply will be no-ops."}
-        </p>
-      )}
-
       <div className="flex gap-2 justify-end">
-        {showSync && (
-          <button onClick={onSyncCandidates} className={btnClass}>
-            Sync candidates
-          </button>
-        )}
         <button
           onClick={onApply}
           disabled={allNoOp}

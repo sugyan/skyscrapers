@@ -54,9 +54,8 @@ export type GameAction =
         | { kind: "place"; row: number; col: number; value: number }
         | { kind: "eliminate"; row: number; col: number; value: number }
       >;
-    }
-  | {
-      type: "SYNC_CANDIDATES";
-      cells: ReadonlyArray<[number, number]>;
-      candidates: number[][][];
+      sync?: {
+        cells: ReadonlyArray<[number, number]>;
+        candidates: number[][][];
+      };
     };
