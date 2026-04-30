@@ -38,23 +38,58 @@ function RemainingBars({ remaining }: { remaining: number }) {
  * second `click` to the previously-tapped button (gesture / focus heuristics
  * inside WebKit), so a player tapping `4` then `5` sees `4` toggled twice and
  * `5` ignored. `pointerdown` fires from the OS hit-test at finger-down time
- * and is immune to that quirk; `preventDefault` suppresses the synthesized
- * click that would otherwise double-fire the action. A keyboard fallback runs
- * the action on Enter/Space so accessibility isn't lost.
+ * and is immune to that quirk.
+ *
+ * Activation paths covered, matching native button semantics:
+ *   - Pointer tap → `onPointerDown` (preventDefault suppresses the
+ *     synthesized click).
+ *   - Enter      → `onKeyDown`, with `e.repeat` ignored so holding the key
+ *     down doesn't re-fire.
+ *   - Space      → `onKeyUp` (W3C button activation timing).
+ *   - Programmatic `.click()` / assistive tech → `onClick` fallback.
+ *
+ * The handler that actually ran the action sets `suppressClickUntil` so the
+ * native click that follows pointer/key activation doesn't double-fire the
+ * action. The flag lives at module scope (not per-render closure) because
+ * React re-renders between event handlers and a fresh closure would lose it.
  */
+let suppressClickUntil = 0;
+
 function tapProps(action: () => void, disabled: boolean) {
   if (disabled) return {};
+  const suppressNextClick = () => {
+    suppressClickUntil = Date.now() + 500;
+  };
   return {
     onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
       if (e.button !== 0) return;
       e.preventDefault();
+      suppressNextClick();
       action();
     },
     onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (e.key === "Enter" || e.key === " ") {
+      if (e.key === "Enter" && !e.repeat) {
         e.preventDefault();
+        suppressNextClick();
+        action();
+      } else if (e.key === " ") {
+        // Prevent page scroll while Space is held; activation happens on keyup.
+        e.preventDefault();
+      }
+    },
+    onKeyUp: (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === " ") {
+        e.preventDefault();
+        suppressNextClick();
         action();
       }
+    },
+    onClick: () => {
+      if (Date.now() <= suppressClickUntil) {
+        suppressClickUntil = 0;
+        return;
+      }
+      action();
     },
   };
 }
