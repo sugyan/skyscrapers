@@ -491,7 +491,16 @@ export function PuzzlePage({
   })();
 
   return (
-    <div className="flex flex-col items-center p-5 sm:p-8">
+    <div
+      className="flex flex-col items-center p-5 sm:p-8"
+      onClick={(e) => {
+        // Tapping the outer container's empty area (not grid/numpad/etc.)
+        // clears any current selection.
+        if (e.target === e.currentTarget && state.selectedCell !== null) {
+          dispatch({ type: "DESELECT" });
+        }
+      }}
+    >
       <div className="flex items-center gap-3 mb-5 w-full max-w-md">
         <h1 className="text-2xl font-bold">Skyscrapers</h1>
         {difficulty && (
@@ -526,7 +535,17 @@ export function PuzzlePage({
         errors={state.errors}
         completed={state.completed}
         hint={hint}
-        onCellClick={(row, col) => dispatch({ type: "SELECT_CELL", row, col })}
+        onCellClick={(row, col) => {
+          if (
+            state.selectedCell !== null &&
+            state.selectedCell[0] === row &&
+            state.selectedCell[1] === col
+          ) {
+            dispatch({ type: "DESELECT" });
+          } else {
+            dispatch({ type: "SELECT_CELL", row, col });
+          }
+        }}
       />
       <NumberPad
         n={puzzle.n}
