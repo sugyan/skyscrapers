@@ -358,12 +358,15 @@ export function PuzzlePage({
       const n = puzzle.n;
       const key = e.key;
 
-      // Undo: Ctrl/Cmd+Z
+      // Undo: Ctrl/Cmd+Z. Only fire when there is something to undo, so a
+      // no-op shortcut press doesn't clear the active hint via the dispatch
+      // wrapper.
       if (
         (e.ctrlKey || e.metaKey) &&
         !e.shiftKey &&
         key.toLowerCase() === "z"
       ) {
+        if (state.history.length === 0) return;
         e.preventDefault();
         dispatch({ type: "UNDO" });
         return;
@@ -454,7 +457,14 @@ export function PuzzlePage({
         }
       }
     },
-    [puzzle.n, state.selectedCell, state.board, state.inputMode, dispatch],
+    [
+      puzzle.n,
+      state.selectedCell,
+      state.board,
+      state.inputMode,
+      state.history.length,
+      dispatch,
+    ],
   );
 
   useEffect(() => {

@@ -95,13 +95,16 @@ export function HintPanel({
 
   const n = board.length;
   const diffs = candidateDiffs(hint, board);
+  // Apply runs a candidate sync before executing the step's actions, so
+  // "candidate not currently marked" is no longer a reliable no-op signal —
+  // the sync may bring the value back. An eliminate is only a guaranteed
+  // no-op when the cell is already confirmed.
   const isActionNoOp = (a: HintResult["step"]["actions"][number]): boolean => {
     const cell = board[a.row][a.col];
     if (a.kind === "place") {
       return cell.value === a.value;
     }
-    if (cell.value !== null) return true;
-    return !cell.candidates.has(a.value);
+    return cell.value !== null;
   };
   const allNoOp = hint.step.actions.every(isActionNoOp);
 
