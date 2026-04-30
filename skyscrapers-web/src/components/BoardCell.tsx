@@ -5,6 +5,7 @@ interface BoardCellProps {
   blocked?: Set<number>;
   selected: boolean;
   sameValue: boolean;
+  sameCandidate: boolean;
   sameRowOrCol: boolean;
   hasError: boolean;
   completed: boolean;
@@ -61,6 +62,7 @@ export function BoardCell({
   blocked,
   selected,
   sameValue,
+  sameCandidate,
   sameRowOrCol,
   hasError,
   completed,
@@ -88,11 +90,13 @@ export function BoardCell({
               ? "bg-amber-100/60 dark:bg-amber-900/30"
               : sameValue
                 ? "bg-blue-200 dark:bg-blue-900/40"
-                : sameRowOrCol
-                  ? "bg-blue-100/60 dark:bg-slate-600/40"
-                  : given
-                    ? "bg-given-bg dark:bg-given-bg-dark"
-                    : "bg-board-bg dark:bg-board-bg-dark";
+                : sameCandidate
+                  ? "bg-purple-100 dark:bg-purple-900/30"
+                  : sameRowOrCol
+                    ? "bg-blue-100/60 dark:bg-slate-600/40"
+                    : given
+                      ? "bg-given-bg dark:bg-given-bg-dark"
+                      : "bg-board-bg dark:bg-board-bg-dark";
 
   const font = given
     ? "font-bold text-gray-800 dark:text-slate-100"

@@ -119,6 +119,13 @@ export function PuzzleGrid({
         selectedValue !== null &&
         cell.value !== null &&
         cell.value === selectedValue;
+      const isSameCandidate =
+        !isSelected &&
+        selectedValue !== null &&
+        cell.value === null &&
+        cell.candidates.has(selectedValue) &&
+        !rowVals[r].has(selectedValue) &&
+        !colVals[c].has(selectedValue);
       const isSameRowOrCol =
         !isSelected &&
         selectedCell !== null &&
@@ -143,6 +150,7 @@ export function PuzzleGrid({
           blocked={blocked}
           selected={isSelected}
           sameValue={isSameValue}
+          sameCandidate={isSameCandidate}
           sameRowOrCol={isSameRowOrCol}
           hasError={errors.has(`${r},${c}`)}
           completed={completed}
