@@ -30,6 +30,35 @@ function RemainingBars({ remaining }: { remaining: number }) {
   );
 }
 
+/**
+ * Tap-handler bundle that fires `action` on the actual touch/mouse hit, not on
+ * the synthesized `click` event.
+ *
+ * Background: on iOS Safari, two rapid taps on adjacent buttons can route the
+ * second `click` to the previously-tapped button (gesture / focus heuristics
+ * inside WebKit), so a player tapping `4` then `5` sees `4` toggled twice and
+ * `5` ignored. `pointerdown` fires from the OS hit-test at finger-down time
+ * and is immune to that quirk; `preventDefault` suppresses the synthesized
+ * click that would otherwise double-fire the action. A keyboard fallback runs
+ * the action on Enter/Space so accessibility isn't lost.
+ */
+function tapProps(action: () => void, disabled: boolean) {
+  if (disabled) return {};
+  return {
+    onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      action();
+    },
+    onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        action();
+      }
+    },
+  };
+}
+
 function EraserIcon() {
   return (
     <svg
@@ -108,7 +137,10 @@ export function NumberPad({
         <button
           className={`${btnBase} font-bold ${stateClass}`}
           disabled={disabled}
-          onClick={() => (filterMode ? onFilter(i) : onAnswer(i))}
+          {...tapProps(
+            () => (filterMode ? onFilter(i) : onAnswer(i)),
+            disabled,
+          )}
           aria-pressed={isFilterActive || undefined}
           title={filterMode ? "Highlight cells with this value" : undefined}
         >
@@ -122,7 +154,7 @@ export function NumberPad({
       <button
         className={`${btnBase} text-xl ${answerDisabled ? btnDisabled : `${btnDefault} text-red-600 dark:text-red-400`}`}
         disabled={answerDisabled}
-        onClick={onClearAnswer}
+        {...tapProps(onClearAnswer, answerDisabled)}
       >
         ×
       </button>
@@ -138,7 +170,7 @@ export function NumberPad({
         key={i}
         className={`${btnBase} font-light ${memoDisabled ? btnDisabled : isActive ? btnActiveCandidate : `${btnDefault} text-gray-500 dark:text-slate-400`}`}
         disabled={memoDisabled}
-        onClick={() => onToggleCandidate(i)}
+        {...tapProps(() => onToggleCandidate(i), memoDisabled)}
       >
         {i}
       </button>,
@@ -150,7 +182,7 @@ export function NumberPad({
       className={`${btnBase} flex items-center justify-center ${memoDisabled ? `${btnDisabled}` : `${btnDefault} text-red-600 dark:text-red-400`}`}
       disabled={memoDisabled}
       aria-label="Clear candidates"
-      onClick={onClearCandidates}
+      {...tapProps(onClearCandidates, memoDisabled)}
     >
       <EraserIcon />
     </button>,
