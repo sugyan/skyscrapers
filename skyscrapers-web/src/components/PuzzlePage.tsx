@@ -254,6 +254,7 @@ export function PuzzlePage({
       } else {
         setHint(result);
         setHintError(null);
+        rawDispatch({ type: "DESELECT" });
       }
     } catch (e) {
       setHint(null);
