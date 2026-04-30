@@ -19,6 +19,12 @@ export interface BoardCell {
 
 export type InputMode = "answer" | "candidate";
 
+export interface HistorySnapshot {
+  board: BoardCell[][];
+  errors: Set<string>;
+  completed: boolean;
+}
+
 export interface GameState {
   puzzle: Puzzle;
   solution: number[][];
@@ -27,6 +33,7 @@ export interface GameState {
   errors: Set<string>;
   completed: boolean;
   inputMode: InputMode;
+  history: HistorySnapshot[];
 }
 
 export type GameAction =
@@ -39,6 +46,7 @@ export type GameAction =
   | { type: "SET_INPUT_MODE"; mode: InputMode }
   | { type: "RESET" }
   | { type: "CHECK" }
+  | { type: "UNDO" }
   | { type: "FILL_ALL_CANDIDATES" }
   | {
       type: "APPLY_HINT";

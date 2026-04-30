@@ -1,5 +1,11 @@
 import { useReducer, useCallback, useEffect, useState } from "react";
-import type { Puzzle, GameState, GameAction, BoardCell } from "../types";
+import type {
+  Puzzle,
+  GameState,
+  GameAction,
+  BoardCell,
+  HistorySnapshot,
+} from "../types";
 import type { Difficulty, HintResult } from "../wasm";
 import { requestHint } from "../wasm";
 import { relevantCells } from "../hint";
@@ -15,6 +21,21 @@ function deepCopyBoard(board: BoardCell[][]): BoardCell[][] {
   );
 }
 
+const MAX_HISTORY = 100;
+
+function pushHistory(state: GameState): HistorySnapshot[] {
+  const next = [
+    ...state.history,
+    {
+      board: state.board,
+      errors: state.errors,
+      completed: state.completed,
+    },
+  ];
+  if (next.length > MAX_HISTORY) next.shift();
+  return next;
+}
+
 function createInitialState(puzzle: Puzzle, solution: number[][]): GameState {
   const board = puzzle.board.map((row) =>
     row.map((cell) => ({ ...cell, candidates: new Set<number>() })),
@@ -27,6 +48,7 @@ function createInitialState(puzzle: Puzzle, solution: number[][]): GameState {
     errors: new Set<string>(),
     completed: false,
     inputMode: "answer",
+    history: [],
   };
 }
 
@@ -74,6 +96,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         board: newBoard,
         errors,
         completed: checkCompleted(n, newBoard, errors),
+        history: pushHistory(state),
       };
     }
 
@@ -89,6 +112,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         board: newBoard,
         errors,
         completed: false,
+        history: pushHistory(state),
       };
     }
 
@@ -104,16 +128,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       } else {
         candidates.add(action.value);
       }
-      return { ...state, board: newBoard };
+      return { ...state, board: newBoard, history: pushHistory(state) };
     }
 
     case "CLEAR_CANDIDATES": {
       if (state.selectedCell === null) return state;
       const [r, c] = state.selectedCell;
       if (state.board[r][c].given) return state;
+      if (state.board[r][c].candidates.size === 0) return state;
       const newBoard = deepCopyBoard(state.board);
       newBoard[r][c].candidates = new Set();
-      return { ...state, board: newBoard };
+      return { ...state, board: newBoard, history: pushHistory(state) };
     }
 
     case "SET_INPUT_MODE": {
@@ -141,6 +166,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "UNDO": {
+      if (state.history.length === 0) return state;
+      const last = state.history[state.history.length - 1];
+      return {
+        ...state,
+        board: last.board,
+        errors: last.errors,
+        completed: last.completed,
+        history: state.history.slice(0, -1),
+      };
+    }
+
     case "APPLY_HINT": {
       const newBoard = deepCopyBoard(state.board);
       for (const a of action.actions) {
@@ -162,6 +199,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         board: newBoard,
         errors,
         completed: checkCompleted(n, newBoard, errors),
+        history: pushHistory(state),
       };
     }
 
@@ -169,6 +207,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const newBoard = deepCopyBoard(state.board);
       const all: number[] = [];
       for (let v = 1; v <= n; v++) all.push(v);
+      let changed = false;
       for (let r = 0; r < n; r++) {
         for (let c = 0; c < n; c++) {
           const cell = newBoard[r][c];
@@ -176,9 +215,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           if (cell.value !== null) continue;
           if (cell.candidates.size > 0) continue;
           cell.candidates = new Set(all);
+          changed = true;
         }
       }
-      return { ...state, board: newBoard };
+      if (!changed) return state;
+      return { ...state, board: newBoard, history: pushHistory(state) };
     }
 
     case "SYNC_CANDIDATES": {
@@ -188,7 +229,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         if (cell.given || cell.value !== null) continue;
         cell.candidates = new Set(action.candidates[r][c]);
       }
-      return { ...state, board: newBoard };
+      return { ...state, board: newBoard, history: pushHistory(state) };
     }
 
     default:
@@ -232,6 +273,7 @@ export function PuzzlePage({
         case "APPLY_HINT":
         case "SYNC_CANDIDATES":
         case "FILL_ALL_CANDIDATES":
+        case "UNDO":
           setHint(null);
           setHintError(null);
           break;
@@ -302,6 +344,17 @@ export function PuzzlePage({
     (e: KeyboardEvent) => {
       const n = puzzle.n;
       const key = e.key;
+
+      // Undo: Ctrl/Cmd+Z
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        key.toLowerCase() === "z"
+      ) {
+        e.preventDefault();
+        dispatch({ type: "UNDO" });
+        return;
+      }
 
       // Space toggles input mode
       if (key === " ") {
@@ -397,7 +450,7 @@ export function PuzzlePage({
 
   return (
     <div className="flex flex-col items-center p-5 sm:p-8">
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-5 w-full max-w-md">
         <h1 className="text-2xl font-bold">Skyscrapers</h1>
         {difficulty && (
           <span className="text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 capitalize">
@@ -410,6 +463,12 @@ export function PuzzlePage({
           aria-label="How to Play"
         >
           ?
+        </button>
+        <button
+          onClick={onNewPuzzle}
+          className="ml-auto text-sm text-blue-600 dark:text-blue-400 underline cursor-pointer hover:text-blue-800 dark:hover:text-blue-300"
+        >
+          New puzzle
         </button>
       </div>
       {state.completed && (
@@ -445,11 +504,12 @@ export function PuzzlePage({
         onClearCandidates={() => dispatch({ type: "CLEAR_CANDIDATES" })}
       />
       <GameControls
+        canUndo={state.history.length > 0}
+        onUndo={() => dispatch({ type: "UNDO" })}
         onReset={() => dispatch({ type: "RESET" })}
         onHint={handleHint}
         onCheck={() => dispatch({ type: "CHECK" })}
         onFillCandidates={() => dispatch({ type: "FILL_ALL_CANDIDATES" })}
-        onNewPuzzle={onNewPuzzle}
       />
       <HintPanel
         hint={hint}
