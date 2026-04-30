@@ -165,6 +165,22 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case "FILL_ALL_CANDIDATES": {
+      const newBoard = deepCopyBoard(state.board);
+      const all: number[] = [];
+      for (let v = 1; v <= n; v++) all.push(v);
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = newBoard[r][c];
+          if (cell.given) continue;
+          if (cell.value !== null) continue;
+          if (cell.candidates.size > 0) continue;
+          cell.candidates = new Set(all);
+        }
+      }
+      return { ...state, board: newBoard };
+    }
+
     case "SYNC_CANDIDATES": {
       const newBoard = deepCopyBoard(state.board);
       for (const [r, c] of action.cells) {
@@ -215,6 +231,7 @@ export function PuzzlePage({
         case "RESET":
         case "APPLY_HINT":
         case "SYNC_CANDIDATES":
+        case "FILL_ALL_CANDIDATES":
           setHint(null);
           setHintError(null);
           break;
@@ -431,6 +448,7 @@ export function PuzzlePage({
         onReset={() => dispatch({ type: "RESET" })}
         onHint={handleHint}
         onCheck={() => dispatch({ type: "CHECK" })}
+        onFillCandidates={() => dispatch({ type: "FILL_ALL_CANDIDATES" })}
         onNewPuzzle={onNewPuzzle}
       />
       <HintPanel

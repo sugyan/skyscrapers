@@ -39,6 +39,7 @@ export type GameAction =
   | { type: "SET_INPUT_MODE"; mode: InputMode }
   | { type: "RESET" }
   | { type: "CHECK" }
+  | { type: "FILL_ALL_CANDIDATES" }
   | {
       type: "APPLY_HINT";
       actions: ReadonlyArray<
