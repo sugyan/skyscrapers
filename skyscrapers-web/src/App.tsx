@@ -1,29 +1,10 @@
 import { useEffect, useState } from "react";
-import { samplePuzzles } from "./samples";
-import type { SamplePuzzle } from "./samples";
 import { PuzzlePage } from "./components/PuzzlePage";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 import type { Puzzle } from "./types";
 import { generatePuzzle, randomSeed, DIFFICULTIES } from "./wasm";
-import type { GenerateResult, Difficulty } from "./wasm";
+import type { Difficulty } from "./wasm";
 import "./styles/app.css";
-
-function puzzleFromSample(sample: SamplePuzzle): GenerateResult {
-  return {
-    puzzle: {
-      n: sample.n,
-      clues: sample.clues,
-      board: sample.board.map((row) =>
-        row.map((value) => ({
-          value,
-          given: value !== null,
-          candidates: new Set<number>(),
-        })),
-      ),
-    },
-    solution: sample.solution,
-  };
-}
 
 function parseUrlParams(): {
   n: number;
@@ -249,22 +230,6 @@ function App() {
             {lastDifficulty ? ` · ${capitalize(lastDifficulty)}` : ""}
           </p>
         )}
-      </section>
-
-      <section className="w-full max-w-sm">
-        <h2 className="text-lg font-semibold mb-3">Samples</h2>
-        <ul className="list-none p-0 space-y-2">
-          {samplePuzzles.map((sample) => (
-            <li key={sample.label}>
-              <button
-                className="w-full px-8 py-3 text-lg border border-gray-400 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700"
-                onClick={() => setCurrent(puzzleFromSample(sample))}
-              >
-                {sample.label}
-              </button>
-            </li>
-          ))}
-        </ul>
       </section>
     </div>
   );
