@@ -271,6 +271,7 @@ export function PuzzlePage({
 
   const [hint, setHint] = useState<HintResult | null>(null);
   const [hintError, setHintError] = useState<string | null>(null);
+  const [filterValue, setFilterValue] = useState<number | null>(null);
 
   const dispatch = useCallback(
     (action: GameAction) => {
@@ -289,6 +290,10 @@ export function PuzzlePage({
           break;
         default:
           break;
+      }
+      // Selecting a cell takes over the highlight, so clear any active filter.
+      if (action.type === "SELECT_CELL") {
+        setFilterValue(null);
       }
       rawDispatch(action);
     },
@@ -377,7 +382,9 @@ export function PuzzlePage({
       // Digits 1-n
       const digit = parseInt(key, 10);
       if (digit >= 1 && digit <= n) {
-        if (state.inputMode === "candidate") {
+        if (state.selectedCell === null) {
+          setFilterValue((prev) => (prev === digit ? null : digit));
+        } else if (state.inputMode === "candidate") {
           dispatch({ type: "TOGGLE_CANDIDATE", value: digit });
         } else {
           dispatch({ type: "SET_VALUE", value: digit });
@@ -403,7 +410,11 @@ export function PuzzlePage({
 
       // Escape
       if (key === "Escape") {
-        dispatch({ type: "DESELECT" });
+        if (state.selectedCell !== null) {
+          dispatch({ type: "DESELECT" });
+        } else {
+          setFilterValue(null);
+        }
         return;
       }
 
@@ -501,6 +512,7 @@ export function PuzzlePage({
         puzzle={puzzle}
         board={state.board}
         selectedCell={state.selectedCell}
+        highlightValue={selectedCell?.value ?? filterValue}
         errors={state.errors}
         completed={state.completed}
         hint={hint}
@@ -511,6 +523,8 @@ export function PuzzlePage({
         board={state.board}
         currentValue={selectedCell?.value ?? null}
         currentCandidates={selectedCell?.candidates ?? null}
+        filterValue={selectedCell === null ? filterValue : null}
+        filterMode={state.selectedCell === null}
         answerDisabled={selectedCell === null || selectedCell.given}
         memoDisabled={
           selectedCell === null ||
@@ -523,6 +537,9 @@ export function PuzzlePage({
           dispatch({ type: "TOGGLE_CANDIDATE", value })
         }
         onClearCandidates={() => dispatch({ type: "CLEAR_CANDIDATES" })}
+        onFilter={(value) =>
+          setFilterValue((prev) => (prev === value ? null : value))
+        }
       />
       <GameControls
         canUndo={state.history.length > 0}

@@ -8,6 +8,7 @@ interface PuzzleGridProps {
   puzzle: Puzzle;
   board: BoardCellType[][];
   selectedCell: [number, number] | null;
+  highlightValue: number | null;
   errors: Set<string>;
   completed: boolean;
   hint: HintResult | null;
@@ -18,6 +19,7 @@ export function PuzzleGrid({
   puzzle,
   board,
   selectedCell,
+  highlightValue,
   errors,
   completed,
   hint,
@@ -45,10 +47,6 @@ export function PuzzleGrid({
       }
     }
   }
-  const selectedValue =
-    selectedCell !== null
-      ? board[selectedCell[0]][selectedCell[1]].value
-      : null;
   const cells: React.ReactNode[] = [];
 
   for (let gridRow = 0; gridRow < n + 2; gridRow++) {
@@ -116,16 +114,16 @@ export function PuzzleGrid({
         selectedCell !== null && selectedCell[0] === r && selectedCell[1] === c;
       const isSameValue =
         !isSelected &&
-        selectedValue !== null &&
+        highlightValue !== null &&
         cell.value !== null &&
-        cell.value === selectedValue;
+        cell.value === highlightValue;
       const isSameCandidate =
         !isSelected &&
-        selectedValue !== null &&
+        highlightValue !== null &&
         cell.value === null &&
-        cell.candidates.has(selectedValue) &&
-        !rowVals[r].has(selectedValue) &&
-        !colVals[c].has(selectedValue);
+        cell.candidates.has(highlightValue) &&
+        !rowVals[r].has(highlightValue) &&
+        !colVals[c].has(highlightValue);
       const isSameRowOrCol =
         !isSelected &&
         selectedCell !== null &&
