@@ -12,6 +12,7 @@ pub(crate) mod visibility_analysis;
 pub(crate) mod x_wing;
 pub(crate) mod xy_wing;
 
+use super::analysis_hooks;
 use super::difficulty::{Step, Technique};
 use super::state::SolveState;
 
@@ -44,6 +45,9 @@ const TECHNIQUES: &[Technique] = &[
 /// Try all techniques in order. Returns the first one that makes progress.
 pub(crate) fn apply_next_technique(state: &mut SolveState) -> TechniqueResult {
     for &technique in TECHNIQUES {
+        if analysis_hooks::is_disabled(technique) {
+            continue;
+        }
         let result = apply_technique(technique, state);
         match result {
             TechniqueResult::NoProgress => continue,
@@ -107,6 +111,9 @@ fn propagate_with(state: &mut SolveState, techniques: &[Technique]) -> bool {
     loop {
         let mut progress = false;
         for &technique in techniques {
+            if analysis_hooks::is_disabled(technique) {
+                continue;
+            }
             match apply_technique(technique, state) {
                 TechniqueResult::Contradiction => return false,
                 TechniqueResult::Progress(_) => {

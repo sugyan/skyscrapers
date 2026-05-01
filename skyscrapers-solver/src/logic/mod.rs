@@ -1,3 +1,4 @@
+pub mod analysis_hooks;
 pub mod difficulty;
 mod state;
 mod techniques;

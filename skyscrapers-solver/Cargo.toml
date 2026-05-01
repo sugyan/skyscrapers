@@ -8,6 +8,10 @@ license.workspace = true
 [features]
 default = []
 serde = ["dep:serde", "skyscrapers-core/serde"]
+# Internal hooks for the workspace's `skyscrapers-analysis` dev tool. Not
+# intended for end-user crates: enables a process-global switch that lets
+# analysis runs disable individual techniques to measure their necessity.
+analysis-hooks = []
 
 [dependencies]
 skyscrapers-core = { path = "../skyscrapers-core" }
