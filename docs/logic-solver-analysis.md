@@ -19,6 +19,12 @@ for reference.
 
 ## Implemented Techniques
 
+After the 2026-05-01 review, XYWing and HiddenSets were removed (the
+"Technique Necessity" section below shows their work is fully covered by
+other techniques), and the user-facing difficulty scale was collapsed
+from 6 to 5 categories — Master and Grandmaster merged into a single
+**Master** tier since both denote forcing-chain reasoning.
+
 | Technique | Difficulty | Description |
 |-----------|-----------|-------------|
 | NakedSingles | Easy | Cell with one candidate |
@@ -26,14 +32,18 @@ for reference.
 | CluePruning | Medium (init) | Initial candidate reduction from clues |
 | VisibilityAnalysis | Medium | Clue visibility count forces monotonic prefix |
 | NakedSets | Hard | k cells sharing k values |
-| HiddenSets | Hard | k values fitting only k cells |
 | XWing / Swordfish | Hard | Fish pattern elimination |
-| XYWing | Hard | Three bivalue cells pattern |
 | AlsXz | Hard | Two almost locked sets + restricted common candidate |
 | PermutationEnumeration | Expert | Single-clue permutation check |
 | DualCluePermutation | Expert | Both opposing clues simultaneously |
 | SimpleForcingChain | Master | Assumption + basic propagation |
-| FullForcingChain | Grandmaster | Assumption + full propagation |
+| FullForcingChain | Master | Assumption + full propagation |
+
+The numbers in the rest of this document were collected before the cleanup;
+they reflect the historical 13-technique / 6-difficulty solver and are
+retained for the record. References to "grandmaster" map to the new
+"master" tier; XYWing/HiddenSets columns no longer apply but their
+near-zero impact is exactly what justified the cut.
 
 ## Target Yield (seeds 0-99, 100 puzzles per (size, target))
 

@@ -3,14 +3,12 @@ pub(crate) mod clue_pruning;
 
 pub(crate) mod dual_clue_permutation;
 pub(crate) mod forcing_chain;
-pub(crate) mod hidden_sets;
 pub(crate) mod hidden_singles;
 pub(crate) mod naked_sets;
 pub(crate) mod naked_singles;
 pub(crate) mod permutation;
 pub(crate) mod visibility_analysis;
 pub(crate) mod x_wing;
-pub(crate) mod xy_wing;
 
 use super::analysis_hooks;
 use super::difficulty::{Step, Technique};
@@ -32,9 +30,7 @@ const TECHNIQUES: &[Technique] = &[
     Technique::HiddenSingles,
     Technique::VisibilityAnalysis,
     Technique::NakedSets,
-    Technique::HiddenSets,
     Technique::XWing,
-    Technique::XYWing,
     Technique::AlsXz,
     Technique::PermutationEnumeration,
     Technique::DualCluePermutation,
@@ -63,9 +59,7 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::HiddenSingles => hidden_singles::apply(state),
         Technique::VisibilityAnalysis => visibility_analysis::apply(state),
         Technique::NakedSets => naked_sets::apply(state),
-        Technique::HiddenSets => hidden_sets::apply(state),
         Technique::XWing => x_wing::apply(state),
-        Technique::XYWing => xy_wing::apply(state),
         Technique::AlsXz => als_xz::apply(state),
         Technique::PermutationEnumeration => permutation::apply(state),
         Technique::DualCluePermutation => dual_clue_permutation::apply(state),
@@ -94,9 +88,7 @@ pub(crate) fn propagate(state: &mut SolveState) -> bool {
         Technique::HiddenSingles,
         Technique::VisibilityAnalysis,
         Technique::NakedSets,
-        Technique::HiddenSets,
         Technique::XWing,
-        Technique::XYWing,
         Technique::AlsXz,
         Technique::PermutationEnumeration,
         Technique::DualCluePermutation,

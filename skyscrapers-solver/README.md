@@ -19,35 +19,24 @@ Applies human-traceable techniques in order of difficulty. Does not use backtrac
 | NakedSingles | Easy | Cell with only one candidate remaining |
 | HiddenSingles | Easy | Value that fits only one cell in a row/column |
 | CluePruning | Medium | Initial candidate reduction from edge clues |
+| VisibilityAnalysis | Medium | Clue visibility count forces a monotonic prefix |
 | NakedSets | Hard | k cells in a line sharing exactly k candidates |
-| HiddenSets | Hard | k values in a line fitting only k cells |
 | XWing / Swordfish | Hard | Fish pattern elimination (k=2, k=3) |
-| XYWing | Hard | Three bivalue cells forming an elimination pattern |
 | ALS-XZ | Hard | Two almost locked sets with a restricted common candidate |
 | PermutationEnumeration | Expert | Enumerate valid permutations for a single clue |
 | DualCluePermutation | Expert | Enumerate permutations using both opposing clues |
 | SimpleForcingChain | Master | Assume a candidate, propagate with basic techniques |
-| FullForcingChain | Grandmaster | Assume a candidate, propagate with all techniques |
+| FullForcingChain | Master | Assume a candidate, propagate with all techniques |
 
 #### Difficulty levels
 
 - **Easy** — Naked/hidden singles only
-- **Medium** — Requires clue-based pruning
-- **Hard** — Requires set-based, fish, wing, or ALS techniques
+- **Medium** — Requires clue pruning or visibility analysis
+- **Hard** — Requires set-based, fish, or ALS techniques
 - **Expert** — Requires clue permutation enumeration
-- **Master** — Requires simple forcing chain (depth-1 assumption with basic propagation)
-- **Grandmaster** — Requires full forcing chain (depth-1 assumption with full propagation)
+- **Master** — Requires forcing-chain reasoning (assumption-based)
 
-#### Success rates (100 puzzles per size)
-
-| n | Easy | Expert | Master | Grandmaster | Unsolved |
-|---|---:|---:|---:|---:|---:|
-| 4 | 7% | 89% | 3% | 1% | 0% |
-| 5 | 0% | 81% | 9% | 10% | 0% |
-| 6 | 0% | 50% | 10% | 36% | 4% |
-| 7 | 0% | 16% | 9% | 60% | 15% |
-
-See [docs/logic-solver-analysis.md](../docs/logic-solver-analysis.md) for detailed per-puzzle results.
+See [docs/logic-solver-analysis.md](../docs/logic-solver-analysis.md) for the full target-yield and technique-necessity analysis.
 
 ## Benchmarks
 

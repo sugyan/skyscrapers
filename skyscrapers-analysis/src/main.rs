@@ -80,7 +80,7 @@ enum Command {
         #[arg(long, default_value_t = 500)]
         max_attempts: usize,
 
-        /// Comma-separated technique names to disable, e.g. `XYWing,HiddenSets`
+        /// Comma-separated technique names to disable, e.g. `NakedSets,DualCluePermutation`
         #[arg(long, value_delimiter = ',', required = true)]
         disable: Vec<String>,
     },
@@ -212,9 +212,7 @@ fn parse_techniques(names: &[String]) -> Vec<Technique> {
             "CluePruning" => Technique::CluePruning,
             "VisibilityAnalysis" => Technique::VisibilityAnalysis,
             "NakedSets" => Technique::NakedSets,
-            "HiddenSets" => Technique::HiddenSets,
             "XWing" => Technique::XWing,
-            "XYWing" => Technique::XYWing,
             "AlsXz" => Technique::AlsXz,
             "PermutationEnumeration" => Technique::PermutationEnumeration,
             "DualCluePermutation" => Technique::DualCluePermutation,

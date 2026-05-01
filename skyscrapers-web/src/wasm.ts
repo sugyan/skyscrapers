@@ -8,7 +8,6 @@ export const DIFFICULTIES = [
   "hard",
   "expert",
   "master",
-  "grandmaster",
 ] as const;
 
 export type Difficulty = (typeof DIFFICULTIES)[number];
@@ -88,9 +87,7 @@ export type Technique =
   | "clue-pruning"
   | "visibility-analysis"
   | "naked-sets"
-  | "hidden-sets"
   | "x-wing"
-  | "xy-wing"
   | "als-xz"
   | "permutation-enumeration"
   | "dual-clue-permutation"
@@ -130,13 +127,6 @@ export type HintReason =
       line: Line;
       clue_a: CluePosition;
       clue_b: CluePosition;
-    }
-  | {
-      kind: "xy-wing-elimination";
-      pivot: [number, number];
-      wing_a: [number, number];
-      wing_b: [number, number];
-      eliminated_value: number;
     }
   | {
       kind: "als-xz-elimination";
