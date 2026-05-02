@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { PuzzlePage } from "./components/PuzzlePage";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 import type { Puzzle } from "./types";
-import { generatePuzzle, normalizeDifficultyParam, randomSeed } from "./wasm";
+import {
+  DIFFICULTIES,
+  generatePuzzle,
+  normalizeDifficultyParam,
+  randomSeed,
+} from "./wasm";
 import type { Difficulty } from "./wasm";
 import "./styles/app.css";
 
