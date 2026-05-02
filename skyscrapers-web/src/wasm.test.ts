@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertWasmResult } from "./wasm";
+import { convertWasmResult, normalizeDifficultyParam } from "./wasm";
 
 describe("convertWasmResult", () => {
   it("converts a 4x4 puzzle result with null values", () => {
@@ -115,5 +115,34 @@ describe("convertWasmResult", () => {
     expect(result.puzzle.clues.bottom).toEqual([null, null, 2]);
     expect(result.puzzle.clues.left).toEqual([null, null, null]);
     expect(result.puzzle.clues.right).toEqual([3, null, null]);
+  });
+});
+
+describe("normalizeDifficultyParam", () => {
+  it("returns the canonical value for current labels", () => {
+    expect(normalizeDifficultyParam("easy")).toBe("easy");
+    expect(normalizeDifficultyParam("medium")).toBe("medium");
+    expect(normalizeDifficultyParam("hard")).toBe("hard");
+    expect(normalizeDifficultyParam("expert")).toBe("expert");
+    expect(normalizeDifficultyParam("master")).toBe("master");
+  });
+
+  it("matches case-insensitively", () => {
+    expect(normalizeDifficultyParam("EXPERT")).toBe("expert");
+    expect(normalizeDifficultyParam("Master")).toBe("master");
+  });
+
+  it("resolves the legacy 'grandmaster' value to 'master'", () => {
+    // Saved URLs from the prior 6-level scheme must still load the
+    // intended puzzle category after the consolidation.
+    expect(normalizeDifficultyParam("grandmaster")).toBe("master");
+    expect(normalizeDifficultyParam("GRANDMASTER")).toBe("master");
+  });
+
+  it("returns undefined for missing or invalid input", () => {
+    expect(normalizeDifficultyParam(null)).toBeUndefined();
+    expect(normalizeDifficultyParam(undefined)).toBeUndefined();
+    expect(normalizeDifficultyParam("")).toBeUndefined();
+    expect(normalizeDifficultyParam("trivial")).toBeUndefined();
   });
 });

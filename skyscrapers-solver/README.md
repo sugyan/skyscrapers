@@ -30,8 +30,8 @@ Applies human-traceable techniques in order of difficulty. Does not use backtrac
 
 #### Difficulty levels
 
-- **Easy** — Naked/hidden singles only
-- **Medium** — Requires clue pruning or visibility analysis
+- **Easy** — Naked/hidden singles only (init-time CluePruning is implicit from clue geometry and does not bump the rating)
+- **Medium** — Requires visibility analysis
 - **Hard** — Requires set-based, fish, or ALS techniques
 - **Expert** — Requires clue permutation enumeration
 - **Master** — Requires forcing-chain reasoning (assumption-based)

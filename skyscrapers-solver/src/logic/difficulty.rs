@@ -3,9 +3,11 @@
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Difficulty {
-    /// Solvable with naked singles and hidden singles only.
+    /// Solvable with naked singles and hidden singles only (init-time
+    /// CluePruning may also fire, but does not promote difficulty since
+    /// it runs unconditionally from the puzzle's starting clues).
     Easy,
-    /// Requires clue-based elimination or visibility analysis.
+    /// Requires visibility analysis to break out of the singles-only loop.
     Medium,
     /// Requires set-based techniques (NakedSets, X-Wing, ALS-XZ).
     Hard,
@@ -164,4 +166,34 @@ pub enum CluePosition {
     Bottom(usize),
     Left(usize),
     Right(usize),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn from_str_accepts_current_labels() {
+        assert_eq!(Difficulty::from_str("easy"), Ok(Difficulty::Easy));
+        assert_eq!(Difficulty::from_str("medium"), Ok(Difficulty::Medium));
+        assert_eq!(Difficulty::from_str("hard"), Ok(Difficulty::Hard));
+        assert_eq!(Difficulty::from_str("expert"), Ok(Difficulty::Expert));
+        assert_eq!(Difficulty::from_str("master"), Ok(Difficulty::Master));
+    }
+
+    #[test]
+    fn from_str_legacy_grandmaster_resolves_to_master() {
+        // The 6-level scheme had a separate Grandmaster tier; consolidating
+        // to 5 levels merged it into Master. Existing URLs / saved params
+        // must keep loading the intended bucket.
+        assert_eq!(Difficulty::from_str("grandmaster"), Ok(Difficulty::Master));
+        assert_eq!(Difficulty::from_str("GRANDMASTER"), Ok(Difficulty::Master));
+    }
+
+    #[test]
+    fn from_str_rejects_unknown() {
+        assert!(Difficulty::from_str("trivial").is_err());
+        assert!(Difficulty::from_str("").is_err());
+    }
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { PuzzlePage } from "./components/PuzzlePage";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 import type { Puzzle } from "./types";
-import { generatePuzzle, randomSeed, DIFFICULTIES } from "./wasm";
+import { generatePuzzle, normalizeDifficultyParam, randomSeed } from "./wasm";
 import type { Difficulty } from "./wasm";
 import "./styles/app.css";
 
@@ -19,15 +19,7 @@ function parseUrlParams(): {
   if (!Number.isInteger(n) || n < 4 || n > 8) return null;
   try {
     const seed = BigInt(seedStr);
-    const diffStr = params.get("difficulty")?.toLowerCase();
-    // Legacy alias: the old 6-level scheme had `grandmaster`; resolve it to
-    // `master` so saved URLs from before the difficulty consolidation still
-    // load the intended puzzle category.
-    const normalizedDiff = diffStr === "grandmaster" ? "master" : diffStr;
-    const difficulty =
-      normalizedDiff && DIFFICULTIES.includes(normalizedDiff as Difficulty)
-        ? (normalizedDiff as Difficulty)
-        : undefined;
+    const difficulty = normalizeDifficultyParam(params.get("difficulty"));
     return { n, seed, difficulty };
   } catch {
     return null;

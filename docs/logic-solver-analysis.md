@@ -47,24 +47,40 @@ near-zero impact is exactly what justified the cut.
 
 ## Target Yield (seeds 0-99, 100 puzzles per (size, target))
 
+> **Note:** The numbers below were collected against the historical
+> 6-tier solver (`master` and `grandmaster` were separate buckets).
+> After the consolidation the analysis binary cannot reproduce a
+> `grandmaster` column on its own — `--difficulty grandmaster` now
+> resolves to `master` via the alias. The `master` and `grandmaster`
+> columns here together correspond to today's `master` tier.
+
 Generator success rate when a target difficulty is requested with
 `max_attempts=300` per seed. Run with
 `skyscrapers-analysis target-yield -n <N> --difficulty <D> --samples 100 --max-attempts 300`.
 
-| n | easy | medium | hard | expert | master | grandmaster |
-|---|------|--------|------|--------|--------|-------------|
-| 4 | 100  | 100    | 100  | 100    | 99     | **87**      |
-| 5 | 100  | 100    | 100  | 100    | 100    | 100         |
-| 6 | 100  | 100    | 100  | 100    | 100    | 100         |
-| 7 | 100  | 100    | 100  | 100    | 100    | 100         |
+| n | easy | medium | hard | expert | master (old) | grandmaster (old) |
+|---|------|--------|------|--------|--------------|-------------------|
+| 4 | 100  | 100    | 100  | 100    | 99           | **87**            |
+| 5 | 100  | 100    | 100  | 100    | 100          | 100               |
+| 6 | 100  | 100    | 100  | 100    | 100          | 100               |
+| 7 | 100  | 100    | 100  | 100    | 100          | 100               |
 
 Every (n, target) combination is reachable in practice. The only
 non-100% cell is n=4 grandmaster (87/100): a 4×4 board is small enough
 that the greedy-removal pipeline cannot always strip far enough to force
-a full forcing chain. n=4 master is also borderline (99/100). Every
-other category is reliably generable.
+a full forcing chain. The old n=4 master tier is also borderline
+(99/100). Every other category is reliably generable.
 
 ## Technique Necessity (target-driven, 100 puzzles per cell)
+
+> **Note:** Same caveat as above — these tables were collected against
+> the historical 6-tier solver, and they list both `master` and
+> `grandmaster` columns. The current binary parses `grandmaster` as an
+> alias for `master`, so to rerun a single number against today's code,
+> treat the old `master` and `grandmaster` columns as both belonging to
+> today's `master` tier. The XYWing and HiddenSets disable tables are
+> kept because their near-zero impact is exactly what justified
+> removing those techniques in the consolidation.
 
 For each (n, target_difficulty), 100 puzzles were generated at the target
 and re-solved with selected techniques disabled via the `analysis-hooks`
