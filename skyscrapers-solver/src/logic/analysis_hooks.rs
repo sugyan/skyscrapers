@@ -15,7 +15,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static DISABLED_MASK: AtomicU64 = AtomicU64::new(0);
 
 fn technique_bit(t: Technique) -> u64 {
-    1u64 << (t as u8)
+    let shift = t as u32;
+    debug_assert!(
+        shift < u64::BITS,
+        "Technique discriminant {shift} does not fit in the u64 analysis-hook bitmask"
+    );
+    1u64.checked_shl(shift).unwrap_or(0)
 }
 
 /// Disable the given techniques in the dispatch loop process-wide.

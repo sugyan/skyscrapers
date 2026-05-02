@@ -20,9 +20,13 @@ function parseUrlParams(): {
   try {
     const seed = BigInt(seedStr);
     const diffStr = params.get("difficulty")?.toLowerCase();
+    // Legacy alias: the old 6-level scheme had `grandmaster`; resolve it to
+    // `master` so saved URLs from before the difficulty consolidation still
+    // load the intended puzzle category.
+    const normalizedDiff = diffStr === "grandmaster" ? "master" : diffStr;
     const difficulty =
-      diffStr && DIFFICULTIES.includes(diffStr as Difficulty)
-        ? (diffStr as Difficulty)
+      normalizedDiff && DIFFICULTIES.includes(normalizedDiff as Difficulty)
+        ? (normalizedDiff as Difficulty)
         : undefined;
     return { n, seed, difficulty };
   } catch {

@@ -203,22 +203,28 @@ fn target_yield(n: usize, difficulty: Difficulty, samples: u64, max_attempts: us
     println!("  failed:    {failed}");
 }
 
-fn parse_techniques(names: &[String]) -> Vec<Technique> {
+fn parse_techniques(names: &[String]) -> Result<Vec<Technique>, String> {
     names
         .iter()
-        .map(|s| match s.as_str() {
-            "NakedSingles" => Technique::NakedSingles,
-            "HiddenSingles" => Technique::HiddenSingles,
-            "CluePruning" => Technique::CluePruning,
-            "VisibilityAnalysis" => Technique::VisibilityAnalysis,
-            "NakedSets" => Technique::NakedSets,
-            "XWing" => Technique::XWing,
-            "AlsXz" => Technique::AlsXz,
-            "PermutationEnumeration" => Technique::PermutationEnumeration,
-            "DualCluePermutation" => Technique::DualCluePermutation,
-            "SimpleForcingChain" => Technique::SimpleForcingChain,
-            "FullForcingChain" => Technique::FullForcingChain,
-            other => panic!("unknown technique: {other}"),
+        .map(|s| match s.trim() {
+            "NakedSingles" => Ok(Technique::NakedSingles),
+            "HiddenSingles" => Ok(Technique::HiddenSingles),
+            "VisibilityAnalysis" => Ok(Technique::VisibilityAnalysis),
+            "NakedSets" => Ok(Technique::NakedSets),
+            "XWing" => Ok(Technique::XWing),
+            "AlsXz" => Ok(Technique::AlsXz),
+            "PermutationEnumeration" => Ok(Technique::PermutationEnumeration),
+            "DualCluePermutation" => Ok(Technique::DualCluePermutation),
+            "SimpleForcingChain" => Ok(Technique::SimpleForcingChain),
+            "FullForcingChain" => Ok(Technique::FullForcingChain),
+            // CluePruning runs once during SolveState::new and is not routed
+            // through the dispatch loop, so analysis_hooks cannot disable it.
+            // Reject explicitly to avoid silently misleading results.
+            "CluePruning" => Err(
+                "CluePruning cannot be disabled by this tool (runs outside the dispatch loop)"
+                    .to_string(),
+            ),
+            other => Err(format!("unknown technique: {other:?}")),
         })
         .collect()
 }
@@ -229,11 +235,26 @@ fn solve_baseline(puzzle: &Puzzle) -> (Option<Difficulty>, BTreeSet<Technique>) 
     (res.difficulty, techs)
 }
 
+/// RAII guard so the process-global disabled mask is always cleared, even
+/// if `solve_with_difficulty` panics or an early-return is later added.
+struct DisabledTechniquesGuard;
+
+impl DisabledTechniquesGuard {
+    fn new(disabled: &[Technique]) -> Self {
+        analysis_hooks::set_disabled(disabled);
+        Self
+    }
+}
+
+impl Drop for DisabledTechniquesGuard {
+    fn drop(&mut self) {
+        analysis_hooks::clear_disabled();
+    }
+}
+
 fn solve_with_disabled(puzzle: &Puzzle, disabled: &[Technique]) -> Option<Difficulty> {
-    analysis_hooks::set_disabled(disabled);
-    let res = LogicSolver.solve_with_difficulty(puzzle, 1);
-    analysis_hooks::clear_disabled();
-    res.difficulty
+    let _guard = DisabledTechniquesGuard::new(disabled);
+    LogicSolver.solve_with_difficulty(puzzle, 1).difficulty
 }
 
 fn technique_necessity(
@@ -243,7 +264,13 @@ fn technique_necessity(
     max_attempts: usize,
     disable: &[String],
 ) {
-    let disabled = parse_techniques(disable);
+    let disabled = match parse_techniques(disable) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(2);
+        }
+    };
 
     let mut gen_failed = 0u64;
     let mut puzzles_tested = 0u64;
