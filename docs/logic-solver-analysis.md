@@ -85,7 +85,7 @@ a full forcing chain. The old n=4 master tier is also borderline
 For each (n, target_difficulty), 100 puzzles were generated at the target
 and re-solved with selected techniques disabled via the `analysis-hooks`
 feature. Cells show: `used / harder / unsolvable` where
-- **used** = baseline solve called the disabled technique at least once
+- **used** = baseline solve called the disabled technique as a top-level step at least once. Note: techniques fired only inside forcing-chain propagation are not counted here, since `propagate()` does not emit nested steps. The `harder` and `unsolvable` columns reflect actual outcomes and so are unaffected by this limitation.
 - **harder** = puzzle still solved but final difficulty rose
 - **unsolvable** = puzzle no longer solvable by logic alone
 
@@ -618,13 +618,17 @@ seed= 99  yes  grandmaster  NakedSingles, HiddenSingles, CluePruning, Visibility
 
 ### From the target-driven analysis (2026-05-01)
 
-1. **All six difficulty categories are reachable for n ≥ 5**: target yield
-   is 100% across every (n, target) combination at n=5, 6, 7. n=4 starts
-   to struggle at master/grandmaster (99/100 and 87/100 respectively),
-   reflecting the limited room to remove cells from a 4×4 board. The
-   skewed distribution in the unseeded baseline (Expert dominates at
-   small n; Grandmaster at large n) is purely an artifact of the greedy
-   removal — it does not mean the easier categories are impractical.
+1. **Every targeted difficulty bucket is reachable for n ≥ 5** (data
+   collected against the historical 6-tier solver, before the
+   master/grandmaster merge): target yield was 100% across every
+   (n, target) combination at n=5, 6, 7. n=4 only struggled at the old
+   master/grandmaster tiers (99/100 and 87/100 respectively), reflecting
+   the limited room to remove cells from a 4×4 board. The skewed
+   distribution in the unseeded baseline (Expert dominates at small n;
+   the old Grandmaster at large n) is purely an artifact of the greedy
+   removal — it does not mean the easier categories are impractical,
+   which is why the consolidation kept Easy/Medium/Hard as user-facing
+   tiers rather than collapsing them.
 
 2. **XYWing is redundant**: across 1,200 target-driven puzzles, disabling
    XYWing pushed at most 3% of puzzles to a higher difficulty and zero

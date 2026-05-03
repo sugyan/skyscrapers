@@ -61,8 +61,18 @@ enum Command {
     /// For puzzles generated at a target difficulty, measure what changes
     /// when the listed techniques are disabled in the logic solver.
     ///
-    /// Records, per puzzle: did baseline rely on the disabled tech, did the
-    /// puzzle still solve, did the final difficulty change.
+    /// Records, per puzzle: did baseline rely on the disabled tech (top-level
+    /// only — see caveat below), did the puzzle still solve, did the final
+    /// difficulty change.
+    ///
+    /// Caveat: the `baseline_used_disabled` count only counts techniques that
+    /// surface as top-level `Step`s in `SolveResult::steps`. Forcing-chain
+    /// trials run `propagate()`/`propagate_simple()` internally without
+    /// emitting nested steps, so a technique that only fires inside a
+    /// forcing-chain trial will not be flagged as "used". The
+    /// `still_solved_harder` and `became_unsolvable` counts are unaffected
+    /// — they reflect actual outcomes regardless of where the technique
+    /// would have run.
     TechniqueNecessity {
         /// Grid size (1-9)
         #[arg(short, long, value_parser = clap::value_parser!(u64).range(1..=9))]
@@ -206,25 +216,38 @@ fn target_yield(n: usize, difficulty: Difficulty, samples: u64, max_attempts: us
 fn parse_techniques(names: &[String]) -> Result<Vec<Technique>, String> {
     names
         .iter()
-        .map(|s| match s.trim() {
-            "NakedSingles" => Ok(Technique::NakedSingles),
-            "HiddenSingles" => Ok(Technique::HiddenSingles),
-            "VisibilityAnalysis" => Ok(Technique::VisibilityAnalysis),
-            "NakedSets" => Ok(Technique::NakedSets),
-            "XWing" => Ok(Technique::XWing),
-            "AlsXz" => Ok(Technique::AlsXz),
-            "PermutationEnumeration" => Ok(Technique::PermutationEnumeration),
-            "DualCluePermutation" => Ok(Technique::DualCluePermutation),
-            "SimpleForcingChain" => Ok(Technique::SimpleForcingChain),
-            "FullForcingChain" => Ok(Technique::FullForcingChain),
-            // CluePruning runs once during SolveState::new and is not routed
-            // through the dispatch loop, so analysis_hooks cannot disable it.
-            // Reject explicitly to avoid silently misleading results.
-            "CluePruning" => Err(
-                "CluePruning cannot be disabled by this tool (runs outside the dispatch loop)"
-                    .to_string(),
-            ),
-            other => Err(format!("unknown technique: {other:?}")),
+        .map(|s| {
+            // Accept the internal enum-style spelling (e.g. `AlsXz`,
+            // `XWing`) as well as the displayed public label that the CLI
+            // and READMEs use (e.g. `ALS-XZ`, `X-Wing`), case-insensitively.
+            // Matching is done after stripping `-` and `_` so users can copy
+            // either form without surprise.
+            let key: String = s
+                .trim()
+                .chars()
+                .filter(|c| !matches!(c, '-' | '_'))
+                .map(|c| c.to_ascii_lowercase())
+                .collect();
+            match key.as_str() {
+                "nakedsingles" => Ok(Technique::NakedSingles),
+                "hiddensingles" => Ok(Technique::HiddenSingles),
+                "visibilityanalysis" => Ok(Technique::VisibilityAnalysis),
+                "nakedsets" => Ok(Technique::NakedSets),
+                "xwing" => Ok(Technique::XWing),
+                "alsxz" => Ok(Technique::AlsXz),
+                "permutationenumeration" => Ok(Technique::PermutationEnumeration),
+                "dualcluepermutation" => Ok(Technique::DualCluePermutation),
+                "simpleforcingchain" => Ok(Technique::SimpleForcingChain),
+                "fullforcingchain" => Ok(Technique::FullForcingChain),
+                // CluePruning runs once during SolveState::new and is not
+                // routed through the dispatch loop, so analysis_hooks cannot
+                // disable it. Reject explicitly to avoid misleading results.
+                "cluepruning" => Err(
+                    "CluePruning cannot be disabled by this tool (runs outside the dispatch loop)"
+                        .to_string(),
+                ),
+                _ => Err(format!("unknown technique: {:?}", s.trim())),
+            }
         })
         .collect()
 }
@@ -235,7 +258,7 @@ fn solve_baseline(puzzle: &Puzzle) -> (Option<Difficulty>, BTreeSet<Technique>) 
     (res.difficulty, techs)
 }
 
-/// RAII guard so the process-global disabled mask is always cleared, even
+/// RAII guard so the per-thread disabled mask is always cleared, even
 /// if `solve_with_difficulty` panics or an early-return is later added.
 struct DisabledTechniquesGuard;
 
