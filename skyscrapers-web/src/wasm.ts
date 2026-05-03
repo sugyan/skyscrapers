@@ -16,19 +16,16 @@ export type Difficulty = (typeof DIFFICULTIES)[number];
  * Normalize a difficulty value coming from a URL/saved param.
  *
  * Returns the canonical {@link Difficulty} string, or `undefined` if the
- * input is missing/invalid. Performs case-insensitive matching and accepts
- * the legacy `grandmaster` value (from the prior 6-level scheme) as an
- * alias for `master`, so saved URLs continue to load the intended puzzle
- * category.
+ * input is missing or not one of {@link DIFFICULTIES}. Matching is
+ * case-insensitive.
  */
 export function normalizeDifficultyParam(
   raw: string | undefined | null,
 ): Difficulty | undefined {
   if (!raw) return undefined;
   const lower = raw.toLowerCase();
-  const aliased = lower === "grandmaster" ? "master" : lower;
-  return DIFFICULTIES.includes(aliased as Difficulty)
-    ? (aliased as Difficulty)
+  return DIFFICULTIES.includes(lower as Difficulty)
+    ? (lower as Difficulty)
     : undefined;
 }
 

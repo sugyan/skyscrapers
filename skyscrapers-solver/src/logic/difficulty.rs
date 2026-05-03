@@ -14,10 +14,6 @@ pub enum Difficulty {
     /// Requires permutation enumeration (single- or dual-clue).
     Expert,
     /// Requires forcing-chain reasoning (assumption-based).
-    // The `grandmaster` alias keeps serde-deserialized payloads from the
-    // prior 6-tier scheme (where Grandmaster was a separate variant)
-    // resolving to Master, mirroring the FromStr behavior.
-    #[cfg_attr(feature = "serde", serde(alias = "grandmaster"))]
     Master,
 }
 
@@ -153,9 +149,7 @@ impl std::str::FromStr for Difficulty {
             "medium" => Ok(Self::Medium),
             "hard" => Ok(Self::Hard),
             "expert" => Ok(Self::Expert),
-            // `grandmaster` accepted as an alias so existing URLs / saved
-            // params from the old 6-level scheme still resolve.
-            "master" | "grandmaster" => Ok(Self::Master),
+            "master" => Ok(Self::Master),
             _ => Err(format!("unknown difficulty: {s}")),
         }
     }
@@ -187,35 +181,9 @@ mod tests {
     }
 
     #[test]
-    fn from_str_legacy_grandmaster_resolves_to_master() {
-        // The 6-level scheme had a separate Grandmaster tier; consolidating
-        // to 5 levels merged it into Master. Existing URLs / saved params
-        // must keep loading the intended bucket.
-        assert_eq!(Difficulty::from_str("grandmaster"), Ok(Difficulty::Master));
-        assert_eq!(Difficulty::from_str("GRANDMASTER"), Ok(Difficulty::Master));
-    }
-
-    #[test]
     fn from_str_rejects_unknown() {
+        assert!(Difficulty::from_str("grandmaster").is_err());
         assert!(Difficulty::from_str("trivial").is_err());
         assert!(Difficulty::from_str("").is_err());
-    }
-
-    #[cfg(feature = "serde")]
-    #[test]
-    fn serde_deserializes_legacy_grandmaster_to_master() {
-        // Persisted JSON / query payloads from the prior 6-tier scheme
-        // must keep deserializing through the derived Deserialize impl,
-        // which doesn't go through FromStr.
-        use serde::Deserialize;
-        use serde::de::IntoDeserializer;
-        type Err = serde::de::value::Error;
-        let de: serde::de::value::StrDeserializer<Err> = "grandmaster".into_deserializer();
-        let d: Difficulty = Difficulty::deserialize(de).unwrap();
-        assert_eq!(d, Difficulty::Master);
-
-        let de: serde::de::value::StrDeserializer<Err> = "master".into_deserializer();
-        let d: Difficulty = Difficulty::deserialize(de).unwrap();
-        assert_eq!(d, Difficulty::Master);
     }
 }

@@ -39,20 +39,21 @@ from 6 to 5 categories — Master and Grandmaster merged into a single
 | SimpleForcingChain | Master | Assumption + basic propagation |
 | FullForcingChain | Master | Assumption + full propagation |
 
-The numbers in the rest of this document were collected before the cleanup;
-they reflect the historical 13-technique / 6-difficulty solver and are
-retained for the record. References to "grandmaster" map to the new
-"master" tier; XYWing/HiddenSets columns no longer apply but their
-near-zero impact is exactly what justified the cut.
+The numbers in the rest of this document were collected before the
+cleanup; they reflect the historical 13-technique / 6-difficulty solver
+and are retained as the evidence that motivated the consolidation.
+The current code no longer recognizes "grandmaster" as a difficulty
+value; the historical `master` and `grandmaster` columns together
+correspond to today's single `master` tier.
 
 ## Target Yield (seeds 0-99, 100 puzzles per (size, target))
 
 > **Note:** The numbers below were collected against the historical
 > 6-tier solver (`master` and `grandmaster` were separate buckets).
-> After the consolidation the analysis binary cannot reproduce a
-> `grandmaster` column on its own — `--difficulty grandmaster` now
-> resolves to `master` via the alias. The `master` and `grandmaster`
-> columns here together correspond to today's `master` tier.
+> The current binary no longer accepts `grandmaster` as a difficulty
+> value, so the `grandmaster` column cannot be reproduced on its own;
+> the `master` and `grandmaster` columns together correspond to today's
+> single `master` tier.
 
 Generator success rate when a target difficulty is requested with
 `max_attempts=300` per seed. Run with
@@ -75,12 +76,11 @@ a full forcing chain. The old n=4 master tier is also borderline
 
 > **Note:** Same caveat as above — these tables were collected against
 > the historical 6-tier solver, and they list both `master` and
-> `grandmaster` columns. The current binary parses `grandmaster` as an
-> alias for `master`, so to rerun a single number against today's code,
-> treat the old `master` and `grandmaster` columns as both belonging to
-> today's `master` tier. The XYWing and HiddenSets disable tables are
-> kept because their near-zero impact is exactly what justified
-> removing those techniques in the consolidation.
+> `grandmaster` columns. Since the current binary no longer accepts
+> `grandmaster` as a target, treat those two columns as a combined
+> view of today's `master` tier when rereading. The XYWing and
+> HiddenSets disable tables are kept because their near-zero impact is
+> exactly what justified removing those techniques.
 
 For each (n, target_difficulty), 100 puzzles were generated at the target
 and re-solved with selected techniques disabled via the `analysis-hooks`

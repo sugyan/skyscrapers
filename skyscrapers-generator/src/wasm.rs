@@ -19,7 +19,7 @@ struct PuzzleResult {
 ///
 /// When `difficulty` is provided (one of "easy", "medium", "hard", "expert",
 /// "master"), the generator retries until the produced puzzle exactly matches
-/// that target difficulty. The legacy "grandmaster" alias resolves to "master".
+/// that target difficulty.
 ///
 /// Returns a JS object with `puzzle` and `solution` fields.
 #[wasm_bindgen]

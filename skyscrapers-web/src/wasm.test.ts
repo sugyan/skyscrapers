@@ -132,17 +132,11 @@ describe("normalizeDifficultyParam", () => {
     expect(normalizeDifficultyParam("Master")).toBe("master");
   });
 
-  it("resolves the legacy 'grandmaster' value to 'master'", () => {
-    // Saved URLs from the prior 6-level scheme must still load the
-    // intended puzzle category after the consolidation.
-    expect(normalizeDifficultyParam("grandmaster")).toBe("master");
-    expect(normalizeDifficultyParam("GRANDMASTER")).toBe("master");
-  });
-
   it("returns undefined for missing or invalid input", () => {
     expect(normalizeDifficultyParam(null)).toBeUndefined();
     expect(normalizeDifficultyParam(undefined)).toBeUndefined();
     expect(normalizeDifficultyParam("")).toBeUndefined();
     expect(normalizeDifficultyParam("trivial")).toBeUndefined();
+    expect(normalizeDifficultyParam("grandmaster")).toBeUndefined();
   });
 });
