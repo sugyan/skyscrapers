@@ -7,9 +7,7 @@ export const TECHNIQUE_LABELS: Record<Technique, string> = {
   "clue-pruning": "Clue Pruning",
   "visibility-analysis": "Visibility Analysis",
   "naked-sets": "Naked Set",
-  "hidden-sets": "Hidden Set",
   "x-wing": "X-Wing",
-  "xy-wing": "XY-Wing",
   "als-xz": "ALS-XZ",
   "permutation-enumeration": "Permutation Enumeration",
   "dual-clue-permutation": "Dual-Clue Permutation",
@@ -55,11 +53,6 @@ export function relevantCells(hint: HintResult): [number, number][] {
       break;
     case "set-in-line":
       reason.cells.forEach(([r, c]) => push(r, c));
-      break;
-    case "xy-wing-elimination":
-      push(reason.pivot[0], reason.pivot[1]);
-      push(reason.wing_a[0], reason.wing_a[1]);
-      push(reason.wing_b[0], reason.wing_b[1]);
       break;
     case "als-xz-elimination":
       reason.als_a.forEach(([r, c]) => push(r, c));
@@ -124,8 +117,6 @@ export function reasonText(hint: HintResult): string {
       return `Permutation enumeration on ${lineLabel(reason.line)} (${cluePositionLabel(reason.clue)}) rules out the eliminated candidates.`;
     case "dual-clue-permutation-elimination":
       return `Combining ${cluePositionLabel(reason.clue_a)} and ${cluePositionLabel(reason.clue_b)} on ${lineLabel(reason.line)} rules out the eliminated candidates.`;
-    case "xy-wing-elimination":
-      return `XY-Wing: pivot ${cellLabel(reason.pivot[0], reason.pivot[1])} with wings ${cellLabel(reason.wing_a[0], reason.wing_a[1])} and ${cellLabel(reason.wing_b[0], reason.wing_b[1])} eliminates ${reason.eliminated_value}.`;
     case "als-xz-elimination":
       return `ALS-XZ on value ${reason.rcc_value} eliminates ${reason.eliminated_value} from cells seeing both sets.`;
     case "forcing-chain-elimination":

@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { PuzzlePage } from "./components/PuzzlePage";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 import type { Puzzle } from "./types";
-import { generatePuzzle, randomSeed, DIFFICULTIES } from "./wasm";
+import {
+  DIFFICULTIES,
+  generatePuzzle,
+  normalizeDifficultyParam,
+  randomSeed,
+} from "./wasm";
 import type { Difficulty } from "./wasm";
 import "./styles/app.css";
 
@@ -19,11 +24,7 @@ function parseUrlParams(): {
   if (!Number.isInteger(n) || n < 4 || n > 8) return null;
   try {
     const seed = BigInt(seedStr);
-    const diffStr = params.get("difficulty")?.toLowerCase();
-    const difficulty =
-      diffStr && DIFFICULTIES.includes(diffStr as Difficulty)
-        ? (diffStr as Difficulty)
-        : undefined;
+    const difficulty = normalizeDifficultyParam(params.get("difficulty"));
     return { n, seed, difficulty };
   } catch {
     return null;

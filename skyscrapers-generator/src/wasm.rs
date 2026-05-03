@@ -18,8 +18,8 @@ struct PuzzleResult {
 /// Generate a Skyscrapers puzzle of size `n` with the given `seed`.
 ///
 /// When `difficulty` is provided (one of "easy", "medium", "hard", "expert",
-/// "master", "grandmaster"), the generator retries until the produced puzzle
-/// exactly matches that target difficulty.
+/// "master"), the generator retries until the produced puzzle exactly matches
+/// that target difficulty.
 ///
 /// Returns a JS object with `puzzle` and `solution` fields.
 #[wasm_bindgen]

@@ -1,3 +1,9 @@
+// Only compiled when the `analysis-hooks` feature is enabled, so production
+// builds (CLI / wasm) neither see this analysis-specific surface in the
+// public API nor pay any cost for it. Call sites in `techniques::` are
+// `cfg`-gated to match.
+#[cfg(feature = "analysis-hooks")]
+pub mod analysis_hooks;
 pub mod difficulty;
 mod state;
 mod techniques;
@@ -370,13 +376,13 @@ mod tests {
     #[test]
     fn solve_n4_seed9_with_forcing_chain() {
         // n=4, seed=9: 0 givens, clues: top=[2,_,2,2], left=[_,_,2,_], bottom=[_,_,2,_]
-        // Requires FullForcingChain (Grandmaster) because SimpleForcingChain's basic propagation
+        // Requires FullForcingChain (Master) because SimpleForcingChain's basic propagation
         // (NakedSingles + HiddenSingles only) is insufficient to detect contradictions.
         let puzzle =
             build_puzzle_with_clues(4, &[], &[(0, 2), (2, 2), (3, 2)], &[(2, 2)], &[(2, 2)], &[]);
         let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
         assert_eq!(result.solutions.len(), 1, "n=4 seed=9 should be solvable");
-        assert_eq!(result.difficulty, Some(Difficulty::Grandmaster));
+        assert_eq!(result.difficulty, Some(Difficulty::Master));
     }
 
     #[test]

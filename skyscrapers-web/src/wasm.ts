@@ -8,10 +8,26 @@ export const DIFFICULTIES = [
   "hard",
   "expert",
   "master",
-  "grandmaster",
 ] as const;
 
 export type Difficulty = (typeof DIFFICULTIES)[number];
+
+/**
+ * Normalize a difficulty value coming from a URL/saved param.
+ *
+ * Returns the canonical {@link Difficulty} string, or `undefined` if the
+ * input is missing or not one of {@link DIFFICULTIES}. Matching is
+ * case-insensitive.
+ */
+export function normalizeDifficultyParam(
+  raw: string | undefined | null,
+): Difficulty | undefined {
+  if (!raw) return undefined;
+  const lower = raw.toLowerCase();
+  return DIFFICULTIES.includes(lower as Difficulty)
+    ? (lower as Difficulty)
+    : undefined;
+}
 
 /**
  * Shape returned by WASM generate_puzzle (via serde-wasm-bindgen).
@@ -88,9 +104,7 @@ export type Technique =
   | "clue-pruning"
   | "visibility-analysis"
   | "naked-sets"
-  | "hidden-sets"
   | "x-wing"
-  | "xy-wing"
   | "als-xz"
   | "permutation-enumeration"
   | "dual-clue-permutation"
@@ -130,13 +144,6 @@ export type HintReason =
       line: Line;
       clue_a: CluePosition;
       clue_b: CluePosition;
-    }
-  | {
-      kind: "xy-wing-elimination";
-      pivot: [number, number];
-      wing_a: [number, number];
-      wing_b: [number, number];
-      eliminated_value: number;
     }
   | {
       kind: "als-xz-elimination";

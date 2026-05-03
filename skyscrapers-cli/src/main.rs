@@ -31,7 +31,7 @@ enum Command {
         #[arg(long)]
         seed: Option<u64>,
 
-        /// Target difficulty level (easy, medium, hard, expert, master, grandmaster)
+        /// Target difficulty level (easy, medium, hard, expert, master)
         #[arg(long)]
         difficulty: Option<Difficulty>,
     },
@@ -223,9 +223,7 @@ fn technique_name(t: Technique) -> &'static str {
         Technique::CluePruning => "CluePruning",
         Technique::VisibilityAnalysis => "VisibilityAnalysis",
         Technique::NakedSets => "NakedSets",
-        Technique::HiddenSets => "HiddenSets",
         Technique::XWing => "XWing",
-        Technique::XYWing => "XYWing",
         Technique::AlsXz => "ALS-XZ",
         Technique::PermutationEnumeration => "PermutationEnumeration",
         Technique::DualCluePermutation => "DualCluePermutation",
@@ -315,17 +313,6 @@ fn format_reason(reason: &Reason, puzzle: &Puzzle) -> String {
             line_name(*line),
             clue_with_value(*clue_a, &puzzle.clues),
             clue_with_value(*clue_b, &puzzle.clues),
-        ),
-        Reason::XYWingElimination {
-            pivot,
-            wing_a,
-            wing_b,
-            eliminated_value,
-        } => format!(
-            "XY-Wing pivot={} wings={},{} eliminates {eliminated_value}",
-            cell_ref(pivot.0, pivot.1),
-            cell_ref(wing_a.0, wing_a.1),
-            cell_ref(wing_b.0, wing_b.1),
         ),
         Reason::AlsXzElimination {
             als_a,

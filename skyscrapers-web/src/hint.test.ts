@@ -128,13 +128,16 @@ describe("relevantCells", () => {
   it("deduplicates cells appearing in both actions and reason", () => {
     const hint: HintResult = {
       step: {
-        technique: "xy-wing",
+        technique: "als-xz",
         actions: [{ kind: "eliminate", row: 1, col: 1, value: 3 }],
         reason: {
-          kind: "xy-wing-elimination",
-          pivot: [0, 0],
-          wing_a: [0, 1],
-          wing_b: [1, 1],
+          kind: "als-xz-elimination",
+          als_a: [
+            [0, 0],
+            [0, 1],
+          ],
+          als_b: [[1, 1]],
+          rcc_value: 2,
           eliminated_value: 3,
         },
       },

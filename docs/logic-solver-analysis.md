@@ -1,10 +1,29 @@
-# Logic Solver Analysis (2026-04-24)
+# Logic Solver Analysis (2026-05-01)
 
-Analysis of the logic solver's ability to solve generated puzzles
-(unseeded difficulty, `GeneratorParams::new(n)`). Regenerated after the
-W-Wing technique was removed from the solver.
+Analysis of the logic solver's behavior. Two complementary views:
+
+1. **Unseeded baseline** (sections "Batch Test Results" and "Technique Usage"):
+   what the generator produces when no target difficulty is set
+   (`GeneratorParams::new(n)`). Useful for understanding the natural
+   difficulty distribution of the greedy-removal pipeline. Original numbers
+   from 2026-04-24, retained as a reference point.
+
+2. **Target-driven analysis** (sections "Target Yield" and "Technique
+   Necessity"): what happens when the generator is asked to produce a
+   specific difficulty, and which techniques are actually load-bearing.
+   This is the more representative view for shipped puzzles, since
+   end-users always pick a difficulty.
+
+Section "Per-seed detail" contains the unseeded `batch-difficulty` traces
+for reference.
 
 ## Implemented Techniques
+
+After the 2026-05-01 review, XYWing and HiddenSets were removed (the
+"Technique Necessity" section below shows their work is fully covered by
+other techniques), and the user-facing difficulty scale was collapsed
+from 6 to 5 categories — Master and Grandmaster merged into a single
+**Master** tier since both denote forcing-chain reasoning.
 
 | Technique | Difficulty | Description |
 |-----------|-----------|-------------|
@@ -13,14 +32,115 @@ W-Wing technique was removed from the solver.
 | CluePruning | Medium (init) | Initial candidate reduction from clues |
 | VisibilityAnalysis | Medium | Clue visibility count forces monotonic prefix |
 | NakedSets | Hard | k cells sharing k values |
-| HiddenSets | Hard | k values fitting only k cells |
 | XWing / Swordfish | Hard | Fish pattern elimination |
-| XYWing | Hard | Three bivalue cells pattern |
 | AlsXz | Hard | Two almost locked sets + restricted common candidate |
 | PermutationEnumeration | Expert | Single-clue permutation check |
 | DualCluePermutation | Expert | Both opposing clues simultaneously |
 | SimpleForcingChain | Master | Assumption + basic propagation |
-| FullForcingChain | Grandmaster | Assumption + full propagation |
+| FullForcingChain | Master | Assumption + full propagation |
+
+The numbers in the rest of this document were collected before the
+cleanup; they reflect the historical 13-technique / 6-difficulty solver
+and are retained as the evidence that motivated the consolidation.
+The current code no longer recognizes "grandmaster" as a difficulty
+value; the historical `master` and `grandmaster` columns together
+correspond to today's single `master` tier.
+
+## Target Yield (seeds 0-99, 100 puzzles per (size, target))
+
+> **Note:** The numbers below were collected against the historical
+> 6-tier solver (`master` and `grandmaster` were separate buckets).
+> The current binary no longer accepts `grandmaster` as a difficulty
+> value, so the `grandmaster` column cannot be reproduced on its own;
+> the `master` and `grandmaster` columns together correspond to today's
+> single `master` tier.
+
+Generator success rate when a target difficulty is requested with
+`max_attempts=300` per seed. Run with
+`skyscrapers-analysis target-yield -n <N> --difficulty <D> --samples 100 --max-attempts 300`.
+
+| n | easy | medium | hard | expert | master (old) | grandmaster (old) |
+|---|------|--------|------|--------|--------------|-------------------|
+| 4 | 100  | 100    | 100  | 100    | 99           | **87**            |
+| 5 | 100  | 100    | 100  | 100    | 100          | 100               |
+| 6 | 100  | 100    | 100  | 100    | 100          | 100               |
+| 7 | 100  | 100    | 100  | 100    | 100          | 100               |
+
+Every (n, target) combination is reachable in practice. The only
+non-100% cell is n=4 grandmaster (87/100): a 4×4 board is small enough
+that the greedy-removal pipeline cannot always strip far enough to force
+a full forcing chain. The old n=4 master tier is also borderline
+(99/100). Every other category is reliably generable.
+
+## Technique Necessity (target-driven, 100 puzzles per cell)
+
+> **Note:** Same caveat as above — these tables were collected against
+> the historical 6-tier solver, and they list both `master` and
+> `grandmaster` columns. Since the current binary no longer accepts
+> `grandmaster` as a target, treat those two columns as a combined
+> view of today's `master` tier when rereading. The XYWing and
+> HiddenSets disable tables are kept because their near-zero impact is
+> exactly what justified removing those techniques.
+
+For each (n, target_difficulty), 100 puzzles were generated at the target
+and re-solved with selected techniques disabled via the `analysis-hooks`
+feature. Cells show: `used / harder / unsolvable` where
+- **used** = baseline solve called the disabled technique as a top-level step at least once. Note: techniques fired only inside forcing-chain propagation are not counted here, since `propagate()` does not emit nested steps. The `harder` and `unsolvable` columns reflect actual outcomes and so are unaffected by this limitation.
+- **harder** = puzzle still solved but final difficulty rose
+- **unsolvable** = puzzle no longer solvable by logic alone
+
+Run with `skyscrapers-analysis technique-necessity -n <N> --difficulty <D> --samples 100 --max-attempts 500 --disable <TECH>`.
+
+### Disable XYWing
+
+| n | hard | expert | master | grandmaster |
+|---|------|--------|--------|-------------|
+| 5 | 46/3/0 | 15/1/0 | 17/0/0 | 19/0/0 |
+| 6 | 17/3/0 | 12/0/0 |  9/0/0 | 10/0/0 |
+| 7 | 10/1/0 | 10/0/0 | 15/0/0 | 15/0/0 |
+
+XYWing is invoked in 9–46% of puzzles but its work is almost always
+substitutable. Disabling it pushes ≤3% of puzzles to a higher
+difficulty label and zero puzzles become unsolvable across all 1,200
+samples. Same pattern as the previously-removed W-Wing.
+
+### Disable HiddenSets
+
+| n | hard | expert | master | grandmaster |
+|---|------|--------|--------|-------------|
+| 5 |  0/0/0 |  0/0/0 |  0/0/0 |  0/0/0 |
+| 6 |  3/0/0 | 14/1/0 | 15/0/0 | 24/0/0 |
+| 7 |  4/0/0 | 35/0/0 | 34/0/0 | 41/0/0 |
+
+HiddenSets fires in up to 41% of puzzles at n=7 but the work is
+fully covered by other techniques: across 1,200 samples a single n=6
+expert puzzle bumped Expert→Master, and zero puzzles became unsolvable.
+
+### Disable DualCluePermutation
+
+| n | hard | expert | master | grandmaster |
+|---|------|--------|--------|-------------|
+| 5 |  0/0/0 |  3/3/0 |  8/5/0 |  6/0/0 |
+| 6 |  0/0/0 |  5/5/0 | 19/14/0 | 28/0/0 |
+| 7 |  0/0/0 | 16/16/0 | 23/17/0 | 33/0/**4** |
+
+DualCluePermutation pulls real weight at higher difficulties. At
+n=7 master, disabling it bumps 17% of puzzles up; at n=7 grandmaster
+4 puzzles become unsolvable by logic alone (forcing chain even at full
+propagation cannot finish). Cannot be removed without losing solver
+coverage.
+
+### Disable XYWing + HiddenSets + DualCluePermutation together
+
+| n | hard | expert | master | grandmaster |
+|---|------|--------|--------|-------------|
+| 5 | 46/3/0 | 18/4/0 | 24/5/0 | 25/0/0 |
+| 6 | 20/3/0 | 27/6/0 | 38/14/0 | 49/0/0 |
+| 7 | 14/1/0 | 52/16/0 | 59/17/0 | 65/0/**4** |
+
+Effects roughly add. The 4 unsolvable cases at n=7 grandmaster all come
+from DualCluePermutation specifically; XYWing and HiddenSets contribute
+no unsolvable cases on their own or together.
 
 ## Batch Test Results (seeds 0-99, 100 puzzles per size)
 
@@ -67,7 +187,14 @@ W-Wing technique was removed from the solver.
 | SimpleForcingChain | 4 | 16 | 38 | 54 |
 | FullForcingChain | 1 | 10 | 40 | 74 |
 
-## n=4 Detail (seeds 0-99)
+## Per-seed detail
+
+Below is the original `batch-difficulty` per-seed trace from the
+unseeded baseline (each seed generated with `GeneratorParams::new(n)`,
+no target difficulty). Retained for reference; the headline conclusions
+now come from the target-driven sections above.
+
+### n=4 Detail (seeds 0-99)
 
 ```
 seed=  0  yes  expert       NakedSingles, HiddenSingles, CluePruning, PermutationEnumeration
@@ -172,7 +299,7 @@ seed= 98  yes  expert       NakedSingles, HiddenSingles, CluePruning, Visibility
 seed= 99  yes  easy         NakedSingles, CluePruning
 ```
 
-## n=5 Detail (seeds 0-99)
+### n=5 Detail (seeds 0-99)
 
 ```
 seed=  0  yes  master       NakedSingles, HiddenSingles, CluePruning, XYWing, AlsXz, PermutationEnumeration, SimpleForcingChain
@@ -277,7 +404,7 @@ seed= 98  yes  expert       NakedSingles, HiddenSingles, CluePruning, Permutatio
 seed= 99  yes  grandmaster  NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 ```
 
-## n=6 Detail (seeds 0-99)
+### n=6 Detail (seeds 0-99)
 
 ```
 seed=  0  yes  expert       NakedSingles, HiddenSingles, CluePruning, PermutationEnumeration
@@ -382,7 +509,7 @@ seed= 98  yes  expert       NakedSingles, HiddenSingles, CluePruning, AlsXz, Per
 seed= 99  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, PermutationEnumeration, SimpleForcingChain
 ```
 
-## n=7 Detail (seeds 0-99)
+### n=7 Detail (seeds 0-99)
 
 ```
 seed=  0  yes  grandmaster  NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, PermutationEnumeration, SimpleForcingChain, FullForcingChain
@@ -489,6 +616,44 @@ seed= 99  yes  grandmaster  NakedSingles, HiddenSingles, CluePruning, Visibility
 
 ## Observations
 
+### From the target-driven analysis (2026-05-01)
+
+1. **Every targeted difficulty bucket is reachable for n ≥ 5** (data
+   collected against the historical 6-tier solver, before the
+   master/grandmaster merge): target yield was 100% across every
+   (n, target) combination at n=5, 6, 7. n=4 only struggled at the old
+   master/grandmaster tiers (99/100 and 87/100 respectively), reflecting
+   the limited room to remove cells from a 4×4 board. The skewed
+   distribution in the unseeded baseline (Expert dominates at small n;
+   the old Grandmaster at large n) is purely an artifact of the greedy
+   removal — it does not mean the easier categories are impractical,
+   which is why the consolidation kept Easy/Medium/Hard as user-facing
+   tiers rather than collapsing them.
+
+2. **XYWing is redundant**: across 1,200 target-driven puzzles, disabling
+   XYWing pushed at most 3% of puzzles to a higher difficulty and zero
+   puzzles became unsolvable. AlsXz absorbs its work, the same pattern
+   that justified removing W-Wing.
+
+3. **HiddenSets is redundant**: across 1,200 target-driven puzzles,
+   disabling HiddenSets caused exactly one puzzle (n=6 expert) to bump up
+   one tier and zero puzzles to become unsolvable. Even though it fires
+   in up to 41% of puzzles at n=7, the eliminations it makes are
+   reproduced by other techniques.
+
+4. **DualCluePermutation is load-bearing**: at n=7 grandmaster,
+   disabling it makes 4% of puzzles unsolvable by logic alone — i.e. no
+   amount of forcing-chain propagation finishes them without the
+   dual-clue lookahead. It also bumps 16–17% of n=7 expert/master puzzles
+   up a tier. Cannot be removed.
+
+5. **Forcing chains span Master and Grandmaster**: the only difference
+   between the two is whether assumption-based propagation runs the
+   "simple" or "full" technique pipeline. Conceptually, both are
+   "guess-and-check" reasoning from the solver's perspective.
+
+### From the unseeded baseline (2026-04-24)
+
 1. **W-Wing removed**: Prior analysis showed W-Wing eliminations were absorbed almost entirely by ALS-XZ, so the technique was dropped. Across 400 puzzles the only behavioral change from removal was `n=6 seed=25` shifting Expert → Master.
 
 2. **PermutationEnumeration dominates**: After NakedSingles/HiddenSingles, this is by far the most-used elimination technique at every size, and fires in ≥99% of puzzles for n ≥ 5.
@@ -502,8 +667,17 @@ seed= 99  yes  grandmaster  NakedSingles, HiddenSingles, CluePruning, Visibility
 ## Reproduction
 
 ```bash
-# Batch test (reproduces the numbers in this doc)
+# Unseeded baseline (per-seed detail tables)
 cargo run --release -p skyscrapers-analysis -- batch-difficulty -n <SIZE> -s <SEEDS>
+
+# Target-driven generation success rate
+cargo run --release -p skyscrapers-analysis -- target-yield \
+  -n <SIZE> --difficulty <LEVEL> --samples 100 --max-attempts 300
+
+# Technique-necessity comparison (analysis-hooks feature)
+cargo run --release -p skyscrapers-analysis -- technique-necessity \
+  -n <SIZE> --difficulty <LEVEL> --samples 100 --max-attempts 500 \
+  --disable <TECH>[,<TECH>...]
 
 # Per-puzzle trace
 cargo run --release -p skyscrapers-cli -- generate -n 7 --seed 42 \

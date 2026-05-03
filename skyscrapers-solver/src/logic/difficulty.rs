@@ -3,18 +3,18 @@
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 pub enum Difficulty {
-    /// Solvable with naked singles and hidden singles only.
+    /// Solvable with naked singles and hidden singles only (init-time
+    /// CluePruning may also fire, but does not promote difficulty since
+    /// it runs unconditionally from the puzzle's starting clues).
     Easy,
-    /// Requires clue-based elimination.
+    /// Requires visibility analysis to break out of the singles-only loop.
     Medium,
-    /// Requires set-based techniques or X-Wing.
+    /// Requires set-based techniques (NakedSets, X-Wing, ALS-XZ).
     Hard,
-    /// Requires visibility chain reasoning or permutation enumeration.
+    /// Requires permutation enumeration (single- or dual-clue).
     Expert,
-    /// Requires simple forcing chain (basic propagation only).
+    /// Requires forcing-chain reasoning (assumption-based).
     Master,
-    /// Requires full forcing chain (all techniques in propagation).
-    Grandmaster,
 }
 
 /// Identifies a specific solving technique.
@@ -27,9 +27,7 @@ pub enum Technique {
     CluePruning,
     VisibilityAnalysis,
     NakedSets,
-    HiddenSets,
     XWing,
-    XYWing,
     AlsXz,
     PermutationEnumeration,
     DualCluePermutation,
@@ -43,12 +41,9 @@ impl Technique {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning | Self::VisibilityAnalysis => Difficulty::Medium,
-            Self::NakedSets | Self::HiddenSets | Self::XWing | Self::XYWing | Self::AlsXz => {
-                Difficulty::Hard
-            }
+            Self::NakedSets | Self::XWing | Self::AlsXz => Difficulty::Hard,
             Self::PermutationEnumeration | Self::DualCluePermutation => Difficulty::Expert,
-            Self::SimpleForcingChain => Difficulty::Master,
-            Self::FullForcingChain => Difficulty::Grandmaster,
+            Self::SimpleForcingChain | Self::FullForcingChain => Difficulty::Master,
         }
     }
 }
@@ -82,7 +77,7 @@ pub enum Reason {
     SingleCandidate { row: usize, col: usize },
     /// Value can only go in one cell within a line (Hidden Single).
     UniqueInLine { line: Line, value: u8 },
-    /// Set-based reasoning within a line (Naked/Hidden Sets).
+    /// Set-based reasoning within a line (Naked Sets).
     SetInLine {
         line: Line,
         cells: Vec<(usize, usize)>,
@@ -102,14 +97,6 @@ pub enum Reason {
         clue_a: CluePosition,
         clue_b: CluePosition,
     },
-    /// XY-Wing: three bivalue cells eliminate a candidate.
-    XYWingElimination {
-        pivot: (usize, usize),
-        wing_a: (usize, usize),
-        wing_b: (usize, usize),
-        eliminated_value: u8,
-    },
-
     /// ALS-XZ: two almost locked sets connected by a restricted common candidate.
     AlsXzElimination {
         als_a: Vec<(usize, usize)>,
@@ -148,7 +135,6 @@ impl std::fmt::Display for Difficulty {
             Self::Hard => "hard",
             Self::Expert => "expert",
             Self::Master => "master",
-            Self::Grandmaster => "grandmaster",
         };
         f.write_str(s)
     }
@@ -164,7 +150,6 @@ impl std::str::FromStr for Difficulty {
             "hard" => Ok(Self::Hard),
             "expert" => Ok(Self::Expert),
             "master" => Ok(Self::Master),
-            "grandmaster" => Ok(Self::Grandmaster),
             _ => Err(format!("unknown difficulty: {s}")),
         }
     }
@@ -179,4 +164,26 @@ pub enum CluePosition {
     Bottom(usize),
     Left(usize),
     Right(usize),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn from_str_accepts_current_labels() {
+        assert_eq!(Difficulty::from_str("easy"), Ok(Difficulty::Easy));
+        assert_eq!(Difficulty::from_str("medium"), Ok(Difficulty::Medium));
+        assert_eq!(Difficulty::from_str("hard"), Ok(Difficulty::Hard));
+        assert_eq!(Difficulty::from_str("expert"), Ok(Difficulty::Expert));
+        assert_eq!(Difficulty::from_str("master"), Ok(Difficulty::Master));
+    }
+
+    #[test]
+    fn from_str_rejects_unknown() {
+        assert!(Difficulty::from_str("grandmaster").is_err());
+        assert!(Difficulty::from_str("trivial").is_err());
+        assert!(Difficulty::from_str("").is_err());
+    }
 }
