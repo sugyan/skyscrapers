@@ -1,3 +1,8 @@
+// Only compiled when the `analysis-hooks` feature is enabled, so production
+// builds (CLI / wasm) neither see this analysis-specific surface in the
+// public API nor pay any cost for it. Call sites in `techniques::` are
+// `cfg`-gated to match.
+#[cfg(feature = "analysis-hooks")]
 pub mod analysis_hooks;
 pub mod difficulty;
 mod state;
