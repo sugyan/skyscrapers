@@ -14,6 +14,10 @@ pub enum Difficulty {
     /// Requires permutation enumeration (single- or dual-clue).
     Expert,
     /// Requires forcing-chain reasoning (assumption-based).
+    // The `grandmaster` alias keeps serde-deserialized payloads from the
+    // prior 6-tier scheme (where Grandmaster was a separate variant)
+    // resolving to Master, mirroring the FromStr behavior.
+    #[cfg_attr(feature = "serde", serde(alias = "grandmaster"))]
     Master,
 }
 
@@ -195,5 +199,23 @@ mod tests {
     fn from_str_rejects_unknown() {
         assert!(Difficulty::from_str("trivial").is_err());
         assert!(Difficulty::from_str("").is_err());
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_deserializes_legacy_grandmaster_to_master() {
+        // Persisted JSON / query payloads from the prior 6-tier scheme
+        // must keep deserializing through the derived Deserialize impl,
+        // which doesn't go through FromStr.
+        use serde::Deserialize;
+        use serde::de::IntoDeserializer;
+        type Err = serde::de::value::Error;
+        let de: serde::de::value::StrDeserializer<Err> = "grandmaster".into_deserializer();
+        let d: Difficulty = Difficulty::deserialize(de).unwrap();
+        assert_eq!(d, Difficulty::Master);
+
+        let de: serde::de::value::StrDeserializer<Err> = "master".into_deserializer();
+        let d: Difficulty = Difficulty::deserialize(de).unwrap();
+        assert_eq!(d, Difficulty::Master);
     }
 }

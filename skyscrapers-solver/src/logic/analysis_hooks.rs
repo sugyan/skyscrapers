@@ -11,6 +11,7 @@
 //! routed through the dispatch loop, so disabling it via this module has no
 //! effect. All other techniques in `Technique` are honored.
 
+#[cfg(feature = "analysis-hooks")]
 use super::difficulty::Technique;
 
 #[cfg(feature = "analysis-hooks")]
@@ -21,6 +22,7 @@ thread_local! {
     static DISABLED_MASK: Cell<u64> = const { Cell::new(0) };
 }
 
+#[cfg(feature = "analysis-hooks")]
 fn technique_bit(t: Technique) -> u64 {
     let shift = t as u32;
     debug_assert!(
@@ -47,15 +49,12 @@ pub fn clear_disabled() {
     DISABLED_MASK.with(|cell| cell.set(0));
 }
 
+/// Check whether `t` has been disabled on the current thread. Only defined
+/// when the `analysis-hooks` feature is enabled — call sites in the hot
+/// dispatch loop must be `#[cfg(feature = "analysis-hooks")]`-gated so
+/// production builds skip this check entirely.
+#[cfg(feature = "analysis-hooks")]
 #[inline]
 pub(crate) fn is_disabled(t: Technique) -> bool {
-    #[cfg(feature = "analysis-hooks")]
-    {
-        DISABLED_MASK.with(|cell| cell.get() & technique_bit(t) != 0)
-    }
-    #[cfg(not(feature = "analysis-hooks"))]
-    {
-        let _ = technique_bit(t);
-        false
-    }
+    DISABLED_MASK.with(|cell| cell.get() & technique_bit(t) != 0)
 }
