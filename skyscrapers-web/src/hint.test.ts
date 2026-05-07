@@ -125,6 +125,33 @@ describe("relevantCells", () => {
     ]);
   });
 
+  it("returns chain cells for xy-chain elimination", () => {
+    const hint: HintResult = {
+      step: {
+        technique: "xy-chain",
+        actions: [{ kind: "eliminate", row: 3, col: 0, value: 3 }],
+        reason: {
+          kind: "xy-chain-elimination",
+          chain: [
+            [0, 0],
+            [2, 0],
+            [2, 2],
+            [3, 2],
+          ],
+          eliminated_value: 3,
+        },
+      },
+      candidates,
+    };
+    expect(relevantCells(hint)).toEqual([
+      [3, 0],
+      [0, 0],
+      [2, 0],
+      [2, 2],
+      [3, 2],
+    ]);
+  });
+
   it("deduplicates cells appearing in both actions and reason", () => {
     const hint: HintResult = {
       step: {

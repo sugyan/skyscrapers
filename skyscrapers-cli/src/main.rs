@@ -224,6 +224,7 @@ fn technique_name(t: Technique) -> &'static str {
         Technique::VisibilityAnalysis => "VisibilityAnalysis",
         Technique::NakedSets => "NakedSets",
         Technique::XWing => "XWing",
+        Technique::XyChain => "XY-Chain",
         Technique::AlsXz => "ALS-XZ",
         Technique::PermutationEnumeration => "PermutationEnumeration",
         Technique::DualCluePermutation => "DualCluePermutation",
@@ -239,6 +240,12 @@ fn cell_ref(row: usize, col: usize) -> String {
 fn cells_set(cells: &[(usize, usize)]) -> String {
     let inner: Vec<String> = cells.iter().map(|&(r, c)| cell_ref(r, c)).collect();
     format!("{{{}}}", inner.join(","))
+}
+
+/// Render an ordered cell sequence (e.g. an XY-Chain) as `R1C1->R3C1->...`.
+fn cells_chain(cells: &[(usize, usize)]) -> String {
+    let inner: Vec<String> = cells.iter().map(|&(r, c)| cell_ref(r, c)).collect();
+    inner.join("->")
 }
 
 fn line_name(line: Line) -> String {
@@ -313,6 +320,13 @@ fn format_reason(reason: &Reason, puzzle: &Puzzle) -> String {
             line_name(*line),
             clue_with_value(*clue_a, &puzzle.clues),
             clue_with_value(*clue_b, &puzzle.clues),
+        ),
+        Reason::XyChainElimination {
+            chain,
+            eliminated_value,
+        } => format!(
+            "XY-Chain {} eliminates {eliminated_value}",
+            cells_chain(chain),
         ),
         Reason::AlsXzElimination {
             als_a,

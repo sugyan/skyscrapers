@@ -25,6 +25,16 @@ other techniques), and the user-facing difficulty scale was collapsed
 from 6 to 5 categories — Master and Grandmaster merged into a single
 **Master** tier since both denote forcing-chain reasoning.
 
+The 2026-05-07 review added **XyChain** (chain of bivalue cells, length ≥ 3)
+at Hard tier and promoted **AlsXz** to Expert. Many ALS-XZ firings were
+size-2 (bivalue) ALSs whose deduction is structurally a length-4
+XY-Chain; surfacing those as XyChain matches the human-friendly framing
+and is more amenable to UI hint explanations. Genuine size-3+ ALSs
+remain at Expert under AlsXz. Verified: `technique-necessity --disable
+XyChain` against 100 n=4 hard puzzles flips all 100 to Expert (now
+solved by AlsXz at the higher tier), confirming XyChain is the
+load-bearing technique for the Hard tier at small n.
+
 | Technique | Difficulty | Description |
 |-----------|-----------|-------------|
 | NakedSingles | Easy | Cell with one candidate |
@@ -33,7 +43,8 @@ from 6 to 5 categories — Master and Grandmaster merged into a single
 | VisibilityAnalysis | Medium | Clue visibility count forces monotonic prefix |
 | NakedSets | Hard | k cells sharing k values |
 | XWing / Swordfish | Hard | Fish pattern elimination |
-| AlsXz | Hard | Two almost locked sets + restricted common candidate |
+| XyChain | Hard | Chain of bivalue cells whose endpoints share a value (length ≥ 3; subsumes XY-Wing) |
+| AlsXz | Expert | Two almost locked sets + restricted common candidate (size ≥ 2; promoted from Hard on 2026-05-07 once XyChain absorbed the size-2 cases that read more naturally as bivalue chains) |
 | PermutationEnumeration | Expert | Single-clue permutation check |
 | DualCluePermutation | Expert | Both opposing clues simultaneously |
 | SimpleForcingChain | Master | Assumption + basic propagation |

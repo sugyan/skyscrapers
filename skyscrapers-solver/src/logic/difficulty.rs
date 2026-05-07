@@ -28,6 +28,7 @@ pub enum Technique {
     VisibilityAnalysis,
     NakedSets,
     XWing,
+    XyChain,
     AlsXz,
     PermutationEnumeration,
     DualCluePermutation,
@@ -41,8 +42,10 @@ impl Technique {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning | Self::VisibilityAnalysis => Difficulty::Medium,
-            Self::NakedSets | Self::XWing | Self::AlsXz => Difficulty::Hard,
-            Self::PermutationEnumeration | Self::DualCluePermutation => Difficulty::Expert,
+            Self::NakedSets | Self::XWing | Self::XyChain => Difficulty::Hard,
+            Self::AlsXz | Self::PermutationEnumeration | Self::DualCluePermutation => {
+                Difficulty::Expert
+            }
             Self::SimpleForcingChain | Self::FullForcingChain => Difficulty::Master,
         }
     }
@@ -96,6 +99,11 @@ pub enum Reason {
         line: Line,
         clue_a: CluePosition,
         clue_b: CluePosition,
+    },
+    /// XY-Chain: chain of bivalue cells whose endpoints share a value.
+    XyChainElimination {
+        chain: Vec<(usize, usize)>,
+        eliminated_value: u8,
     },
     /// ALS-XZ: two almost locked sets connected by a restricted common candidate.
     AlsXzElimination {

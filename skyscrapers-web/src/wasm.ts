@@ -105,6 +105,7 @@ export type Technique =
   | "visibility-analysis"
   | "naked-sets"
   | "x-wing"
+  | "xy-chain"
   | "als-xz"
   | "permutation-enumeration"
   | "dual-clue-permutation"
@@ -144,6 +145,11 @@ export type HintReason =
       line: Line;
       clue_a: CluePosition;
       clue_b: CluePosition;
+    }
+  | {
+      kind: "xy-chain-elimination";
+      chain: [number, number][];
+      eliminated_value: number;
     }
   | {
       kind: "als-xz-elimination";

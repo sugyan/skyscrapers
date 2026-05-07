@@ -234,6 +234,7 @@ fn parse_techniques(names: &[String]) -> Result<Vec<Technique>, String> {
                 "visibilityanalysis" => Ok(Technique::VisibilityAnalysis),
                 "nakedsets" => Ok(Technique::NakedSets),
                 "xwing" => Ok(Technique::XWing),
+                "xychain" => Ok(Technique::XyChain),
                 "alsxz" => Ok(Technique::AlsXz),
                 "permutationenumeration" => Ok(Technique::PermutationEnumeration),
                 "dualcluepermutation" => Ok(Technique::DualCluePermutation),
