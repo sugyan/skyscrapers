@@ -8,6 +8,7 @@ export const TECHNIQUE_LABELS: Record<Technique, string> = {
   "visibility-analysis": "Visibility Analysis",
   "naked-sets": "Naked Set",
   "x-wing": "X-Wing",
+  "xy-chain": "XY-Chain",
   "als-xz": "ALS-XZ",
   "permutation-enumeration": "Permutation Enumeration",
   "dual-clue-permutation": "Dual-Clue Permutation",
@@ -53,6 +54,9 @@ export function relevantCells(hint: HintResult): [number, number][] {
       break;
     case "set-in-line":
       reason.cells.forEach(([r, c]) => push(r, c));
+      break;
+    case "xy-chain-elimination":
+      reason.chain.forEach(([r, c]) => push(r, c));
       break;
     case "als-xz-elimination":
       reason.als_a.forEach(([r, c]) => push(r, c));
@@ -117,6 +121,10 @@ export function reasonText(hint: HintResult): string {
       return `Permutation enumeration on ${lineLabel(reason.line)} (${cluePositionLabel(reason.clue)}) rules out the eliminated candidates.`;
     case "dual-clue-permutation-elimination":
       return `Combining ${cluePositionLabel(reason.clue_a)} and ${cluePositionLabel(reason.clue_b)} on ${lineLabel(reason.line)} rules out the eliminated candidates.`;
+    case "xy-chain-elimination": {
+      const cells = reason.chain.map(([r, c]) => cellLabel(r, c)).join(" → ");
+      return `XY-Chain ${cells} forces ${reason.eliminated_value} into one of its endpoints, eliminating it from cells seeing both ends.`;
+    }
     case "als-xz-elimination":
       return `ALS-XZ on value ${reason.rcc_value} eliminates ${reason.eliminated_value} from cells seeing both sets.`;
     case "forcing-chain-elimination":

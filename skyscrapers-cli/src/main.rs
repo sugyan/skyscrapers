@@ -224,6 +224,7 @@ fn technique_name(t: Technique) -> &'static str {
         Technique::VisibilityAnalysis => "VisibilityAnalysis",
         Technique::NakedSets => "NakedSets",
         Technique::XWing => "XWing",
+        Technique::XyChain => "XY-Chain",
         Technique::AlsXz => "ALS-XZ",
         Technique::PermutationEnumeration => "PermutationEnumeration",
         Technique::DualCluePermutation => "DualCluePermutation",
@@ -313,6 +314,13 @@ fn format_reason(reason: &Reason, puzzle: &Puzzle) -> String {
             line_name(*line),
             clue_with_value(*clue_a, &puzzle.clues),
             clue_with_value(*clue_b, &puzzle.clues),
+        ),
+        Reason::XyChainElimination {
+            chain,
+            eliminated_value,
+        } => format!(
+            "XY-Chain {} eliminates {eliminated_value}",
+            cells_set(chain),
         ),
         Reason::AlsXzElimination {
             als_a,

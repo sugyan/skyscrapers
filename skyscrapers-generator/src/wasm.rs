@@ -74,16 +74,15 @@ pub fn next_hint(
         serde_wasm_bindgen::from_value(puzzle).map_err(|e| JsError::new(&e.to_string()))?;
     let board: Board =
         serde_wasm_bindgen::from_value(board).map_err(|e| JsError::new(&e.to_string()))?;
-    let user_candidates: Option<Vec<Vec<Vec<u8>>>> = if user_candidates.is_undefined()
-        || user_candidates.is_null()
-    {
-        None
-    } else {
-        Some(
-            serde_wasm_bindgen::from_value(user_candidates)
-                .map_err(|e| JsError::new(&e.to_string()))?,
-        )
-    };
+    let user_candidates: Option<Vec<Vec<Vec<u8>>>> =
+        if user_candidates.is_undefined() || user_candidates.is_null() {
+            None
+        } else {
+            Some(
+                serde_wasm_bindgen::from_value(user_candidates)
+                    .map_err(|e| JsError::new(&e.to_string()))?,
+            )
+        };
 
     match LogicSolver.next_step_with_candidates(&puzzle, &board, user_candidates.as_deref()) {
         Some((step, candidates)) => {

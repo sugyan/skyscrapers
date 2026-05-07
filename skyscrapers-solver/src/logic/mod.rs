@@ -403,6 +403,27 @@ mod tests {
     }
 
     #[test]
+    fn solve_n4_seed20260506_uses_xy_chain_at_hard() {
+        // The puzzle generated for n=4 seed=20260506 difficulty=hard.
+        // Clues: top=[_,4,1,_], left=[_,1,_,_], right=[_,_,_,3].
+        // The mid-solve state has bivalue cells forming an XY-Chain that
+        // eliminates a candidate; without XYChain, this puzzle requires
+        // ALS-XZ (Expert) or ForcingChain (Master).
+        let puzzle = build_puzzle_with_clues(4, &[], &[(1, 4), (2, 1)], &[], &[(1, 1)], &[(3, 3)]);
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        assert_eq!(result.solutions.len(), 1, "puzzle should solve");
+        assert_eq!(result.difficulty, Some(Difficulty::Hard));
+        assert!(
+            result
+                .steps
+                .iter()
+                .any(|s| s.technique == Technique::XyChain),
+            "expected an XyChain step, got: {:?}",
+            result.steps.iter().map(|s| s.technique).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     fn solve_n4_seed15() {
         // n=4, seed=15: 0 givens, clues: left=[_,2,_,3], right=[_,_,3,1], bottom=[3,_,_,_]
         let puzzle =
