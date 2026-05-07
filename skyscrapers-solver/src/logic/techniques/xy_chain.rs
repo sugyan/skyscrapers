@@ -20,9 +20,9 @@ const MAX_CHAIN_LENGTH: usize = 12;
 /// `Aₖ = x`. So in every case `x` must lie at `A₁` or `Aₖ`, and any cell
 /// that sees *both* endpoints can therefore not be `x`.
 ///
-/// Length 2 chains (a "hidden pair" inside a single line) are handled by
-/// `NakedSets`; we require `length ≥ 3`. Length 3 corresponds to the classic
-/// XY-Wing.
+/// Length 2 chains (two bivalue cells `{x, y}` sharing a row or column —
+/// a *naked pair*) are handled by `NakedSets`; we require `length ≥ 3`.
+/// Length 3 corresponds to the classic XY-Wing.
 pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
     let bivalues = collect_bivalue_cells(state);
 
