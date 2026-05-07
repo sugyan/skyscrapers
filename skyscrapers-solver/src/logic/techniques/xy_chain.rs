@@ -6,12 +6,19 @@ use crate::logic::techniques::TechniqueResult;
 /// tiny, but the cap protects against pathological backtracking on large n.
 const MAX_CHAIN_LENGTH: usize = 12;
 
-/// XY-Chain: chain of bivalue cells whose endpoints both contain value `x`
-/// and whose interior values relay `{x, a₁}, {a₁, a₂}, …, {a_{k-1}, x}`.
+/// XY-Chain: chain of bivalue cells `A₁, A₂, …, Aₖ` whose endpoints both
+/// contain value `x` and whose adjacent cells share a row or column with
+/// candidates relaying through a chain of values.
 ///
-/// Each adjacent pair shares a row or column. When such a chain exists, any
-/// cell that sees *both* endpoints cannot be `x`: either the start endpoint
-/// is `x`, or the relay forces the end endpoint to be `x`.
+/// Concretely the search alternates "incoming" and "outgoing" values: at
+/// step `i` the cell `Aᵢ = {pᵢ, qᵢ}` shares one of its values with its
+/// neighbour `Aᵢ₋₁` (the incoming link) and the other with `Aᵢ₊₁` (the
+/// outgoing link). Both endpoints carry `x` (the start as one of its two
+/// values, the end as its outgoing value), but `x` may also appear at an
+/// interior cell — that does not break the deduction, because the relay
+/// keeps propagating: if `A₁ ≠ x` then `A₂` is forced, …, and ultimately
+/// `Aₖ = x`. So in every case `x` must lie at `A₁` or `Aₖ`, and any cell
+/// that sees *both* endpoints can therefore not be `x`.
 ///
 /// Length 2 chains (a "hidden pair" inside a single line) are handled by
 /// `NakedSets`; we require `length ≥ 3`. Length 3 corresponds to the classic
@@ -188,7 +195,6 @@ mod tests {
         let clues = Clues::new_all_none(5);
         let puzzle = Puzzle { board, clues };
         let mut state = SolveState::new(&puzzle).unwrap();
-        let n = 5;
 
         let pair = |a: u8, b: u8| Candidates::single(a).union(Candidates::single(b));
         let i00 = state.idx(0, 0);
@@ -218,7 +224,6 @@ mod tests {
                     )
                 });
                 assert!(has_target, "Expected -3 from R4C1, got: {:?}", step.actions);
-                let _ = n;
             }
             _ => panic!("Expected XY-Chain to find a pattern"),
         }

@@ -242,6 +242,12 @@ fn cells_set(cells: &[(usize, usize)]) -> String {
     format!("{{{}}}", inner.join(","))
 }
 
+/// Render an ordered cell sequence (e.g. an XY-Chain) as `R1C1->R3C1->...`.
+fn cells_chain(cells: &[(usize, usize)]) -> String {
+    let inner: Vec<String> = cells.iter().map(|&(r, c)| cell_ref(r, c)).collect();
+    inner.join("->")
+}
+
 fn line_name(line: Line) -> String {
     match line {
         Line::Row(r) => format!("Row {}", r + 1),
@@ -320,7 +326,7 @@ fn format_reason(reason: &Reason, puzzle: &Puzzle) -> String {
             eliminated_value,
         } => format!(
             "XY-Chain {} eliminates {eliminated_value}",
-            cells_set(chain),
+            cells_chain(chain),
         ),
         Reason::AlsXzElimination {
             als_a,
