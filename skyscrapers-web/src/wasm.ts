@@ -107,6 +107,7 @@ export type Technique =
   | "x-wing"
   | "xy-chain"
   | "als-xz"
+  | "simple-permutation"
   | "permutation-enumeration"
   | "dual-clue-permutation"
   | "simple-forcing-chain"

@@ -73,6 +73,11 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::FullForcingChain => forcing_chain::apply_full(state),
         // CluePruning runs only once during `SolveState::new` and is never dispatched here.
         Technique::CluePruning => unreachable!("CluePruning is applied during SolveState::new"),
+        // SimplePermutation is an output label produced by `permutation::apply`
+        // when an enumeration was trivial; it is never dispatched directly.
+        Technique::SimplePermutation => {
+            unreachable!("SimplePermutation is a label produced by PermutationEnumeration")
+        }
     }
 }
 

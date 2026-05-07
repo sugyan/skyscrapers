@@ -1,5 +1,22 @@
 # Logic Solver Analysis (2026-05-01)
 
+> **2026-05-08 update.** `PermutationEnumeration` was split into two
+> output labels. Firings on lines with ≤3 free cells, or whose
+> candidate-respecting permutation count is ≤8, are tagged
+> `SimplePermutation` (Hard) instead of `PermutationEnumeration`
+> (Expert). The dispatch entry, code path, and `Reason` variant are
+> unchanged — only the `Step::technique` tag and resulting tier shift.
+>
+> Motivating case: `n=5 seed=20260506 difficulty=expert` resolved to
+> Expert solely on two PE firings with 3 free cells each. After the
+> split it correctly registers as Hard (PE on a 3-cell line is a
+> case-check most humans do without writing anything down). At n=5
+> across 100 unseeded seeds, the Expert bucket dropped from ~99/100 to
+> 24/100, with 56/100 now correctly registering as Hard. Expert remains
+> reachable: target-yield at n=5 expert and n=7 expert is still 100%.
+> See "Implemented Techniques" below for the new row and "Observations"
+> for the post-split distribution.
+
 Analysis of the logic solver's behavior. Two complementary views:
 
 1. **Unseeded baseline** (sections "Batch Test Results" and "Technique Usage"):
@@ -44,8 +61,9 @@ load-bearing technique for the Hard tier at small n.
 | NakedSets | Hard | k cells sharing k values |
 | XWing / Swordfish | Hard | Fish pattern elimination |
 | XyChain | Hard | Chain of bivalue cells whose endpoints share a value (length ≥ 3; subsumes XY-Wing) |
+| SimplePermutation | Hard | Single-clue permutation check on a line trivial enough to enumerate by hand (≤3 free cells, or ≤8 valid permutations) |
 | AlsXz | Expert | Two almost locked sets + restricted common candidate (size ≥ 2; promoted from Hard on 2026-05-07 once XyChain absorbed the size-2 cases that read more naturally as bivalue chains) |
-| PermutationEnumeration | Expert | Single-clue permutation check |
+| PermutationEnumeration | Expert | Single-clue permutation check on a non-trivial line |
 | DualCluePermutation | Expert | Both opposing clues simultaneously |
 | SimpleForcingChain | Master | Assumption + basic propagation |
 | FullForcingChain | Master | Assumption + full propagation |
@@ -626,6 +644,28 @@ seed= 99  yes  grandmaster  NakedSingles, HiddenSingles, CluePruning, Visibility
 ```
 
 ## Observations
+
+### From the 2026-05-08 PE-split review
+
+1. **PE was over-classifying as Expert.** Pre-split, n=5 unseeded
+   baseline put 99/100 puzzles at Expert because virtually every
+   small-board puzzle eventually hit one PE firing — even firings on
+   3-cell lines that a human solves by inspection. After splitting off
+   `SimplePermutation` (≤3 free cells, or ≤8 valid permutations) to
+   Hard, the n=5 distribution becomes hard=56, expert=24, master=19,
+   medium=1. Expert is now reserved for genuinely complex enumerations.
+
+2. **Expert is still reachable.** Target-yield at n=5 expert and n=7
+   expert remained 100% on a 30-seed spot-check after the split, so
+   the reclassification did not collapse a tier — it redistributed
+   misclassified puzzles into Hard while leaving non-trivial PE
+   firings on the Expert path.
+
+3. **Both labels still fire often.** At n=7 unseeded,
+   `PermutationEnumeration` appears in 100/100 puzzles and
+   `SimplePermutation` in 96/100 — they coexist in most puzzles,
+   with the Expert tier promotion driven only by the non-trivial
+   firings.
 
 ### From the target-driven analysis (2026-05-01)
 

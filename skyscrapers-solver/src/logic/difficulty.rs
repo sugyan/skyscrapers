@@ -9,9 +9,10 @@ pub enum Difficulty {
     Easy,
     /// Requires visibility analysis to break out of the singles-only loop.
     Medium,
-    /// Requires set-based techniques (NakedSets, X-Wing, ALS-XZ).
+    /// Requires set-based techniques (NakedSets, X-Wing, XY-Chain) or
+    /// trivial single-clue permutation enumeration (SimplePermutation).
     Hard,
-    /// Requires permutation enumeration (single- or dual-clue).
+    /// Requires non-trivial permutation enumeration (single- or dual-clue).
     Expert,
     /// Requires forcing-chain reasoning (assumption-based).
     Master,
@@ -30,6 +31,7 @@ pub enum Technique {
     XWing,
     XyChain,
     AlsXz,
+    SimplePermutation,
     PermutationEnumeration,
     DualCluePermutation,
 
@@ -42,7 +44,9 @@ impl Technique {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning | Self::VisibilityAnalysis => Difficulty::Medium,
-            Self::NakedSets | Self::XWing | Self::XyChain => Difficulty::Hard,
+            Self::NakedSets | Self::XWing | Self::XyChain | Self::SimplePermutation => {
+                Difficulty::Hard
+            }
             Self::AlsXz | Self::PermutationEnumeration | Self::DualCluePermutation => {
                 Difficulty::Expert
             }

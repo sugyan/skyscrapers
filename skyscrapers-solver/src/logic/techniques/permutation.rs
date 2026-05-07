@@ -75,6 +75,14 @@ fn enumerate_and_prune(
         return TechniqueResult::NoProgress;
     }
 
+    // Classify this firing: a "simple" enumeration is one a human can do
+    // mentally — few free cells, or few permutations to inspect.
+    let technique = if is_simple_enumeration(state, indices, &free_positions, expected, &used) {
+        Technique::SimplePermutation
+    } else {
+        Technique::PermutationEnumeration
+    };
+
     let mut actions = Vec::new();
     for &(idx, v) in &eliminations {
         let r = idx / n;
@@ -90,13 +98,152 @@ fn enumerate_and_prune(
     }
 
     TechniqueResult::Progress(Step {
-        technique: Technique::PermutationEnumeration,
+        technique,
         actions,
         reason: Reason::PermutationElimination {
             line,
             clue: clue_pos,
         },
     })
+}
+
+/// Threshold for "few permutations". Any line whose pre-pruning candidate
+/// permutations satisfying the clue number ≤ this is classified as Simple.
+const SIMPLE_PERM_CAP: u32 = 8;
+
+/// Threshold for "few free cells". Any line with at most this many unknowns
+/// is classified as Simple regardless of permutation count.
+const SIMPLE_FREE_CELLS: usize = 3;
+
+fn is_simple_enumeration(
+    state: &SolveState,
+    indices: &[usize],
+    free_positions: &[usize],
+    expected: u8,
+    used: &[bool],
+) -> bool {
+    if free_positions.len() <= SIMPLE_FREE_CELLS {
+        return true;
+    }
+    count_valid_perms_capped(
+        state,
+        indices,
+        free_positions,
+        expected,
+        used,
+        SIMPLE_PERM_CAP + 1,
+    ) <= SIMPLE_PERM_CAP
+}
+
+/// Count valid permutations of the line's free cells (respecting per-cell
+/// candidates and the clue's visibility count). Returns early once the
+/// running count exceeds `cap`, in which case the returned value is
+/// guaranteed > `cap` but not otherwise meaningful.
+fn count_valid_perms_capped(
+    state: &SolveState,
+    indices: &[usize],
+    free_positions: &[usize],
+    expected: u8,
+    used: &[bool],
+    cap: u32,
+) -> u32 {
+    let n = indices.len();
+    let mut pos_to_depth = vec![usize::MAX; n];
+    for (depth, &pos) in free_positions.iter().enumerate() {
+        pos_to_depth[pos] = depth;
+    }
+
+    let mut value_used = used.to_vec();
+    let mut assignments: Vec<u8> = vec![0; free_positions.len()];
+    let mut count = 0u32;
+
+    count_backtrack(
+        state,
+        indices,
+        free_positions,
+        &pos_to_depth,
+        0,
+        &mut value_used,
+        &mut assignments,
+        expected,
+        cap,
+        &mut count,
+    );
+    count
+}
+
+#[allow(clippy::too_many_arguments)]
+fn count_backtrack(
+    state: &SolveState,
+    indices: &[usize],
+    free_positions: &[usize],
+    pos_to_depth: &[usize],
+    depth: usize,
+    value_used: &mut Vec<bool>,
+    assignments: &mut Vec<u8>,
+    expected: u8,
+    cap: u32,
+    count: &mut u32,
+) {
+    if *count > cap {
+        return;
+    }
+    if depth == free_positions.len() {
+        if compute_visibility_full(state, indices, pos_to_depth, assignments) == expected {
+            *count += 1;
+        }
+        return;
+    }
+    let pos = free_positions[depth];
+    let idx = indices[pos];
+    let candidates = state.candidates[idx];
+    for v in candidates.iter() {
+        if value_used[v as usize] {
+            continue;
+        }
+        value_used[v as usize] = true;
+        assignments[depth] = v;
+        count_backtrack(
+            state,
+            indices,
+            free_positions,
+            pos_to_depth,
+            depth + 1,
+            value_used,
+            assignments,
+            expected,
+            cap,
+            count,
+        );
+        value_used[v as usize] = false;
+        if *count > cap {
+            return;
+        }
+    }
+}
+
+/// Like [`compute_visibility`], but for a line where every free cell is
+/// in `assignments` (no `target_pos` carve-out).
+fn compute_visibility_full(
+    state: &SolveState,
+    indices: &[usize],
+    pos_to_depth: &[usize],
+    assignments: &[u8],
+) -> u8 {
+    let mut max_height: u8 = 0;
+    let mut count: u8 = 0;
+    for (pos, &idx) in indices.iter().enumerate() {
+        let height = if let Some(v) = state.grid[idx] {
+            v
+        } else {
+            assignments[pos_to_depth[pos]]
+        };
+        if height > max_height {
+            count += 1;
+            max_height = height;
+        }
+    }
+    count
 }
 
 /// Check if fixing `val` at `target_pos` allows any valid assignment that satisfies the clue.

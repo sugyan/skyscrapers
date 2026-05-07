@@ -389,6 +389,8 @@ mod tests {
     fn solve_n4_seed13() {
         // n=4, seed=13: 2 givens, clues: top=[_,2,_,_], left=[_,_,1,_], bottom=[_,_,_,2]
         // givens: (2,1)=2, (3,0)=1
+        // Hardest technique is single-clue permutation enumeration on small
+        // (≤3-cell) lines, which is classified as `SimplePermutation` (Hard).
         let puzzle = build_puzzle_with_clues(
             4,
             &[(2, 1, 2), (3, 0, 1)],
@@ -399,7 +401,7 @@ mod tests {
         );
         let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
         assert_eq!(result.solutions.len(), 1, "n=4 seed=13 should be solvable");
-        assert_eq!(result.difficulty, Some(Difficulty::Expert));
+        assert_eq!(result.difficulty, Some(Difficulty::Hard));
     }
 
     #[test]
@@ -426,11 +428,13 @@ mod tests {
     #[test]
     fn solve_n4_seed15() {
         // n=4, seed=15: 0 givens, clues: left=[_,2,_,3], right=[_,_,3,1], bottom=[3,_,_,_]
+        // Hardest technique is single-clue permutation enumeration on small
+        // (≤3-cell) lines, which is classified as `SimplePermutation` (Hard).
         let puzzle =
             build_puzzle_with_clues(4, &[], &[], &[(0, 3)], &[(1, 2), (3, 3)], &[(2, 3), (3, 1)]);
         let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
         assert_eq!(result.solutions.len(), 1, "n=4 seed=15 should be solvable");
-        assert_eq!(result.difficulty, Some(Difficulty::Expert));
+        assert_eq!(result.difficulty, Some(Difficulty::Hard));
     }
 
     #[test]

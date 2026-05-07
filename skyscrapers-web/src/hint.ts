@@ -10,6 +10,7 @@ export const TECHNIQUE_LABELS: Record<Technique, string> = {
   "x-wing": "X-Wing",
   "xy-chain": "XY-Chain",
   "als-xz": "ALS-XZ",
+  "simple-permutation": "Simple Permutation",
   "permutation-enumeration": "Permutation Enumeration",
   "dual-clue-permutation": "Dual-Clue Permutation",
   "simple-forcing-chain": "Simple Forcing Chain",
