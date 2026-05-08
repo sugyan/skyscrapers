@@ -237,6 +237,13 @@ fn parse_techniques(names: &[String]) -> Result<Vec<Technique>, String> {
                 "xychain" => Ok(Technique::XyChain),
                 "alsxz" => Ok(Technique::AlsXz),
                 "permutationenumeration" => Ok(Technique::PermutationEnumeration),
+                // SimplePermutation is an output label produced by the same
+                // dispatch entry as PermutationEnumeration. Disabling it
+                // independently is not meaningful — disabling
+                // PermutationEnumeration also suppresses SimplePermutation.
+                "simplepermutation" => Err("SimplePermutation cannot be disabled independently \
+                     (disable PermutationEnumeration instead)"
+                    .to_string()),
                 "dualcluepermutation" => Ok(Technique::DualCluePermutation),
                 "simpleforcingchain" => Ok(Technique::SimpleForcingChain),
                 "fullforcingchain" => Ok(Technique::FullForcingChain),

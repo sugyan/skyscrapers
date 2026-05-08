@@ -226,6 +226,7 @@ fn technique_name(t: Technique) -> &'static str {
         Technique::XWing => "XWing",
         Technique::XyChain => "XY-Chain",
         Technique::AlsXz => "ALS-XZ",
+        Technique::SimplePermutation => "SimplePermutation",
         Technique::PermutationEnumeration => "PermutationEnumeration",
         Technique::DualCluePermutation => "DualCluePermutation",
         Technique::SimpleForcingChain => "SimpleForcingChain",

@@ -75,6 +75,14 @@ fn enumerate_and_prune(
         return TechniqueResult::NoProgress;
     }
 
+    // Classify this firing: a "simple" enumeration is one a human can do
+    // mentally — few free cells, or few permutations to inspect.
+    let technique = if is_simple_enumeration(state, indices, &free_positions, expected, &used) {
+        Technique::SimplePermutation
+    } else {
+        Technique::PermutationEnumeration
+    };
+
     let mut actions = Vec::new();
     for &(idx, v) in &eliminations {
         let r = idx / n;
@@ -90,13 +98,155 @@ fn enumerate_and_prune(
     }
 
     TechniqueResult::Progress(Step {
-        technique: Technique::PermutationEnumeration,
+        technique,
         actions,
         reason: Reason::PermutationElimination {
             line,
             clue: clue_pos,
         },
     })
+}
+
+/// Threshold for "few permutations". Any line whose pre-pruning candidate
+/// permutations satisfying the clue number ≤ this is classified as Simple.
+const SIMPLE_PERM_CAP: u32 = 8;
+
+/// Threshold for "few free cells". Any line with at most this many unknowns
+/// is classified as Simple regardless of permutation count.
+const SIMPLE_FREE_CELLS: usize = 3;
+
+fn is_simple_enumeration(
+    state: &SolveState,
+    indices: &[usize],
+    free_positions: &[usize],
+    expected: u8,
+    used: &[bool],
+) -> bool {
+    if free_positions.len() <= SIMPLE_FREE_CELLS {
+        return true;
+    }
+    // `count_valid_perms_capped` returns early once `count > cap`, so passing
+    // `SIMPLE_PERM_CAP` bails out one solution sooner than `SIMPLE_PERM_CAP + 1`
+    // would and keeps the cap aligned with the threshold we compare against.
+    count_valid_perms_capped(
+        state,
+        indices,
+        free_positions,
+        expected,
+        used,
+        SIMPLE_PERM_CAP,
+    ) <= SIMPLE_PERM_CAP
+}
+
+/// Count valid permutations of the line's free cells (respecting per-cell
+/// candidates and the clue's visibility count). Returns early once the
+/// running count exceeds `cap`, in which case the returned value is
+/// guaranteed > `cap` but not otherwise meaningful.
+fn count_valid_perms_capped(
+    state: &SolveState,
+    indices: &[usize],
+    free_positions: &[usize],
+    expected: u8,
+    used: &[bool],
+    cap: u32,
+) -> u32 {
+    let n = indices.len();
+    let mut pos_to_depth = vec![usize::MAX; n];
+    for (depth, &pos) in free_positions.iter().enumerate() {
+        pos_to_depth[pos] = depth;
+    }
+
+    let mut value_used = used.to_vec();
+    let mut assignments: Vec<u8> = vec![0; free_positions.len()];
+    let mut count = 0u32;
+
+    count_backtrack(
+        state,
+        indices,
+        free_positions,
+        &pos_to_depth,
+        0,
+        &mut value_used,
+        &mut assignments,
+        expected,
+        cap,
+        &mut count,
+    );
+    count
+}
+
+#[allow(clippy::too_many_arguments)]
+fn count_backtrack(
+    state: &SolveState,
+    indices: &[usize],
+    free_positions: &[usize],
+    pos_to_depth: &[usize],
+    depth: usize,
+    value_used: &mut Vec<bool>,
+    assignments: &mut Vec<u8>,
+    expected: u8,
+    cap: u32,
+    count: &mut u32,
+) {
+    if *count > cap {
+        return;
+    }
+    if depth == free_positions.len() {
+        if compute_visibility_full(state, indices, pos_to_depth, assignments) == expected {
+            *count += 1;
+        }
+        return;
+    }
+    let pos = free_positions[depth];
+    let idx = indices[pos];
+    let candidates = state.candidates[idx];
+    for v in candidates.iter() {
+        if value_used[v as usize] {
+            continue;
+        }
+        value_used[v as usize] = true;
+        assignments[depth] = v;
+        count_backtrack(
+            state,
+            indices,
+            free_positions,
+            pos_to_depth,
+            depth + 1,
+            value_used,
+            assignments,
+            expected,
+            cap,
+            count,
+        );
+        value_used[v as usize] = false;
+        if *count > cap {
+            return;
+        }
+    }
+}
+
+/// Like [`compute_visibility`], but for a line where every free cell is
+/// in `assignments` (no `target_pos` carve-out).
+fn compute_visibility_full(
+    state: &SolveState,
+    indices: &[usize],
+    pos_to_depth: &[usize],
+    assignments: &[u8],
+) -> u8 {
+    let mut max_height: u8 = 0;
+    let mut count: u8 = 0;
+    for (pos, &idx) in indices.iter().enumerate() {
+        let height = if let Some(v) = state.grid[idx] {
+            v
+        } else {
+            assignments[pos_to_depth[pos]]
+        };
+        if height > max_height {
+            count += 1;
+            max_height = height;
+        }
+    }
+    count
 }
 
 /// Check if fixing `val` at `target_pos` allows any valid assignment that satisfies the clue.
@@ -312,6 +462,59 @@ mod tests {
         // pos 0 should have 2 eliminated, only 1 remains
         assert!(state.candidates[0].contains(1));
         assert!(!state.candidates[0].contains(2));
+    }
+
+    #[test]
+    fn small_line_emits_simple_permutation_label() {
+        // n=5 row 0 with (0,4)=5 fixed and left clue=2.
+        // 4 free cells overall, but only 6 valid permutations satisfy the
+        // clue (pos 0 must be 4; the remaining {1,2,3} permute freely).
+        // 6 ≤ SIMPLE_PERM_CAP, so the firing must be tagged SimplePermutation.
+        let mut board = Board::new_empty(5);
+        board.set(0, 4, Some(5));
+        let mut clues = Clues::new_all_none(5);
+        clues.set_left(0, Some(2));
+        let puzzle = Puzzle { board, clues };
+        let mut state = SolveState::new(&puzzle).unwrap();
+        let result = apply(&mut state);
+        match result {
+            TechniqueResult::Progress(step) => {
+                assert_eq!(step.technique, Technique::SimplePermutation);
+            }
+            _ => panic!("expected Progress"),
+        }
+    }
+
+    #[test]
+    fn unbounded_line_classified_as_complex() {
+        // n=6 col 0 with top clue=3 and no other constraints.
+        // After init clue-pruning, pos 0 still has 4 candidates and the
+        // full column has 6 free cells; the number of clue-satisfying
+        // permutations far exceeds SIMPLE_PERM_CAP. is_simple_enumeration
+        // must therefore return false for this column.
+        let board = Board::new_empty(6);
+        let mut clues = Clues::new_all_none(6);
+        clues.set_top(0, Some(3));
+        let puzzle = Puzzle { board, clues };
+        let state = SolveState::new(&puzzle).unwrap();
+        let n = state.n;
+        let indices: Vec<usize> = (0..n).map(|r| r * n).collect();
+        let used: Vec<bool> = vec![false; n + 1];
+        let free_positions: Vec<usize> = (0..n).collect();
+
+        let capped =
+            count_valid_perms_capped(&state, &indices, &free_positions, 3, &used, SIMPLE_PERM_CAP);
+        assert!(
+            capped > SIMPLE_PERM_CAP,
+            "expected the capped counter to overshoot, got {capped}"
+        );
+        assert!(!is_simple_enumeration(
+            &state,
+            &indices,
+            &free_positions,
+            3,
+            &used
+        ));
     }
 
     #[test]
