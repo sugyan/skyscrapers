@@ -27,11 +27,11 @@ export function GameControls({
       <div className="grid grid-cols-2 gap-2">
         <button
           className={primaryBtn}
-          onClick={onHint}
-          disabled={!canHint}
-          title={canHint ? undefined : "Fill memo first to use Hint"}
+          onClick={onUndo}
+          disabled={!canUndo}
+          aria-label="Undo"
         >
-          Hint
+          Undo
         </button>
         <button className={primaryBtn} onClick={onCheck}>
           Check
@@ -40,11 +40,11 @@ export function GameControls({
       <div className="grid grid-cols-3 gap-2">
         <button
           className={secondaryBtn}
-          onClick={onUndo}
-          disabled={!canUndo}
-          aria-label="Undo"
+          onClick={onHint}
+          disabled={!canHint}
+          title={canHint ? undefined : "Fill memo first to use Hint"}
         >
-          Undo
+          Hint
         </button>
         <button className={secondaryBtn} onClick={onFillCandidates}>
           Fill memo

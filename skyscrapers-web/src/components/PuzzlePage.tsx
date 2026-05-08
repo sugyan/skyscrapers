@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useEffect, useState } from "react";
+import { useReducer, useCallback, useEffect, useRef, useState } from "react";
 import type {
   Puzzle,
   GameState,
@@ -14,6 +14,9 @@ import { PuzzleGrid } from "./PuzzleGrid";
 import { NumberPad } from "./NumberPad";
 import { GameControls } from "./GameControls";
 import { HintPanel } from "./HintPanel";
+import { ConfirmDialog } from "./ConfirmDialog";
+
+const DOUBLE_TAP_MS = 350;
 
 function deepCopyBoard(board: BoardCell[][]): BoardCell[][] {
   return board.map((row) =>
@@ -272,6 +275,8 @@ export function PuzzlePage({
   const [hint, setHint] = useState<HintResult | null>(null);
   const [hintError, setHintError] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState<number | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const lastTapRef = useRef<{ r: number; c: number; t: number } | null>(null);
 
   const dispatch = useCallback(
     (action: GameAction) => {
@@ -536,6 +541,36 @@ export function PuzzlePage({
         completed={state.completed}
         hint={hint}
         onCellClick={(row, col) => {
+          const cell = state.board[row][col];
+          const now = Date.now();
+          const prev = lastTapRef.current;
+          const isDouble =
+            prev !== null &&
+            prev.r === row &&
+            prev.c === col &&
+            now - prev.t <= DOUBLE_TAP_MS;
+
+          if (
+            isDouble &&
+            !cell.given &&
+            cell.value === null &&
+            cell.candidates.size === 1
+          ) {
+            const [only] = cell.candidates;
+            if (
+              state.selectedCell === null ||
+              state.selectedCell[0] !== row ||
+              state.selectedCell[1] !== col
+            ) {
+              dispatch({ type: "SELECT_CELL", row, col });
+            }
+            dispatch({ type: "SET_VALUE", value: only });
+            lastTapRef.current = null;
+            return;
+          }
+
+          lastTapRef.current = { r: row, c: col, t: now };
+
           if (
             state.selectedCell !== null &&
             state.selectedCell[0] === row &&
@@ -574,7 +609,7 @@ export function PuzzlePage({
         canUndo={state.history.length > 0}
         canHint={allEmptyHaveCandidates}
         onUndo={() => dispatch({ type: "UNDO" })}
-        onReset={() => dispatch({ type: "RESET" })}
+        onReset={() => setConfirmReset(true)}
         onHint={handleHint}
         onCheck={() => dispatch({ type: "CHECK" })}
         onFillCandidates={() => dispatch({ type: "FILL_ALL_CANDIDATES" })}
@@ -586,6 +621,19 @@ export function PuzzlePage({
         onApply={handleApplyHint}
         onClose={handleCloseHint}
       />
+      {confirmReset && (
+        <ConfirmDialog
+          title="Reset puzzle?"
+          message="All entries and memo marks will be cleared. This cannot be undone."
+          confirmLabel="Reset"
+          destructive
+          onConfirm={() => {
+            dispatch({ type: "RESET" });
+            setConfirmReset(false);
+          }}
+          onCancel={() => setConfirmReset(false)}
+        />
+      )}
     </div>
   );
 }

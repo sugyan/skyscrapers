@@ -43,7 +43,7 @@ function CandidatesGrid({
         const present = num <= n && candidates.has(num);
         const isBlocked = present && (blocked?.has(num) ?? false);
         const cls = isBlocked
-          ? "text-candidate text-gray-300 line-through dark:text-slate-600"
+          ? "text-candidate text-gray-300/50 line-through dark:text-slate-700/60"
           : "text-candidate text-gray-500 dark:text-slate-400";
         return (
           <span key={i} className={cls}>

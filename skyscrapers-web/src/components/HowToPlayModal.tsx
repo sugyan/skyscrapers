@@ -22,18 +22,33 @@ const HIGHLIGHT_ROW = 1;
 
 export function HowToPlayModal({ onClose }: HowToPlayModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // The cleanup-driven dialog.close() fires a close event we must ignore;
+  // otherwise React StrictMode's mount → cleanup → remount cycle treats the
+  // synthetic teardown as a user dismiss and the modal never stays open.
+  const closingByCleanup = useRef(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     dialog.showModal();
     return () => {
+      if (!dialog.open) return;
+      closingByCleanup.current = true;
       dialog.close();
     };
   }, []);
 
   const handleClose = () => {
+    if (closingByCleanup.current) {
+      closingByCleanup.current = false;
+      return;
+    }
     onClose();
+  };
+
+  const requestClose = () => {
+    const dialog = dialogRef.current;
+    if (dialog?.open) dialog.close();
   };
 
   return (
@@ -41,13 +56,13 @@ export function HowToPlayModal({ onClose }: HowToPlayModalProps) {
       ref={dialogRef}
       onClose={handleClose}
       onClick={(e) => {
-        if (e.target === e.currentTarget) handleClose();
+        if (e.target === e.currentTarget) requestClose();
       }}
       className="backdrop:bg-black/50 bg-transparent p-4 max-w-md w-full m-auto"
     >
       <div className="bg-white dark:bg-slate-800 rounded-lg max-h-[85vh] overflow-y-auto p-6 relative text-gray-900 dark:text-gray-100">
         <button
-          onClick={handleClose}
+          onClick={requestClose}
           className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-xl leading-none cursor-pointer"
           aria-label="Close"
         >
@@ -105,7 +120,7 @@ export function HowToPlayModal({ onClose }: HowToPlayModalProps) {
         </section>
 
         <button
-          onClick={handleClose}
+          onClick={requestClose}
           className="w-full mt-2 px-4 py-2 text-sm font-medium border border-gray-400 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700"
         >
           Got it!

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  TECHNIQUE_DESCRIPTIONS,
   TECHNIQUE_LABELS,
   candidateDiffs,
   cellLabel,
@@ -68,6 +69,15 @@ function eliminateHint(
 describe("labels", () => {
   it("covers every Technique key", () => {
     for (const value of Object.values(TECHNIQUE_LABELS)) {
+      expect(value.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("has a non-empty description for every technique", () => {
+    const labelKeys = Object.keys(TECHNIQUE_LABELS);
+    const descKeys = Object.keys(TECHNIQUE_DESCRIPTIONS);
+    expect(descKeys.sort()).toEqual(labelKeys.sort());
+    for (const value of Object.values(TECHNIQUE_DESCRIPTIONS)) {
       expect(value.length).toBeGreaterThan(0);
     }
   });
