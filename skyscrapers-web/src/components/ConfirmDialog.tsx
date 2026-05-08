@@ -24,6 +24,9 @@ export function ConfirmDialog({
   // otherwise React StrictMode's mount → cleanup → remount cycle treats the
   // synthetic teardown as a user cancel and snaps the dialog shut.
   const closingByCleanup = useRef(false);
+  // User actions route through dialog.close() so the browser's close lifecycle
+  // owns visibility. This ref carries the intent across the close event.
+  const pendingAction = useRef<"confirm" | "cancel" | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -41,7 +44,16 @@ export function ConfirmDialog({
       closingByCleanup.current = false;
       return;
     }
-    onCancel();
+    const action = pendingAction.current;
+    pendingAction.current = null;
+    if (action === "confirm") onConfirm();
+    else onCancel();
+  };
+
+  const requestClose = (action: "confirm" | "cancel") => {
+    const dialog = dialogRef.current;
+    pendingAction.current = action;
+    if (dialog?.open) dialog.close();
   };
 
   const cancelBtn =
@@ -55,7 +67,7 @@ export function ConfirmDialog({
       ref={dialogRef}
       onClose={handleClose}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
+        if (e.target === e.currentTarget) requestClose("cancel");
       }}
       className="backdrop:bg-black/50 bg-transparent p-4 max-w-sm w-full m-auto"
     >
@@ -64,14 +76,14 @@ export function ConfirmDialog({
         <p className="text-sm leading-relaxed mb-5">{message}</p>
         <div className="flex justify-end gap-2">
           <button
-            onClick={onCancel}
+            onClick={() => requestClose("cancel")}
             className={cancelBtn}
             autoFocus={destructive}
           >
             {cancelLabel}
           </button>
           <button
-            onClick={onConfirm}
+            onClick={() => requestClose("confirm")}
             className={confirmBtn}
             autoFocus={!destructive}
           >
