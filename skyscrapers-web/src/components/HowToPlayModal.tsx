@@ -22,17 +22,26 @@ const HIGHLIGHT_ROW = 1;
 
 export function HowToPlayModal({ onClose }: HowToPlayModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // The cleanup-driven dialog.close() fires a close event we must ignore;
+  // otherwise React StrictMode's mount → cleanup → remount cycle treats the
+  // synthetic teardown as a user dismiss and the modal never stays open.
+  const closingByCleanup = useRef(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     dialog.showModal();
     return () => {
+      closingByCleanup.current = true;
       dialog.close();
     };
   }, []);
 
   const handleClose = () => {
+    if (closingByCleanup.current) {
+      closingByCleanup.current = false;
+      return;
+    }
     onClose();
   };
 
