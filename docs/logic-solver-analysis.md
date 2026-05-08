@@ -9,8 +9,9 @@
 >
 > Motivating case: `n=5 seed=20260506 difficulty=expert` resolved to
 > Expert solely on two PE firings with 3 free cells each. After the
-> split it correctly registers as Hard (PE on a 3-cell line is a
-> case-check most humans do without writing anything down). At n=5
+> split it correctly registers as Hard (a PE firing on a line with 3
+> free cells is a case-check most humans do without writing anything
+> down). At n=5
 > across 100 unseeded seeds, the Expert bucket dropped from ~99/100 to
 > 24/100, with 56/100 now correctly registering as Hard. Expert remains
 > reachable: target-yield at n=5 expert and n=7 expert is still 100%.
@@ -650,7 +651,7 @@ seed= 99  yes  grandmaster  NakedSingles, HiddenSingles, CluePruning, Visibility
 1. **PE was over-classifying as Expert.** Pre-split, n=5 unseeded
    baseline put 99/100 puzzles at Expert because virtually every
    small-board puzzle eventually hit one PE firing — even firings on
-   3-cell lines that a human solves by inspection. After splitting off
+   lines with only 3 free cells that a human solves by inspection. After splitting off
    `SimplePermutation` (≤3 free cells, or ≤8 valid permutations) to
    Hard, the n=5 distribution becomes hard=56, expert=24, master=19,
    medium=1. Expert is now reserved for genuinely complex enumerations.

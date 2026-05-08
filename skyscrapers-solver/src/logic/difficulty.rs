@@ -9,8 +9,9 @@ pub enum Difficulty {
     Easy,
     /// Requires visibility analysis to break out of the singles-only loop.
     Medium,
-    /// Requires set-based techniques (NakedSets, X-Wing, XY-Chain) or
-    /// trivial single-clue permutation enumeration (SimplePermutation).
+    /// Requires set-based techniques (NakedSets, X-Wing), bivalue-chain
+    /// reasoning (XY-Chain), or trivial single-clue permutation
+    /// enumeration (SimplePermutation).
     Hard,
     /// Requires non-trivial permutation enumeration (single- or dual-clue).
     Expert,

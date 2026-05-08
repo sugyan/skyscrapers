@@ -462,6 +462,59 @@ mod tests {
     }
 
     #[test]
+    fn small_line_emits_simple_permutation_label() {
+        // n=5 row 0 with (0,4)=5 fixed and left clue=2.
+        // 4 free cells overall, but only 6 valid permutations satisfy the
+        // clue (pos 0 must be 4; the remaining {1,2,3} permute freely).
+        // 6 ≤ SIMPLE_PERM_CAP, so the firing must be tagged SimplePermutation.
+        let mut board = Board::new_empty(5);
+        board.set(0, 4, Some(5));
+        let mut clues = Clues::new_all_none(5);
+        clues.set_left(0, Some(2));
+        let puzzle = Puzzle { board, clues };
+        let mut state = SolveState::new(&puzzle).unwrap();
+        let result = apply(&mut state);
+        match result {
+            TechniqueResult::Progress(step) => {
+                assert_eq!(step.technique, Technique::SimplePermutation);
+            }
+            _ => panic!("expected Progress"),
+        }
+    }
+
+    #[test]
+    fn unbounded_line_classified_as_complex() {
+        // n=6 col 0 with top clue=3 and no other constraints.
+        // After init clue-pruning, pos 0 still has 4 candidates and the
+        // full column has 6 free cells; the number of clue-satisfying
+        // permutations far exceeds SIMPLE_PERM_CAP. is_simple_enumeration
+        // must therefore return false for this column.
+        let board = Board::new_empty(6);
+        let mut clues = Clues::new_all_none(6);
+        clues.set_top(0, Some(3));
+        let puzzle = Puzzle { board, clues };
+        let state = SolveState::new(&puzzle).unwrap();
+        let n = state.n;
+        let indices: Vec<usize> = (0..n).map(|r| r * n).collect();
+        let used: Vec<bool> = vec![false; n + 1];
+        let free_positions: Vec<usize> = (0..n).collect();
+
+        let capped =
+            count_valid_perms_capped(&state, &indices, &free_positions, 3, &used, SIMPLE_PERM_CAP);
+        assert!(
+            capped > SIMPLE_PERM_CAP,
+            "expected the capped counter to overshoot, got {capped}"
+        );
+        assert!(!is_simple_enumeration(
+            &state,
+            &indices,
+            &free_positions,
+            3,
+            &used
+        ));
+    }
+
+    #[test]
     fn clue_1_with_partial_fill() {
         // n=4, left clue=1 → pos 0 must be 4 (handled by clue pruning)
         // Verify permutation enumeration doesn't cause contradiction
