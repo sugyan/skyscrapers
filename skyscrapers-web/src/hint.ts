@@ -29,9 +29,9 @@ export const TECHNIQUE_DESCRIPTIONS: Record<Technique, string> = {
   "x-wing":
     "A value's candidates form a rectangle across two rows/columns, so other cells in those columns/rows can't hold it.",
   "xy-chain":
-    "A chain of bivalue cells forces a value into one endpoint, eliminating it from cells that see both ends.",
+    "A chain of cells with exactly two candidates each forces a value into one endpoint, so cells sharing a row or column with both ends can drop it.",
   "als-xz":
-    "Two Almost-Locked Sets share a value, so another value common to both can be eliminated from cells seeing both sets.",
+    "Two cell groups, each one short of being locked to a fixed set of values, share a common value, letting another shared value be eliminated from cells that share a row or column with both groups.",
   "simple-permutation":
     "Only one row/column permutation matches the clue, fixing some cells.",
   "permutation-enumeration":
