@@ -134,10 +134,6 @@ skyscrapers solve [FILE]
 skyscrapers generate -n 5 --seed 42 | skyscrapers solve
 ```
 
-## Known Issues / TODO
-
-- **No range validation in `Board::set` / `Clues::set_*`**: Invalid values such as `Board::set(r, c, Some(0))` or `Clues::set_top(i, Some(99))` are silently accepted. `Solution::new` validates the value range, but `Board` and `Clues` do not. Validation should be added at the core boundary (e.g., `Board::set` should verify `v` is in `1..=n`; `Clues::set_*` should verify `v` is in `1..=n`).
-
 ## Conventions
 
 - **n ≤ 9**: Project-wide constraint. `Solution::new`, `Board::new_empty`, `Clues::new_all_none` all assert `1..=9`. The text format assumes single-digit values.

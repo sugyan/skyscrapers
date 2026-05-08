@@ -36,9 +36,12 @@ impl Board {
     /// Sets the value at position (r, c).
     ///
     /// # Panics
-    /// Panics if `r >= n` or `c >= n`.
+    /// Panics if `r >= n`, `c >= n`, or `v` is `Some(x)` with `x` outside `1..=n`.
     pub fn set(&mut self, r: usize, c: usize, v: Option<u8>) {
         assert!(r < self.n && c < self.n, "index out of bounds");
+        if let Some(x) = v {
+            assert!(x >= 1 && x <= self.n as u8, "cell value must be in 1..=n");
+        }
         self.cells[r][c] = v;
     }
 }
@@ -71,5 +74,26 @@ mod tests {
     #[should_panic(expected = "n must be in range 1..=9")]
     fn board_n_too_large() {
         Board::new_empty(10);
+    }
+
+    #[test]
+    #[should_panic(expected = "cell value must be in 1..=n")]
+    fn board_set_value_zero() {
+        let mut board = Board::new_empty(4);
+        board.set(0, 0, Some(0));
+    }
+
+    #[test]
+    #[should_panic(expected = "cell value must be in 1..=n")]
+    fn board_set_value_too_large() {
+        let mut board = Board::new_empty(4);
+        board.set(0, 0, Some(5));
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds")]
+    fn board_set_out_of_bounds() {
+        let mut board = Board::new_empty(3);
+        board.set(3, 0, Some(1));
     }
 }
