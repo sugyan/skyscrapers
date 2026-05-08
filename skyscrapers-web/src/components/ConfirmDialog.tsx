@@ -30,6 +30,7 @@ export function ConfirmDialog({
     if (!dialog) return;
     dialog.showModal();
     return () => {
+      if (!dialog.open) return;
       closingByCleanup.current = true;
       dialog.close();
     };
@@ -62,10 +63,18 @@ export function ConfirmDialog({
         <h2 className="text-lg font-semibold mb-2">{title}</h2>
         <p className="text-sm leading-relaxed mb-5">{message}</p>
         <div className="flex justify-end gap-2">
-          <button onClick={onCancel} className={cancelBtn}>
+          <button
+            onClick={onCancel}
+            className={cancelBtn}
+            autoFocus={destructive}
+          >
             {cancelLabel}
           </button>
-          <button onClick={onConfirm} className={confirmBtn} autoFocus>
+          <button
+            onClick={onConfirm}
+            className={confirmBtn}
+            autoFocus={!destructive}
+          >
             {confirmLabel}
           </button>
         </div>

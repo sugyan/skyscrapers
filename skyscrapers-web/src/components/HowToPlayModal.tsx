@@ -32,6 +32,7 @@ export function HowToPlayModal({ onClose }: HowToPlayModalProps) {
     if (!dialog) return;
     dialog.showModal();
     return () => {
+      if (!dialog.open) return;
       closingByCleanup.current = true;
       dialog.close();
     };
