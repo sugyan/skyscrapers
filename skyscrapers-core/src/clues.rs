@@ -60,36 +60,83 @@ impl Clues {
         self.n
     }
 
+    /// Returns the top clue at index `i`.
+    ///
+    /// # Panics
+    /// Panics if `i >= n`.
     pub fn top(&self, i: usize) -> Option<u8> {
+        assert!(i < self.n, "index out of bounds");
         self.top[i]
     }
 
+    /// Returns the bottom clue at index `i`.
+    ///
+    /// # Panics
+    /// Panics if `i >= n`.
     pub fn bottom(&self, i: usize) -> Option<u8> {
+        assert!(i < self.n, "index out of bounds");
         self.bottom[i]
     }
 
+    /// Returns the left clue at index `i`.
+    ///
+    /// # Panics
+    /// Panics if `i >= n`.
     pub fn left(&self, i: usize) -> Option<u8> {
+        assert!(i < self.n, "index out of bounds");
         self.left[i]
     }
 
+    /// Returns the right clue at index `i`.
+    ///
+    /// # Panics
+    /// Panics if `i >= n`.
     pub fn right(&self, i: usize) -> Option<u8> {
+        assert!(i < self.n, "index out of bounds");
         self.right[i]
     }
 
+    /// Sets the top clue at index `i`.
+    ///
+    /// # Panics
+    /// Panics if `i >= n`, or `v` is `Some(x)` with `x` outside `1..=n`.
     pub fn set_top(&mut self, i: usize, v: Option<u8>) {
+        self.assert_clue(i, v);
         self.top[i] = v;
     }
 
+    /// Sets the bottom clue at index `i`.
+    ///
+    /// # Panics
+    /// Panics if `i >= n`, or `v` is `Some(x)` with `x` outside `1..=n`.
     pub fn set_bottom(&mut self, i: usize, v: Option<u8>) {
+        self.assert_clue(i, v);
         self.bottom[i] = v;
     }
 
+    /// Sets the left clue at index `i`.
+    ///
+    /// # Panics
+    /// Panics if `i >= n`, or `v` is `Some(x)` with `x` outside `1..=n`.
     pub fn set_left(&mut self, i: usize, v: Option<u8>) {
+        self.assert_clue(i, v);
         self.left[i] = v;
     }
 
+    /// Sets the right clue at index `i`.
+    ///
+    /// # Panics
+    /// Panics if `i >= n`, or `v` is `Some(x)` with `x` outside `1..=n`.
     pub fn set_right(&mut self, i: usize, v: Option<u8>) {
+        self.assert_clue(i, v);
         self.right[i] = v;
+    }
+
+    fn assert_clue(&self, i: usize, v: Option<u8>) {
+        assert!(i < self.n, "index out of bounds");
+        if let Some(x) = v {
+            assert!(x >= 1 && x <= self.n as u8, "clue value must be in 1..=n");
+        }
     }
 }
 
@@ -208,5 +255,49 @@ mod tests {
     #[should_panic(expected = "n must be in range 1..=9")]
     fn clues_n_too_large() {
         Clues::new_all_none(10);
+    }
+
+    #[test]
+    #[should_panic(expected = "clue value must be in 1..=n")]
+    fn clues_set_top_value_zero() {
+        let mut clues = Clues::new_all_none(4);
+        clues.set_top(0, Some(0));
+    }
+
+    #[test]
+    #[should_panic(expected = "clue value must be in 1..=n")]
+    fn clues_set_top_value_too_large() {
+        let mut clues = Clues::new_all_none(4);
+        clues.set_top(0, Some(5));
+    }
+
+    #[test]
+    #[should_panic(expected = "clue value must be in 1..=n")]
+    fn clues_set_right_value_too_large() {
+        let mut clues = Clues::new_all_none(3);
+        clues.set_right(2, Some(99));
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds")]
+    fn clues_set_index_out_of_bounds() {
+        let mut clues = Clues::new_all_none(3);
+        clues.set_left(3, Some(1));
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds")]
+    fn clues_get_index_out_of_bounds() {
+        let clues = Clues::new_all_none(3);
+        let _ = clues.bottom(3);
+    }
+
+    #[test]
+    fn clues_set_none_at_any_index_in_range() {
+        let mut clues = Clues::new_all_none(3);
+        clues.set_top(0, None);
+        clues.set_bottom(1, None);
+        clues.set_left(2, None);
+        clues.set_right(0, None);
     }
 }
