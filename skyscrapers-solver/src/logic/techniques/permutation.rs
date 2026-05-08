@@ -125,13 +125,16 @@ fn is_simple_enumeration(
     if free_positions.len() <= SIMPLE_FREE_CELLS {
         return true;
     }
+    // `count_valid_perms_capped` returns early once `count > cap`, so passing
+    // `SIMPLE_PERM_CAP` bails out one solution sooner than `SIMPLE_PERM_CAP + 1`
+    // would and keeps the cap aligned with the threshold we compare against.
     count_valid_perms_capped(
         state,
         indices,
         free_positions,
         expected,
         used,
-        SIMPLE_PERM_CAP + 1,
+        SIMPLE_PERM_CAP,
     ) <= SIMPLE_PERM_CAP
 }
 
