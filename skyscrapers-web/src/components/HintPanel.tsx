@@ -1,6 +1,7 @@
 import type { BoardCell } from "../types";
 import type { HintResult } from "../wasm";
 import {
+  TECHNIQUE_DESCRIPTIONS,
   TECHNIQUE_LABELS,
   candidateDiffs,
   cellLabel,
@@ -114,6 +115,9 @@ export function HintPanel({
         <div>
           <div className="font-semibold text-amber-900 dark:text-amber-200">
             {TECHNIQUE_LABELS[hint.step.technique]}
+          </div>
+          <div className="text-xs italic text-amber-700/80 dark:text-amber-300/70 mb-1">
+            {TECHNIQUE_DESCRIPTIONS[hint.step.technique]}
           </div>
           <div className="text-amber-800 dark:text-amber-100">
             {actionSummary(hint)}

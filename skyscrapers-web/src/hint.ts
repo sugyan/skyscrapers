@@ -17,6 +17,33 @@ export const TECHNIQUE_LABELS: Record<Technique, string> = {
   "full-forcing-chain": "Full Forcing Chain",
 };
 
+export const TECHNIQUE_DESCRIPTIONS: Record<Technique, string> = {
+  "naked-singles": "A cell has only one possible value left.",
+  "hidden-singles": "A value fits in only one cell of a row or column.",
+  "clue-pruning":
+    "An edge clue rules out values that can't be placed without breaking visibility.",
+  "visibility-analysis":
+    "Combining a clue with placed buildings forces or forbids specific values.",
+  "naked-sets":
+    "A group of cells in a line shares exactly that many candidates, locking those values to those cells.",
+  "x-wing":
+    "A value's candidates form a rectangle across two rows/columns, so other cells in those columns/rows can't hold it.",
+  "xy-chain":
+    "A chain of bivalue cells forces a value into one endpoint, eliminating it from cells that see both ends.",
+  "als-xz":
+    "Two Almost-Locked Sets share a value, so another value common to both can be eliminated from cells seeing both sets.",
+  "simple-permutation":
+    "Only one row/column permutation matches the clue, fixing some cells.",
+  "permutation-enumeration":
+    "Enumerating row/column permutations consistent with a clue rules out candidates that appear in none of them.",
+  "dual-clue-permutation":
+    "Combining two opposing clues on the same line rules out permutations and their candidates.",
+  "simple-forcing-chain":
+    "Assuming a value in a cell quickly leads to a contradiction, so it can be removed.",
+  "full-forcing-chain":
+    "Following a chain of forced consequences from a guess leads to a contradiction.",
+};
+
 export function lineLabel(line: Line): string {
   return "row" in line ? `row ${line.row + 1}` : `column ${line.col + 1}`;
 }
