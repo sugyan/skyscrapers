@@ -554,19 +554,32 @@ export function PuzzlePage({
             isDouble &&
             !cell.given &&
             cell.value === null &&
-            cell.candidates.size === 1
+            cell.candidates.size > 0
           ) {
-            const [only] = cell.candidates;
-            if (
-              state.selectedCell === null ||
-              state.selectedCell[0] !== row ||
-              state.selectedCell[1] !== col
-            ) {
-              dispatch({ type: "SELECT_CELL", row, col });
+            const blocked = new Set<number>();
+            for (let i = 0; i < puzzle.n; i++) {
+              const rv = state.board[row][i].value;
+              if (rv !== null) blocked.add(rv);
+              const cv = state.board[i][col].value;
+              if (cv !== null) blocked.add(cv);
             }
-            dispatch({ type: "SET_VALUE", value: only });
-            lastTapRef.current = null;
-            return;
+            const effective: number[] = [];
+            for (const v of cell.candidates) {
+              if (!blocked.has(v)) effective.push(v);
+            }
+            if (effective.length === 1) {
+              const only = effective[0];
+              if (
+                state.selectedCell === null ||
+                state.selectedCell[0] !== row ||
+                state.selectedCell[1] !== col
+              ) {
+                dispatch({ type: "SELECT_CELL", row, col });
+              }
+              dispatch({ type: "SET_VALUE", value: only });
+              lastTapRef.current = null;
+              return;
+            }
           }
 
           lastTapRef.current = { r: row, c: col, t: now };
