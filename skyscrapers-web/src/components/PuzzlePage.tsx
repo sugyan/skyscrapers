@@ -10,6 +10,7 @@ import type { Difficulty, HintResult } from "../wasm";
 import { requestHint } from "../wasm";
 import { relevantCells } from "../hint";
 import { validateBoard } from "../validation";
+import { computeRowColValues, blockedValuesAt } from "../board";
 import { PuzzleGrid } from "./PuzzleGrid";
 import { NumberPad } from "./NumberPad";
 import { GameControls } from "./GameControls";
@@ -215,17 +216,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "FILL_ALL_CANDIDATES": {
       const newBoard = deepCopyBoard(state.board);
-      const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-      const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-          const v = newBoard[r][c].value;
-          if (v !== null) {
-            rowVals[r].add(v);
-            colVals[c].add(v);
-          }
-        }
-      }
+      const { rowVals, colVals } = computeRowColValues(newBoard);
       let changed = false;
       for (let r = 0; r < n; r++) {
         for (let c = 0; c < n; c++) {
@@ -556,13 +547,7 @@ export function PuzzlePage({
             cell.value === null &&
             cell.candidates.size > 0
           ) {
-            const blocked = new Set<number>();
-            for (let i = 0; i < puzzle.n; i++) {
-              const rv = state.board[row][i].value;
-              if (rv !== null) blocked.add(rv);
-              const cv = state.board[i][col].value;
-              if (cv !== null) blocked.add(cv);
-            }
+            const blocked = blockedValuesAt(state.board, row, col);
             const effective: number[] = [];
             for (const v of cell.candidates) {
               if (!blocked.has(v)) effective.push(v);

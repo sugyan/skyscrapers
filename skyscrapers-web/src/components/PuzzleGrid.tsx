@@ -1,6 +1,7 @@
 import type { BoardCell as BoardCellType, Puzzle } from "../types";
 import type { HintResult } from "../wasm";
 import { relevantCells, relevantLines } from "../hint";
+import { computeRowColValues } from "../board";
 import { ClueCell } from "./ClueCell";
 import { BoardCell } from "./BoardCell";
 
@@ -36,17 +37,7 @@ export function PuzzleGrid({
     });
   }
   const { n, clues } = puzzle;
-  const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-  const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const v = board[r][c].value;
-      if (v !== null) {
-        rowVals[r].add(v);
-        colVals[c].add(v);
-      }
-    }
-  }
+  const { rowVals, colVals } = computeRowColValues(board);
   const cells: React.ReactNode[] = [];
 
   for (let gridRow = 0; gridRow < n + 2; gridRow++) {
