@@ -10,6 +10,7 @@ import type { Difficulty, HintResult } from "../wasm";
 import { requestHint } from "../wasm";
 import { relevantCells } from "../hint";
 import { validateBoard } from "../validation";
+import { computeRowColValues, blockedValuesAt } from "../board";
 import { PuzzleGrid } from "./PuzzleGrid";
 import { NumberPad } from "./NumberPad";
 import { GameControls } from "./GameControls";
@@ -215,17 +216,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "FILL_ALL_CANDIDATES": {
       const newBoard = deepCopyBoard(state.board);
-      const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-      const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-          const v = newBoard[r][c].value;
-          if (v !== null) {
-            rowVals[r].add(v);
-            colVals[c].add(v);
-          }
-        }
-      }
+      const { rowVals, colVals } = computeRowColValues(newBoard);
       let changed = false;
       for (let r = 0; r < n; r++) {
         for (let c = 0; c < n; c++) {
@@ -554,19 +545,26 @@ export function PuzzlePage({
             isDouble &&
             !cell.given &&
             cell.value === null &&
-            cell.candidates.size === 1
+            cell.candidates.size > 0
           ) {
-            const [only] = cell.candidates;
-            if (
-              state.selectedCell === null ||
-              state.selectedCell[0] !== row ||
-              state.selectedCell[1] !== col
-            ) {
-              dispatch({ type: "SELECT_CELL", row, col });
+            const blocked = blockedValuesAt(state.board, row, col);
+            const effective: number[] = [];
+            for (const v of cell.candidates) {
+              if (!blocked.has(v)) effective.push(v);
             }
-            dispatch({ type: "SET_VALUE", value: only });
-            lastTapRef.current = null;
-            return;
+            if (effective.length === 1) {
+              const only = effective[0];
+              if (
+                state.selectedCell === null ||
+                state.selectedCell[0] !== row ||
+                state.selectedCell[1] !== col
+              ) {
+                dispatch({ type: "SELECT_CELL", row, col });
+              }
+              dispatch({ type: "SET_VALUE", value: only });
+              lastTapRef.current = null;
+              return;
+            }
           }
 
           lastTapRef.current = { r: row, c: col, t: now };

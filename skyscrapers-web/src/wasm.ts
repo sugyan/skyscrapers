@@ -1,5 +1,6 @@
 import init, { generate_puzzle, next_hint } from "skyscrapers-generator";
 import type { BoardCell, Puzzle } from "./types";
+import { computeRowColValues } from "./board";
 
 /** Supported difficulty levels, matching the Rust `Difficulty` enum. */
 export const DIFFICULTIES = [
@@ -229,18 +230,7 @@ function puzzleToWasm(puzzle: Puzzle): {
  * hint steps. The user's own pencil-mark state is left untouched.
  */
 function userCandidatesToWasm(board: BoardCell[][]): number[][][] {
-  const n = board.length;
-  const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-  const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const v = board[r][c].value;
-      if (v !== null) {
-        rowVals[r].add(v);
-        colVals[c].add(v);
-      }
-    }
-  }
+  const { rowVals, colVals } = computeRowColValues(board);
   return board.map((row, r) =>
     row.map((cell, c) =>
       [...cell.candidates]
