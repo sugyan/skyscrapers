@@ -558,4 +558,72 @@ mod tests {
         // Clue pruning already forces (0,0) = 4
         assert_eq!(state.grid[state.idx(0, 0)], Some(4));
     }
+
+    /// Verify mode gating: a Complex clued line must be skipped by
+    /// `apply_simple` and claimed by `apply_complex` with the
+    /// `PermutationEnumeration` label.
+    ///
+    /// Setup uses an n=4 puzzle whose Top 1=2 column, after init clue
+    /// pruning, still has 4 free cells and 11 clue-satisfying permutations
+    /// (> SIMPLE_PERM_CAP = 8), so it classifies as Complex. The enumeration
+    /// is known to eliminate value 3 from row 1 of that column.
+    #[test]
+    fn complex_line_routed_to_apply_complex_only() {
+        let board = Board::new_empty(4);
+        let mut clues = Clues::new_all_none(4);
+        clues.set_top(0, Some(2));
+        clues.set_top(2, Some(3));
+        clues.set_bottom(1, Some(2));
+        clues.set_bottom(3, Some(2));
+        clues.set_left(3, Some(2));
+        let puzzle = Puzzle { board, clues };
+
+        let mut state_simple = SolveState::new(&puzzle).unwrap();
+        // apply_simple may still fire on other lines (e.g. Left 4=2 row is
+        // simple). To isolate the gating behaviour we drive both states only
+        // on the Top 1=2 column directly via `enumerate_and_prune`.
+        let n = state_simple.n;
+        let col0_indices: Vec<usize> = (0..n).map(|r| r * n).collect();
+        let used: Vec<bool> = vec![false; n + 1];
+        let free_positions: Vec<usize> = (0..n).collect();
+
+        // Confirm classification: col 0 with Top=2 is Complex in this state.
+        assert!(!is_simple_enumeration(
+            &state_simple,
+            &col0_indices,
+            &free_positions,
+            2,
+            &used
+        ));
+
+        let simple_result = enumerate_and_prune(
+            &mut state_simple,
+            &col0_indices,
+            2,
+            crate::logic::difficulty::Line::Col(0),
+            crate::logic::difficulty::CluePosition::Top(0),
+            Mode::SimpleOnly,
+        );
+        assert!(matches!(simple_result, TechniqueResult::NoProgress));
+
+        let mut state_complex = SolveState::new(&puzzle).unwrap();
+        let complex_result = enumerate_and_prune(
+            &mut state_complex,
+            &col0_indices,
+            2,
+            crate::logic::difficulty::Line::Col(0),
+            crate::logic::difficulty::CluePosition::Top(0),
+            Mode::ComplexOnly,
+        );
+        match complex_result {
+            TechniqueResult::Progress(step) => {
+                assert_eq!(step.technique, Technique::PermutationEnumeration);
+                assert!(!step.actions.is_empty());
+            }
+            other => panic!(
+                "expected Progress with PermutationEnumeration, got {:?}",
+                std::mem::discriminant(&other)
+            ),
+        }
+    }
 }
