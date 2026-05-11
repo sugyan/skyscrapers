@@ -34,6 +34,7 @@ const TECHNIQUES: &[Technique] = &[
     Technique::NakedSets,
     Technique::XWing,
     Technique::XyChain,
+    Technique::SimplePermutation,
     Technique::AlsXz,
     Technique::PermutationEnumeration,
     Technique::DualCluePermutation,
@@ -65,19 +66,15 @@ fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueRes
         Technique::NakedSets => naked_sets::apply(state),
         Technique::XWing => x_wing::apply(state),
         Technique::XyChain => xy_chain::apply(state),
+        Technique::SimplePermutation => permutation::apply_simple(state),
         Technique::AlsXz => als_xz::apply(state),
-        Technique::PermutationEnumeration => permutation::apply(state),
+        Technique::PermutationEnumeration => permutation::apply_complex(state),
         Technique::DualCluePermutation => dual_clue_permutation::apply(state),
 
         Technique::SimpleForcingChain => forcing_chain::apply_simple(state),
         Technique::FullForcingChain => forcing_chain::apply_full(state),
         // CluePruning runs only once during `SolveState::new` and is never dispatched here.
         Technique::CluePruning => unreachable!("CluePruning is applied during SolveState::new"),
-        // SimplePermutation is an output label produced by `permutation::apply`
-        // when an enumeration was trivial; it is never dispatched directly.
-        Technique::SimplePermutation => {
-            unreachable!("SimplePermutation is a label produced by PermutationEnumeration")
-        }
     }
 }
 
@@ -100,6 +97,7 @@ pub(crate) fn propagate(state: &mut SolveState) -> bool {
         Technique::NakedSets,
         Technique::XWing,
         Technique::XyChain,
+        Technique::SimplePermutation,
         Technique::AlsXz,
         Technique::PermutationEnumeration,
         Technique::DualCluePermutation,
