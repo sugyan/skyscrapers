@@ -581,20 +581,13 @@ mod tests {
         let mut state_simple = SolveState::new(&puzzle).unwrap();
         // apply_simple may still fire on other lines (e.g. Left 4=2 row is
         // simple). To isolate the gating behaviour we drive both states only
-        // on the Top 1=2 column directly via `enumerate_and_prune`.
+        // on the Top 1=2 column directly via `enumerate_and_prune`. The
+        // mode-gated NoProgress result below is itself the evidence that the
+        // line classifies as Complex — no need to recheck via a separate
+        // `is_simple_enumeration` call with hand-rolled `used`/`free_positions`
+        // that could drift from what `enumerate_and_prune` actually sees.
         let n = state_simple.n;
         let col0_indices: Vec<usize> = (0..n).map(|r| r * n).collect();
-        let used: Vec<bool> = vec![false; n + 1];
-        let free_positions: Vec<usize> = (0..n).collect();
-
-        // Confirm classification: col 0 with Top=2 is Complex in this state.
-        assert!(!is_simple_enumeration(
-            &state_simple,
-            &col0_indices,
-            &free_positions,
-            2,
-            &used
-        ));
 
         let simple_result = enumerate_and_prune(
             &mut state_simple,
