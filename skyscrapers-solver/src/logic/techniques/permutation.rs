@@ -2,15 +2,34 @@ use crate::logic::difficulty::{Action, CluePosition, Line, Reason, Step, Techniq
 use crate::logic::state::SolveState;
 use crate::logic::techniques::TechniqueResult;
 
-/// Permutation enumeration for clue-based candidate elimination.
+/// Restricts which clued lines a dispatch slot will act on, based on whether
+/// the line's enumeration is "simple" (humanly tractable) or not. The same
+/// `enumerate_and_prune` body handles both — the mode just filters which
+/// lines this slot is allowed to claim.
+#[derive(Clone, Copy)]
+enum Mode {
+    SimpleOnly,
+    ComplexOnly,
+}
+
+/// Hard-tier permutation: only lines that classify as Simple may fire here.
 ///
-/// For each line with a clue, for each free cell, for each candidate value:
-/// fix that value and check whether any valid assignment of the remaining
-/// values (respecting per-cell candidates and value uniqueness) can produce
-/// a visibility count matching the clue. If not, eliminate the candidate.
-pub(crate) fn apply(state: &mut SolveState) -> TechniqueResult {
+/// Sits before AlsXz in the dispatch order so that a permutation case which
+/// becomes trivial after some other technique narrows candidates is picked
+/// up at its proper Hard tier instead of being shadowed by Expert-tier ALS-XZ.
+pub(crate) fn apply_simple(state: &mut SolveState) -> TechniqueResult {
+    apply_with_mode(state, Mode::SimpleOnly)
+}
+
+/// Expert-tier permutation: only lines that classify as Complex may fire here.
+pub(crate) fn apply_complex(state: &mut SolveState) -> TechniqueResult {
+    apply_with_mode(state, Mode::ComplexOnly)
+}
+
+fn apply_with_mode(state: &mut SolveState, mode: Mode) -> TechniqueResult {
     for cl in state.clued_lines() {
-        let result = enumerate_and_prune(state, &cl.indices, cl.expected, cl.line, cl.clue_pos);
+        let result =
+            enumerate_and_prune(state, &cl.indices, cl.expected, cl.line, cl.clue_pos, mode);
         if !matches!(result, TechniqueResult::NoProgress) {
             return result;
         }
@@ -26,6 +45,7 @@ fn enumerate_and_prune(
     expected: u8,
     line: Line,
     clue_pos: CluePosition,
+    mode: Mode,
 ) -> TechniqueResult {
     let n = state.n;
 
@@ -46,6 +66,17 @@ fn enumerate_and_prune(
         .collect();
 
     if free_positions.is_empty() {
+        return TechniqueResult::NoProgress;
+    }
+
+    // Gate by mode before doing the expensive per-candidate backtracking:
+    // each dispatch slot only claims lines matching its tier.
+    let is_simple = is_simple_enumeration(state, indices, &free_positions, expected, &used);
+    let mode_matches = match mode {
+        Mode::SimpleOnly => is_simple,
+        Mode::ComplexOnly => !is_simple,
+    };
+    if !mode_matches {
         return TechniqueResult::NoProgress;
     }
 
@@ -75,9 +106,7 @@ fn enumerate_and_prune(
         return TechniqueResult::NoProgress;
     }
 
-    // Classify this firing: a "simple" enumeration is one a human can do
-    // mentally — few free cells, or few permutations to inspect.
-    let technique = if is_simple_enumeration(state, indices, &free_positions, expected, &used) {
+    let technique = if is_simple {
         Technique::SimplePermutation
     } else {
         Technique::PermutationEnumeration
@@ -402,7 +431,7 @@ mod tests {
         let puzzle = Puzzle { board, clues };
         let mut state = SolveState::new(&puzzle).unwrap();
 
-        let result = apply(&mut state);
+        let result = apply_simple(&mut state);
         assert!(matches!(result, TechniqueResult::Progress(_)));
 
         // pos 0 should only have candidate 4
@@ -417,7 +446,7 @@ mod tests {
         let puzzle = Puzzle { board, clues };
         let mut state = SolveState::new(&puzzle).unwrap();
 
-        let result = apply(&mut state);
+        let result = apply_simple(&mut state);
         assert!(matches!(result, TechniqueResult::NoProgress));
     }
 
@@ -456,7 +485,7 @@ mod tests {
         state.candidates[3] = crate::candidates::Candidates::single(1);
         state.candidates[3] = state.candidates[3].union(crate::candidates::Candidates::single(4));
 
-        let result = apply(&mut state);
+        let result = apply_simple(&mut state);
         assert!(matches!(result, TechniqueResult::Progress(_)));
 
         // pos 0 should have 2 eliminated, only 1 remains
@@ -476,7 +505,7 @@ mod tests {
         clues.set_left(0, Some(2));
         let puzzle = Puzzle { board, clues };
         let mut state = SolveState::new(&puzzle).unwrap();
-        let result = apply(&mut state);
+        let result = apply_simple(&mut state);
         match result {
             TechniqueResult::Progress(step) => {
                 assert_eq!(step.technique, Technique::SimplePermutation);
