@@ -1,6 +1,6 @@
-# Logic Solver Analysis (2026-05-12)
+# Logic Solver Analysis
 
-Analysis of the logic solver's behavior. Two complementary views:
+Snapshot of the logic solver's behavior. Two complementary views:
 
 1. **Unseeded baseline** (sections "Batch Test Results" and "Technique
    Usage"): what the generator produces when no target difficulty is set
@@ -14,8 +14,7 @@ Analysis of the logic solver's behavior. Two complementary views:
    shipped puzzles, since end-users always pick a difficulty.
 
 Section "Per-seed detail" contains the unseeded `batch-difficulty`
-traces for reference. Previous snapshots of this document are in git
-history.
+traces for reference.
 
 ## Implemented Techniques
 
@@ -68,12 +67,11 @@ Generator success rate when a target difficulty is requested with
 | 6 | 100  | 100    | 100  | 100    | 100    |
 | 7 | 100  | 100    | 100  | 100    | 100    |
 
-The only non-100% cell is **n=4 expert (66/100)**. After
-`SimplePermutation` is dispatched ahead of `AlsXz`, genuine
-Expert-only n=4 puzzles are rare — most 4×4 puzzles either solve at
-Hard via `SimplePermutation` or escalate past Expert into Master. 300
-attempts per seed turn up an Expert example for 66/100 seeds. Every
-other (n, target) combination is reliably reachable.
+The only non-100% cell is **n=4 expert (66/100)**: genuine
+Expert-only 4×4 puzzles are rare because most 4×4 boards either solve
+at Hard via `SimplePermutation` or escalate past Expert into Master,
+leaving few that need exactly an Expert-tier technique. Every other
+(n, target) combination is reliably reachable.
 
 ## Technique Necessity (target-driven, 100 puzzles per cell)
 
@@ -130,8 +128,8 @@ absorb the work), and no puzzle becomes unsolvable.
 DualCluePermutation never fires on Hard puzzles (nothing to disable),
 but at Expert every firing matters — 100% of n=5,6,7 expert "used"
 cases reclassify upward when it's removed. At n=7 master, 2 puzzles
-become unsolvable by logic alone, which is what keeps this technique
-in the set after the 2026-05-01 review.
+become unsolvable by logic alone — this is the only technique whose
+removal forces a logical solve to fail.
 
 ## Batch Test Results (seeds 0-99, 100 puzzles per size)
 
@@ -195,25 +193,22 @@ above.
 
 2. **`SimplePermutation` is the workhorse Hard-tier technique.** It
    fires in ≥96% of puzzles at every size and is the largest
-   non-singles step count at n=4..6. Its coexistence with
-   `PermutationEnumeration` (which only fires in 1% of n=4 puzzles
-   but 100% at n=7) is exactly what the two-label split was for —
-   trivial firings stay at Hard, non-trivial ones escalate to Expert.
+   non-singles step count at n=4..6. `PermutationEnumeration` covers
+   the non-trivial cases (1% of n=4 puzzles, 100% at n=7), so the
+   two-label split keeps trivial firings at Hard and lets only
+   non-trivial enumerations escalate to Expert.
 
-3. **`AlsXz` firings dropped sharply at small n** thanks to the
-   2026-05-11 dispatch reordering: AlsXz now fires in only 1% of n=4
-   and 15% of n=5 puzzles (vs. ~18% and ~45% before the reorder).
-   `SimplePermutation` preempts it whenever the line is trivially
-   enumerable.
+3. **`AlsXz` is rare at small n.** Because `SimplePermutation`
+   preempts it whenever the line is trivially enumerable, `AlsXz`
+   fires in only 1% of n=4 and 15% of n=5 puzzles, rising to 46% at
+   n=7. It remains load-bearing where it does fire (4–16% reclassify
+   upward when disabled).
 
-4. **All Expert/Hard techniques pull weight.** Disabling AlsXz bumps
+4. **All Hard/Expert techniques pull weight.** Disabling `AlsXz` bumps
    4–16% of puzzles up a tier across n=5..7 Hard/Expert; disabling
-   XyChain bumps 0–12% (no unsolvables); disabling
-   DualCluePermutation reclassifies every Expert firing upward and
-   makes 2/100 n=7 master puzzles unsolvable. None of these is
-   redundant — the previously-removed (W-Wing, XYWing, HiddenSets)
-   pattern of "fires often, never load-bearing" does not apply to
-   the current set.
+   `XyChain` bumps 0–12% (no unsolvables); disabling
+   `DualCluePermutation` reclassifies every Expert firing upward and
+   makes 2/100 n=7 master puzzles unsolvable.
 
 5. **`VisibilityAnalysis` is surprisingly productive at Medium tier**:
    47–71% of puzzles invoke it, and it is the reason a non-trivial
