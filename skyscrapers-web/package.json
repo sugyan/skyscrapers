@@ -8,13 +8,13 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "skyscrapers-generator": "file:../skyscrapers-generator/pkg"
+    "skyscrapers-player": "file:../skyscrapers-player"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

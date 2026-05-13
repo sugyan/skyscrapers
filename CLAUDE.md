@@ -21,10 +21,12 @@ skyscrapers/
 ├── Cargo.toml                (workspace root)
 ├── skyscrapers-core/         Shared types + clue derivation
 ├── skyscrapers-solver/       Uniqueness verifier (backtracking)
-├── skyscrapers-generator/    Puzzle generator
+├── skyscrapers-generator/    Puzzle generator (also exposes WASM bindings)
 ├── skyscrapers-logic/        Logic solver + difficulty rating           [planned]
 ├── skyscrapers-cli/          CLI binary (generate + solve)
-└── skyscrapers-analysis/     Dev-only analysis/benchmarking tools (not shipped)
+├── skyscrapers-analysis/     Dev-only analysis/benchmarking tools (not shipped)
+├── skyscrapers-player/       React component + engine interface (npm pkg, not published)
+└── skyscrapers-web/          Demo web app — thin shell around skyscrapers-player
 ```
 
 ### Dependency Graph
@@ -110,6 +112,23 @@ The generator has two stages:
 | `solve` subcommand (read puzzle from stdin/file, print solution) | Done |
 | `Display` impl for `Puzzle` and `Solution` in core | Done |
 | `FromStr` impl for `Puzzle` in core | Done |
+
+## Web / Player (npm packages)
+
+- **`skyscrapers-player`** — React 19 component (`<Player>`) + `SkyscrapersEngine` interface. Bundled `WasmEngine` runs the solver in-process via WebAssembly; consumers can swap in their own remote-API engine. Not published to npm; consumed via `file:` symlink today, with a `player-dist` Git branch planned for external consumers.
+- **`skyscrapers-web`** — Demo application that wires up `WasmEngine` + generation form around `<Player>`. Tailwind v4 styling lives in the player; the web app just imports `skyscrapers-player/styles.css`.
+
+Install + check (run in each package as needed):
+
+```bash
+# In skyscrapers-player/ or skyscrapers-web/
+npm ci
+npm run lint
+npm run format:check
+npm test
+```
+
+The web build additionally depends on the WASM artifact produced by `wasm-pack build --target web skyscrapers-generator` — CI builds this before `npm ci` so the `file:../skyscrapers-generator/pkg` dependency resolves.
 
 ## Development
 

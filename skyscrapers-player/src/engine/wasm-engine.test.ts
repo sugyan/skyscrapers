@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { convertWasmResult, normalizeDifficultyParam } from "./wasm";
+import { convertWasmResult } from "./wasm-engine";
+import { normalizeDifficultyParam } from "./types";
 
 describe("convertWasmResult", () => {
   it("converts a 4x4 puzzle result with null values", () => {

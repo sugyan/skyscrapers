@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     paths:
       - "skyscrapers-web/**"
+      - "skyscrapers-player/**"
       - "skyscrapers-generator/**"
       - "skyscrapers-core/**"
       - "skyscrapers-solver/**"
@@ -12,6 +13,7 @@ on:
     branches: ["main"]
     paths:
       - "skyscrapers-web/**"
+      - "skyscrapers-player/**"
       - "skyscrapers-generator/**"
       - "skyscrapers-core/**"
       - "skyscrapers-solver/**"
@@ -19,9 +21,6 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: skyscrapers-web
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -32,20 +31,42 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked --version 0.14.0
       - name: Build WASM package
-        run: wasm-pack build --target web ../skyscrapers-generator
+        run: wasm-pack build --target web skyscrapers-generator
       - name: Set up Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: lts/*
           cache: "npm"
-          cache-dependency-path: skyscrapers-web/package-lock.json
-      - name: Install dependencies
+          cache-dependency-path: |
+            skyscrapers-player/package-lock.json
+            skyscrapers-web/package-lock.json
+      - name: Install player dependencies
+        working-directory: skyscrapers-player
         run: npm ci
-      - name: Lint
+      - name: Player lint
+        working-directory: skyscrapers-player
         run: npm run lint
-      - name: Format check
+      - name: Player format check
+        working-directory: skyscrapers-player
         run: npm run format:check
-      - name: Test
+      - name: Player typecheck
+        working-directory: skyscrapers-player
+        run: npm run typecheck
+      - name: Player test
+        working-directory: skyscrapers-player
         run: npm run test
-      - name: Build
+      - name: Install web dependencies
+        working-directory: skyscrapers-web
+        run: npm ci
+      - name: Web lint
+        working-directory: skyscrapers-web
+        run: npm run lint
+      - name: Web format check
+        working-directory: skyscrapers-web
+        run: npm run format:check
+      - name: Web test
+        working-directory: skyscrapers-web
+        run: npm run test
+      - name: Web build
+        working-directory: skyscrapers-web
         run: npm run build

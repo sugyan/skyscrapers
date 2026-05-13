@@ -1,5 +1,10 @@
-import type { CluePosition, HintResult, Line, Technique } from "./wasm";
-import type { BoardCell } from "./types";
+import type {
+  CluePosition,
+  HintResult,
+  Line,
+  Technique,
+} from "../engine/types";
+import type { BoardCell } from "../state/types";
 
 export const TECHNIQUE_LABELS: Record<Technique, string> = {
   "naked-singles": "Naked Single",

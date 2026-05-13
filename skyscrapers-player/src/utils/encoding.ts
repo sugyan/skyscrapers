@@ -1,4 +1,4 @@
-import type { Puzzle, BoardCell, ClueValue } from "./types";
+import type { Puzzle, BoardCell, ClueValue } from "../state/types";
 
 export function decodePuzzle(encoded: string): Puzzle {
   if (!/^\d+$/.test(encoded)) {

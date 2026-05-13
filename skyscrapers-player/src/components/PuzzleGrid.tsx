@@ -1,7 +1,7 @@
-import type { BoardCell as BoardCellType, Puzzle } from "../types";
-import type { HintResult } from "../wasm";
-import { relevantCells, relevantLines } from "../hint";
-import { computeRowColValues } from "../board";
+import type { BoardCell as BoardCellType, Puzzle } from "../state/types";
+import type { HintResult } from "../engine/types";
+import { relevantCells, relevantLines } from "../utils/hint";
+import { computeRowColValues } from "../utils/board";
 import { ClueCell } from "./ClueCell";
 import { BoardCell } from "./BoardCell";
 

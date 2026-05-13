@@ -11,7 +11,12 @@ export default defineConfig({
   base: process.env.BASE_PATH ?? "/",
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
-    exclude: ["skyscrapers-generator"],
+    // skyscrapers-generator: pre-bundling the wasm-pack output trips Vite's
+    //   dependency analyzer.
+    // skyscrapers-player: source-only package (file: symlink), let Vite
+    //   resolve its TSX directly so HMR and source maps point at the real
+    //   files in ../skyscrapers-player/src.
+    exclude: ["skyscrapers-generator", "skyscrapers-player"],
   },
   server: {
     fs: {

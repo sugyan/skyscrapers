@@ -12,8 +12,8 @@ import {
   relevantClues,
   relevantLines,
 } from "./hint";
-import type { HintResult } from "./wasm";
-import type { BoardCell } from "./types";
+import type { HintResult } from "../engine/types";
+import type { BoardCell } from "../state/types";
 
 function cell(
   value: number | null,
