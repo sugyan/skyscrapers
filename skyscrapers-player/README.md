@@ -37,4 +37,9 @@ To run the solver remotely, implement these three methods against your API and p
 
 ## Styling
 
-`skyscrapers-player/styles.css` is a Tailwind v4 entry that pulls in the player's CSS. Import it once at your app root. The bundled stylesheet uses `@source` to reach this package's own TSX files even when it's installed via a symlink or `node_modules`, so you don't need to extend your own Tailwind `content` paths.
+The shape of `./styles.css` depends on how you install this package:
+
+- **In this monorepo (`file:` link):** the export points at the Tailwind v4 source entry (`src/styles/app.css`). The consuming app must run Tailwind itself (e.g. via `@tailwindcss/vite`); it will process `@import "tailwindcss"`, the `@theme` block, and an `@source "../**/*.{ts,tsx}"` directive that walks back through the symlink so the player's classes are picked up without any extra `content` configuration on the consumer side.
+- **From the `player-dist` Git branch (planned):** the export will point at a pre-built `dist/styles.css`. Consumers will be able to `import "skyscrapers-player/styles.css"` without having Tailwind in their own toolchain. The `build:css` script generates that artifact; the branch-publish workflow (next PR) will run it and rewrite `package.json` accordingly.
+
+Until the `player-dist` workflow lands, consuming this package from anywhere other than this repo requires Tailwind v4 in the host project.
