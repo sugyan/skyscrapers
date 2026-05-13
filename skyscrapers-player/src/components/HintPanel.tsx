@@ -1,5 +1,5 @@
-import type { BoardCell } from "../types";
-import type { HintResult } from "../wasm";
+import type { BoardCell } from "../state/types";
+import type { HintResult } from "../engine/types";
 import {
   TECHNIQUE_DESCRIPTIONS,
   TECHNIQUE_LABELS,
@@ -7,7 +7,7 @@ import {
   cellLabel,
   reasonText,
   type CellCandidateDiff,
-} from "../hint";
+} from "../utils/hint";
 
 interface HintPanelProps {
   hint: HintResult | null;

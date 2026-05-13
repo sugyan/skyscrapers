@@ -1,4 +1,4 @@
-import type { ClueValue } from "../types";
+import type { ClueValue } from "../state/types";
 
 type Direction = "top" | "bottom" | "left" | "right";
 

@@ -1,0 +1,58 @@
+{
+  "name": "skyscrapers-player",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Embeddable React component for playing Skyscrapers puzzles, with a pluggable engine (WASM or remote API).",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./wasm": {
+      "types": "./src/wasm.ts",
+      "import": "./src/wasm.ts"
+    },
+    "./styles.css": "./src/styles/app.css"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "build:css": "tailwindcss -i ./src/styles/app.css -o ./dist/styles.css",
+    "typecheck": "tsc -b"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "skyscrapers-generator": "file:../skyscrapers-generator/pkg"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.2.2",
+    "@tailwindcss/cli": "^4.2.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^4.1.1"
+  }
+}

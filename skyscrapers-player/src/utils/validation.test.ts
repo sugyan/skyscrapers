@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateBoard } from "./validation";
-import type { BoardCell } from "./types";
+import type { BoardCell } from "../state/types";
 
 function makeBoard(values: (number | null)[][]): BoardCell[][] {
   return values.map((row) =>

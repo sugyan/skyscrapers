@@ -1,15 +1,14 @@
-import { useEffect, useState } from "react";
-import { PuzzlePage } from "./components/PuzzlePage";
-import { HowToPlayModal } from "./components/HowToPlayModal";
-import type { Puzzle } from "./types";
+import { useEffect, useMemo, useState } from "react";
 import {
   DIFFICULTIES,
-  generatePuzzle,
+  Player,
   normalizeDifficultyParam,
-  randomSeed,
-} from "./wasm";
-import type { Difficulty } from "./wasm";
-import "./styles/app.css";
+  type Difficulty,
+  type Puzzle,
+} from "skyscrapers-player";
+import { WasmEngine } from "skyscrapers-player/wasm";
+import "skyscrapers-player/styles.css";
+import { HowToPlayModal } from "./components/HowToPlayModal";
 
 function parseUrlParams(): {
   n: number;
@@ -72,6 +71,7 @@ function formatGenerateError(
 }
 
 function App() {
+  const engine = useMemo(() => new WasmEngine(), []);
   const [current, setCurrent] = useState<{
     puzzle: Puzzle;
     solution: number[][];
@@ -93,7 +93,8 @@ function App() {
       setSeedInput(params.seed.toString());
       setDifficulty(params.difficulty ?? "");
       setGenerating(true);
-      generatePuzzle(params.n, params.seed, params.difficulty)
+      engine
+        .generatePuzzle(params.n, params.seed, params.difficulty)
         .then((result) => {
           setLastSeed(params.seed.toString());
           setLastDifficulty(params.difficulty ?? null);
@@ -110,17 +111,23 @@ function App() {
         })
         .finally(() => setGenerating(false));
     }
-  }, []);
+  }, [engine]);
 
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
     const target: Difficulty | null = difficulty || null;
     try {
-      const seed = seedInput.trim() ? BigInt(seedInput.trim()) : randomSeed();
+      const seed = seedInput.trim()
+        ? BigInt(seedInput.trim())
+        : engine.randomSeed();
       const seedStr = seed.toString();
       setLastSeed(seedStr);
-      const result = await generatePuzzle(size, seed, target ?? undefined);
+      const result = await engine.generatePuzzle(
+        size,
+        seed,
+        target ?? undefined,
+      );
       setLastDifficulty(target);
       setCurrent(result);
       updateUrl(size, seedStr, target);
@@ -139,10 +146,11 @@ function App() {
   if (current) {
     return (
       <>
-        <PuzzlePage
+        <Player
           key={`${current.puzzle.n}-${lastSeed}`}
           puzzle={current.puzzle}
           solution={current.solution}
+          engine={engine}
           difficulty={lastDifficulty}
           onNewPuzzle={handleNewPuzzle}
           onShowHowToPlay={() => setShowHowToPlay(true)}

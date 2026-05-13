@@ -1,4 +1,4 @@
-import type { BoardCell } from "../types";
+import type { BoardCell } from "../state/types";
 
 interface NumberPadProps {
   n: number;

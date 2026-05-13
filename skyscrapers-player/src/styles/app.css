@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/*
+ * When this package is consumed via a `file:` symlink (or installed from the
+ * dist branch), the player's TSX files live under the consumer's
+ * `node_modules/skyscrapers-player/`, which Tailwind v4 ignores by default.
+ * `@source` follows symlinks back to this package's own `src/`, so consumers
+ * don't need to configure Tailwind to pick up the player's classes.
+ */
+@source "../**/*.{ts,tsx}";
+
 @theme {
   --color-board-bg: #f8f9fb;
   --color-board-border: #9ca3af;

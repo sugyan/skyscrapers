@@ -1,4 +1,4 @@
-import type { BoardCell } from "./types";
+import type { BoardCell } from "../state/types";
 
 export function validateBoard(n: number, board: BoardCell[][]): Set<string> {
   const errors = new Set<string>();
