@@ -11,7 +11,8 @@ Not published to npm. Use a `file:` reference within this monorepo for local dev
 ## Usage
 
 ```tsx
-import { Player, WasmEngine, type Puzzle } from "skyscrapers-player";
+import { Player, type Puzzle } from "skyscrapers-player";
+import { WasmEngine } from "skyscrapers-player/wasm";
 import "skyscrapers-player/styles.css";
 
 const engine = new WasmEngine();
@@ -33,7 +34,7 @@ interface SkyscrapersEngine {
 }
 ```
 
-To run the solver remotely, implement these three methods against your API and pass the instance as the `engine` prop.
+To run the solver remotely, implement these three methods against your API and pass the instance as the `engine` prop. The `skyscrapers-player/wasm` subpath is opt-in — consumers that don't import it keep the WebAssembly bindings out of their bundle entirely.
 
 ## Styling
 

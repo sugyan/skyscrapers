@@ -2,7 +2,14 @@
 export { Player } from "./components/Player";
 export type { PlayerProps } from "./components/Player";
 
-// Engine: interface + bundled WebAssembly implementation.
+// Engine interface + shared engine types.
+//
+// `WasmEngine` is deliberately NOT re-exported here — importing it would
+// pull `skyscrapers-generator` (the WebAssembly bindings) into the module
+// graph for every consumer, even those that plug in their own remote-API
+// engine. Import it from the dedicated subpath when you want it:
+//
+//     import { WasmEngine } from "skyscrapers-player/wasm";
 export type {
   SkyscrapersEngine,
   GenerateResult,
@@ -16,7 +23,6 @@ export type {
   Difficulty,
 } from "./engine/types";
 export { DIFFICULTIES, normalizeDifficultyParam } from "./engine/types";
-export { WasmEngine } from "./engine/wasm-engine";
 
 // Domain types consumers may need for constructing or inspecting puzzles.
 export type {

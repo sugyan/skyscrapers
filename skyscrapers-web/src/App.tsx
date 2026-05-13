@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DIFFICULTIES,
   Player,
-  WasmEngine,
   normalizeDifficultyParam,
   type Difficulty,
   type Puzzle,
 } from "skyscrapers-player";
+import { WasmEngine } from "skyscrapers-player/wasm";
 import "skyscrapers-player/styles.css";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 

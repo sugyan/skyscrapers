@@ -142,6 +142,16 @@ export class WasmEngine implements SkyscrapersEngine {
   }
 
   randomSeed(): bigint {
-    return crypto.getRandomValues(new BigUint64Array(1))[0];
+    // Browsers and modern Node (≥ 19) expose Web Crypto on `globalThis.crypto`.
+    // Older runtimes or unusual SSR setups may not — surface that explicitly
+    // rather than letting a cryptic ReferenceError bubble up.
+    const c = globalThis.crypto;
+    if (!c?.getRandomValues) {
+      throw new Error(
+        "WasmEngine.randomSeed: globalThis.crypto.getRandomValues is unavailable. " +
+          "Provide a seed argument to generatePuzzle() explicitly.",
+      );
+    }
+    return c.getRandomValues(new BigUint64Array(1))[0];
   }
 }
