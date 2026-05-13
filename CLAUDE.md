@@ -115,7 +115,7 @@ The generator has two stages:
 
 ## Web / Player (npm packages)
 
-- **`skyscrapers-player`** — React 19 component (`<Player>`) + `SkyscrapersEngine` interface. Bundled `WasmEngine` runs the solver in-process via WebAssembly; consumers can swap in their own remote-API engine. Not published to npm; consumed via `file:` symlink today, with a `player-dist` Git branch planned for external consumers.
+- **`skyscrapers-player`** — React 19 component (`<Player>`) + `SkyscrapersEngine` interface. Bundled `WasmEngine` runs the solver in-process via WebAssembly; consumers can swap in their own remote-API engine. Not published to npm. Two install paths: the monorepo uses `file:../skyscrapers-player`, and external projects install from the `player-dist` Git branch (`npm install github:sugyan/skyscrapers#player-dist`), which is rebuilt on every push to `main` by `.github/workflows/player-dist.yml`.
 - **`skyscrapers-web`** — Demo application that wires up `WasmEngine` + generation form around `<Player>`. Tailwind v4 styling lives in the player; the web app just imports `skyscrapers-player/styles.css`.
 
 Install + check (run in each package as needed):

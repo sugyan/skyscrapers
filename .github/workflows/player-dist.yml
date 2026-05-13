@@ -1,0 +1,112 @@
+name: Publish player-dist
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "skyscrapers-player/**"
+      - "skyscrapers-generator/**"
+      - "skyscrapers-core/**"
+      - "skyscrapers-solver/**"
+      - ".github/workflows/player-dist.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: player-dist
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked --version 0.14.0
+      - name: Build WASM package
+        run: wasm-pack build --target web skyscrapers-generator
+      - name: Set up Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: lts/*
+          cache: "npm"
+          cache-dependency-path: skyscrapers-player/package-lock.json
+      - name: Install player dependencies
+        working-directory: skyscrapers-player
+        run: npm ci
+      - name: Build pre-rendered CSS
+        working-directory: skyscrapers-player
+        run: npm run build:css
+      - name: Assemble dist tree
+        run: |
+          set -euo pipefail
+          DIST="$(mktemp -d)"
+
+          # Player source — strip tests; consumers don't need them.
+          cp -r skyscrapers-player/src "$DIST/src"
+          find "$DIST/src" -name "*.test.ts" -delete
+
+          # Pre-built Tailwind output.
+          cp -r skyscrapers-player/dist "$DIST/dist"
+
+          # README explaining the install/usage.
+          cp skyscrapers-player/README.md "$DIST/README.md"
+
+          # Vendor the wasm-pack output as a sibling directory of `src/`.
+          # wasm-pack writes a `.gitignore` of `*` inside pkg/ — npm pack
+          # honors nested .gitignores and would silently drop the WASM
+          # artifact from the tarball, so strip it explicitly.
+          cp -r skyscrapers-generator/pkg "$DIST/skyscrapers-generator"
+          rm -f "$DIST/skyscrapers-generator/.gitignore"
+
+          # The published wasm-engine imports the generator by a *relative*
+          # path rather than the bare specifier it uses in the monorepo:
+          # nested `file:` deps don't resolve through `npm install <git url>`
+          # because the dependency tree is flattened from the tarball, but a
+          # plain relative import to the sibling directory works regardless.
+          sed -i \
+            's|from "skyscrapers-generator"|from "../../skyscrapers-generator/skyscrapers_generator.js"|' \
+            "$DIST/src/engine/wasm-engine.ts"
+
+          # Rewrite package.json:
+          # - drop fields that don't apply to a published package (private,
+          #   scripts, devDependencies)
+          # - remove the `skyscrapers-generator` dependency entry — the
+          #   import now resolves through a relative path, so npm doesn't
+          #   need to install the generator as a separate package
+          # - swap the styles.css export from the Tailwind source entry to the
+          #   pre-built artifact
+          # - declare `files` so `npm pack`/git-install stay bounded
+          jq '
+            del(.private, .scripts, .devDependencies, .dependencies["skyscrapers-generator"]) |
+            if (.dependencies | length) == 0 then del(.dependencies) else . end |
+            .files = ["src", "dist", "skyscrapers-generator", "README.md"] |
+            .exports["./styles.css"] = "./dist/styles.css"
+          ' skyscrapers-player/package.json > "$DIST/package.json"
+
+          # Record the source commit for traceability.
+          printf "%s\n" "$GITHUB_SHA" > "$DIST/SOURCE_COMMIT"
+
+          echo "DIST_DIR=$DIST" >> "$GITHUB_ENV"
+      - name: Force-push player-dist branch
+        run: |
+          set -euo pipefail
+          cd "$DIST_DIR"
+          git init -q -b player-dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          short_sha="${GITHUB_SHA::8}"
+          git commit -q -m "Build from $short_sha" \
+            -m "Source: https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin player-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
