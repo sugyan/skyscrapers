@@ -10,6 +10,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   base: process.env.BASE_PATH ?? "/",
   plugins: [react(), tailwindcss()],
+  resolve: {
+    // skyscrapers-player is consumed as a `file:` symlink and ships its own
+    // react in node_modules (declared as devDep for local tests). Without
+    // dedupe, Rollup bundles two copies of React and hooks inside Player
+    // explode with "Cannot read properties of null (reading 'useReducer')".
+    dedupe: ["react", "react-dom"],
+  },
   optimizeDeps: {
     // skyscrapers-generator: pre-bundling the wasm-pack output trips Vite's
     //   dependency analyzer.
