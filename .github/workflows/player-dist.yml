@@ -8,6 +8,7 @@ on:
       - "skyscrapers-generator/**"
       - "skyscrapers-core/**"
       - "skyscrapers-solver/**"
+      - "scripts/build-player-dist.sh"
       - ".github/workflows/player-dist.yml"
   workflow_dispatch:
 

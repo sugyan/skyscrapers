@@ -29,9 +29,20 @@ GENERATOR_PKG="$REPO_ROOT/skyscrapers-generator/pkg"
 OUT_DIR="${1:-}"
 if [ -z "$OUT_DIR" ]; then
   OUT_DIR="$(mktemp -d)"
+else
+  # A caller-supplied path may not exist yet (e.g. "$RUNNER_TEMP/dist" in CI);
+  # ensure it does before the first `cp` walks into it.
+  mkdir -p "$OUT_DIR"
 fi
 
 # ─── Prerequisite checks ──────────────────────────────────────────────────
+
+for cmd in jq sed find cp; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "::error::Required tool '$cmd' is not on PATH." >&2
+    exit 1
+  fi
+done
 
 if [ ! -d "$GENERATOR_PKG" ]; then
   echo "::error::Missing $GENERATOR_PKG. Run \`wasm-pack build --target web skyscrapers-generator\` first." >&2
