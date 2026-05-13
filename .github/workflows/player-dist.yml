@@ -71,9 +71,28 @@ jobs:
           # nested `file:` deps don't resolve through `npm install <git url>`
           # because the dependency tree is flattened from the tarball, but a
           # plain relative import to the sibling directory works regardless.
-          sed -i \
-            's|from "skyscrapers-generator"|from "../../skyscrapers-generator/skyscrapers_generator.js"|' \
-            "$DIST/src/engine/wasm-engine.ts"
+          ENGINE="$DIST/src/engine/wasm-engine.ts"
+          REL_IMPORT='../../skyscrapers-generator/skyscrapers_generator.js'
+          sed -i "s|from \"skyscrapers-generator\"|from \"$REL_IMPORT\"|" "$ENGINE"
+
+          # sed -i is silent on no-match, so if the monorepo import is ever
+          # refactored away from the bare specifier (or to a different
+          # filename), this workflow would otherwise publish a dist tree
+          # where wasm-engine.ts still imports `"skyscrapers-generator"` —
+          # which would fail to resolve at the consumer because we also
+          # drop that dependency from package.json below. Fail loudly here.
+          if grep -q 'from "skyscrapers-generator"' "$ENGINE"; then
+            echo "::error::wasm-engine.ts still contains a bare 'skyscrapers-generator' import after rewrite. The dist tree would be broken." >&2
+            exit 1
+          fi
+          if ! grep -q "from \"$REL_IMPORT\"" "$ENGINE"; then
+            echo "::error::wasm-engine.ts is missing the expected relative import to $REL_IMPORT. The dist tree would be broken." >&2
+            exit 1
+          fi
+          if [ ! -f "$DIST/skyscrapers-generator/skyscrapers_generator.js" ]; then
+            echo "::error::Vendored generator JS missing at expected path." >&2
+            exit 1
+          fi
 
           # Rewrite package.json:
           # - drop fields that don't apply to a published package (private,
