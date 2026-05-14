@@ -1,0 +1,87 @@
+name: Publish player-dist
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "skyscrapers-player/**"
+      - "skyscrapers-generator/**"
+      - "skyscrapers-core/**"
+      - "skyscrapers-solver/**"
+      - "scripts/build-player-dist.sh"
+      - ".github/workflows/player-dist.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: player-dist
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@3235f8901fd37ffed0052b276cec25a362fb82e9 # v2.77.7
+        with:
+          tool: wasm-pack@0.14.0
+      - name: Build WASM package
+        run: wasm-pack build --target web skyscrapers-generator
+      - name: Set up Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: lts/*
+          cache: "npm"
+          cache-dependency-path: skyscrapers-player/package-lock.json
+      - name: Install player dependencies
+        working-directory: skyscrapers-player
+        run: npm ci
+      # Gate the publish on the same checks Web CI runs against the player.
+      # `workflow_run`-style chaining across files has its own failure modes
+      # (e.g. when the triggering workflow is skipped by path filters), so we
+      # just re-run the relevant checks inline for a self-contained job.
+      - name: Player lint
+        working-directory: skyscrapers-player
+        run: npm run lint
+      - name: Player format check
+        working-directory: skyscrapers-player
+        run: npm run format:check
+      - name: Player typecheck
+        working-directory: skyscrapers-player
+        run: npm run typecheck
+      - name: Player test
+        working-directory: skyscrapers-player
+        run: npm run test
+      - name: Build pre-rendered CSS
+        working-directory: skyscrapers-player
+        run: npm run build:css
+      - name: Assemble dist tree
+        run: |
+          set -euo pipefail
+          # scripts/build-player-dist.sh prints the assembled tree's path on
+          # stdout. Capture it for the next step.
+          DIST_DIR="$(bash scripts/build-player-dist.sh)"
+          echo "DIST_DIR=$DIST_DIR" >> "$GITHUB_ENV"
+      - name: Force-push player-dist branch
+        run: |
+          set -euo pipefail
+          cd "$DIST_DIR"
+          git init -q -b player-dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          short_sha="${GITHUB_SHA::8}"
+          git commit -q -m "Build from $short_sha" \
+            -m "Source: https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin player-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
