@@ -91,6 +91,15 @@ rm -f "$OUT_DIR/skyscrapers-generator/.gitignore"
 # sibling directory works regardless.
 ENGINE="$OUT_DIR/src/engine/wasm-engine.ts"
 REL_IMPORT='../../skyscrapers-generator/skyscrapers_generator.js'
+
+# Guard against the file being moved/renamed in a future refactor — the bare
+# `sed`/`grep` failures further down would surface as cryptic "No such file"
+# messages otherwise.
+if [ ! -f "$ENGINE" ]; then
+  echo "::error::Expected wasm-engine source at $ENGINE but the file does not exist. Did src/engine/wasm-engine.ts get moved?" >&2
+  exit 1
+fi
+
 sed -i.bak "s|from \"skyscrapers-generator\"|from \"$REL_IMPORT\"|" "$ENGINE"
 rm -f "$ENGINE.bak"
 

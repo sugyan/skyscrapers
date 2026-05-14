@@ -44,6 +44,22 @@ jobs:
       - name: Install player dependencies
         working-directory: skyscrapers-player
         run: npm ci
+      # Gate the publish on the same checks Web CI runs against the player.
+      # `workflow_run`-style chaining across files has its own failure modes
+      # (e.g. when the triggering workflow is skipped by path filters), so we
+      # just re-run the relevant checks inline for a self-contained job.
+      - name: Player lint
+        working-directory: skyscrapers-player
+        run: npm run lint
+      - name: Player format check
+        working-directory: skyscrapers-player
+        run: npm run format:check
+      - name: Player typecheck
+        working-directory: skyscrapers-player
+        run: npm run typecheck
+      - name: Player test
+        working-directory: skyscrapers-player
+        run: npm run test
       - name: Build pre-rendered CSS
         working-directory: skyscrapers-player
         run: npm run build:css
