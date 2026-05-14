@@ -33,6 +33,14 @@ else
   # A caller-supplied path may not exist yet (e.g. "$RUNNER_TEMP/dist" in CI);
   # ensure it does before the first `cp` walks into it.
   mkdir -p "$OUT_DIR"
+  # Refuse to clobber a non-empty directory: `cp -r src/ dst/` where dst/src
+  # already exists nests it into dst/src/src instead of replacing, producing
+  # an invalid tree. Forcing the caller to start clean keeps repeated local
+  # runs deterministic.
+  if [ -n "$(ls -A "$OUT_DIR" 2>/dev/null)" ]; then
+    echo "::error::Output directory $OUT_DIR is not empty. Remove it (or pass a fresh path) before re-running." >&2
+    exit 1
+  fi
 fi
 
 # ─── Prerequisite checks ──────────────────────────────────────────────────
