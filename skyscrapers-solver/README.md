@@ -40,7 +40,7 @@ See [docs/logic-solver-analysis.md](../docs/logic-solver-analysis.md) for the fu
 
 ## Benchmarks
 
-`rustup run nightly cargo bench -p skyscrapers-solver`
+`cargo +nightly bench -p skyscrapers-solver`
 
 | Solver | n=4 | n=5 | n=6 | n=7 |
 |---|---:|---:|---:|---:|
