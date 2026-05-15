@@ -61,7 +61,7 @@ cargo clippy --workspace --all-targets
 cargo fmt --check
 ```
 
-The solver crate also ships a Criterion benchmark suite (nightly toolchain): `rustup run nightly cargo bench -p skyscrapers-solver`.
+The solver crate also ships a benchmark suite that uses the nightly `#![feature(test)]` harness: `cargo +nightly bench -p skyscrapers-solver`.
 
 ## License
 
