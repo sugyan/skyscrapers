@@ -1,6 +1,6 @@
 # skyscrapers-generator
 
-Generates Skyscrapers puzzles with a guaranteed unique solution. Also exposes WebAssembly bindings consumed by [skyscrapers-player](../skyscrapers-player/README.md) and [skyscrapers-web](../skyscrapers-web/README.md).
+Generates Skyscrapers puzzles with a guaranteed unique solution. Also exposes WebAssembly bindings consumed by [skyscrapers-player](https://github.com/sugyan/skyscrapers/tree/main/skyscrapers-player) and [skyscrapers-web](https://github.com/sugyan/skyscrapers/tree/main/skyscrapers-web).
 
 ## Pipeline
 
@@ -19,7 +19,7 @@ use rand_chacha::ChaCha20Rng;
 use skyscrapers_generator::{generate, GeneratorParams};
 
 let mut rng = ChaCha20Rng::seed_from_u64(42);
-let params = GeneratorParams::new(7);
+let params = GeneratorParams::new(5);
 let (puzzle, _solution) = generate(&mut rng, &params).expect("generation succeeds");
 println!("{puzzle}");
 ```
