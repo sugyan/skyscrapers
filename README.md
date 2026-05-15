@@ -22,7 +22,7 @@ This project targets `n = 7` and `n = 8` as the primary sizes for human play, wh
 | [skyscrapers-player](skyscrapers-player/README.md) | React component plus a pluggable `SkyscrapersEngine` interface; bundled `WasmEngine` runs the solver in-process. |
 | [skyscrapers-web](skyscrapers-web/README.md) | Demo web app wiring `WasmEngine` + a generation form around `<Player>`. |
 
-Dependency flow is always `core → solver → generator → cli`, with no cycles.
+Crates form a layered DAG (no cycles): `skyscrapers-core` is foundational; `skyscrapers-solver` builds on `core`; `skyscrapers-generator` builds on `core` + `solver`; `skyscrapers-cli` and `skyscrapers-analysis` build on `core` + `solver` + `generator`.
 
 ## Quick start: CLI
 

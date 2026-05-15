@@ -21,7 +21,7 @@ skyscrapers generate [-n <SIZE>] [--seed <SEED>] [--difficulty <LEVEL>]
 
 - `-n <SIZE>` — grid size, `1..=9` (default `7`).
 - `--seed <SEED>` — `u64` RNG seed; if omitted a random seed is generated and echoed to stderr.
-- `--difficulty <LEVEL>` — `easy` | `medium` | `hard` | `expert` | `master`. When set, the generator retries until a puzzle reaching that difficulty (per the logic solver) is produced.
+- `--difficulty <LEVEL>` — `easy` | `medium` | `hard` | `expert` | `master`. When set, the generator retries until a puzzle whose logic-solver difficulty *exactly* matches the requested level is produced.
 
 The puzzle is printed to stdout in the text box-format defined by `Puzzle`'s `Display` impl in [skyscrapers-core](../skyscrapers-core/README.md).
 

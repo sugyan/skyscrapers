@@ -26,7 +26,7 @@ let (puzzle, solution) = generate(&mut rng, &params)?;
 Key items:
 
 - `solution_from_latin_square(&LatinSquare) -> Solution` — converts a 0-based `LatinSquare` to a 1-based `Solution`.
-- `derive_clues(&Solution) -> Clues` — convenience re-export of the core clue derivation.
+- `derive_clues(&Solution) -> Clues` — thin convenience wrapper around `Clues::from_solution`.
 - `GeneratorParams::new(n)` plus builders `with_solver`, `with_target_difficulty`, `with_max_attempts`.
 - `generate(rng, &params) -> Result<(Puzzle, Solution), GenerateError>`.
 
