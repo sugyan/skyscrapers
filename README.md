@@ -27,7 +27,7 @@ Crates form a layered DAG (no cycles): `skyscrapers-core` is foundational; `skys
 ## Quick start: CLI
 
 ```bash
-# Generate a puzzle (default n=7, random seed printed to stderr)
+# Generate a puzzle (defaults to n=7; omit --seed for a random seed printed to stderr)
 cargo run -p skyscrapers-cli -- generate -n 7 --seed 42
 
 # Pipe a generated puzzle into the solver

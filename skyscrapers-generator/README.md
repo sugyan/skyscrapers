@@ -16,11 +16,15 @@ When `GeneratorParams::with_target_difficulty(...)` is set, Stage A/B are retrie
 ```rust
 use rand_chacha::ChaCha20Rng;
 use rand::SeedableRng;
-use skyscrapers_generator::{generate, GeneratorParams};
+use skyscrapers_generator::{generate, GenerateError, GeneratorParams};
 
-let mut rng = ChaCha20Rng::seed_from_u64(42);
-let params = GeneratorParams::new(7);
-let (puzzle, solution) = generate(&mut rng, &params)?;
+fn main() -> Result<(), GenerateError> {
+    let mut rng = ChaCha20Rng::seed_from_u64(42);
+    let params = GeneratorParams::new(7);
+    let (puzzle, solution) = generate(&mut rng, &params)?;
+    println!("{puzzle}");
+    Ok(())
+}
 ```
 
 Key items:
