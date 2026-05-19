@@ -36,11 +36,11 @@ Applies human-traceable techniques in order of difficulty. Does not use backtrac
 - **Expert** — Requires clue permutation enumeration
 - **Master** — Requires forcing-chain reasoning (assumption-based)
 
-See [docs/logic-solver-analysis.md](../docs/logic-solver-analysis.md) for the full target-yield and technique-necessity analysis.
+See [docs/logic-solver-analysis.md](https://github.com/sugyan/skyscrapers/blob/main/docs/logic-solver-analysis.md) for the full target-yield and technique-necessity analysis.
 
 ## Benchmarks
 
-`rustup run nightly cargo bench -p skyscrapers-solver`
+`cargo +nightly bench -p skyscrapers-solver`
 
 | Solver | n=4 | n=5 | n=6 | n=7 |
 |---|---:|---:|---:|---:|
