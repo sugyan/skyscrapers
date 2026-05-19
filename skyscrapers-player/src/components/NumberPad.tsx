@@ -147,8 +147,20 @@ export function NumberPad({
     }
   }
 
-  const btnSize = "w-10 h-10 sm:w-12 sm:h-12";
-  const btnBase = `${btnSize} text-lg border rounded-md transition-colors duration-100 touch-manipulation select-none`;
+  // Shrink buttons for larger n so the row still fits on a single line on
+  // narrow mobile viewports (n+1 buttons inside max-w-[90vw] ≈ 324px @360px).
+  const isLarge = n >= 7;
+  const sizeClass =
+    n >= 8
+      ? "w-8 h-8 sm:w-12 sm:h-12"
+      : n === 7
+        ? "w-9 h-9 sm:w-12 sm:h-12"
+        : "w-10 h-10 sm:w-12 sm:h-12";
+  const digitTextClass = n >= 8 ? "text-base sm:text-lg" : "text-lg";
+  const clearTextClass = n >= 8 ? "text-lg sm:text-xl" : "text-xl";
+  const rowGapClass = isLarge ? "gap-1 sm:gap-2" : "gap-1.5 sm:gap-2";
+
+  const btnBase = `${sizeClass} border rounded-md transition-colors duration-100 touch-manipulation select-none`;
   const btnDefault =
     "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 cursor-pointer";
   const btnActiveAnswer =
@@ -179,7 +191,7 @@ export function NumberPad({
       <div key={i} className="flex flex-col items-center">
         <RemainingBars remaining={remaining} />
         <button
-          className={`${btnBase} font-bold ${stateClass}`}
+          className={`${btnBase} ${digitTextClass} font-bold ${stateClass}`}
           disabled={disabled}
           {...tapProps(
             () => (filterMode ? onFilter(i) : onAnswer(i)),
@@ -196,7 +208,7 @@ export function NumberPad({
   answerButtons.push(
     <div key="clear" className="flex flex-col justify-end">
       <button
-        className={`${btnBase} text-xl ${answerDisabled ? btnDisabled : `${btnDefault} text-red-600 dark:text-red-400`}`}
+        className={`${btnBase} ${clearTextClass} ${answerDisabled ? btnDisabled : `${btnDefault} text-red-600 dark:text-red-400`}`}
         disabled={answerDisabled}
         {...tapProps(onClearAnswer, answerDisabled)}
       >
@@ -212,7 +224,7 @@ export function NumberPad({
     memoButtons.push(
       <button
         key={i}
-        className={`${btnBase} font-light ${memoDisabled ? btnDisabled : isActive ? btnActiveCandidate : `${btnDefault} text-gray-500 dark:text-slate-400`}`}
+        className={`${btnBase} ${digitTextClass} font-light ${memoDisabled ? btnDisabled : isActive ? btnActiveCandidate : `${btnDefault} text-gray-500 dark:text-slate-400`}`}
         disabled={memoDisabled}
         {...tapProps(() => onToggleCandidate(i), memoDisabled)}
       >
@@ -234,10 +246,14 @@ export function NumberPad({
 
   return (
     <div className="flex flex-col items-center gap-1.5 mt-8 mb-5">
-      <div className="flex gap-1.5 sm:gap-2 items-end justify-center flex-wrap max-w-[90vw]">
+      <div
+        className={`flex ${rowGapClass} items-end justify-center flex-wrap max-w-[90vw]`}
+      >
         {answerButtons}
       </div>
-      <div className="flex gap-1.5 sm:gap-2 justify-center flex-wrap max-w-[90vw]">
+      <div
+        className={`flex ${rowGapClass} justify-center flex-wrap max-w-[90vw]`}
+      >
         {memoButtons}
       </div>
     </div>
