@@ -6,6 +6,7 @@ members = [
     "skyscrapers-core",
     "skyscrapers-generator",
     "skyscrapers-solver",
+    "skyscrapers-tauri/src-tauri",
 ]
 
 [workspace.package]
