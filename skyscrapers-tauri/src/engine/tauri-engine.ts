@@ -84,10 +84,13 @@ export class TauriEngine implements SkyscrapersEngine {
     puzzle: Puzzle,
     board: BoardCell[][],
   ): Promise<HintResult | null> {
+    // Tauri auto-maps camelCase → snake_case for command args, but pass
+    // snake_case explicitly so the wire shape matches the Rust signature
+    // by eye.
     const result = await invoke<HintResult | null>("next_hint", {
       puzzle: puzzleToRust(puzzle),
       board: boardToRust(board),
-      userCandidates: userCandidatesToRust(board),
+      user_candidates: userCandidatesToRust(board),
     });
     return result;
   }

@@ -8,6 +8,17 @@ members = [
     "skyscrapers-solver",
     "skyscrapers-tauri/src-tauri",
 ]
+# skyscrapers-tauri pulls in heavy OS-level deps (webkit2gtk / glib on Linux,
+# WKWebView on macOS, WebView2 on Windows). Exclude it from the default set so
+# plain `cargo build` / `cargo test` from the workspace root stay portable; it
+# is built via its own toolchain (`npm run tauri build`).
+default-members = [
+    "skyscrapers-analysis",
+    "skyscrapers-cli",
+    "skyscrapers-core",
+    "skyscrapers-generator",
+    "skyscrapers-solver",
+]
 
 [workspace.package]
 edition = "2024"
