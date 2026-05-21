@@ -3295,8 +3295,13 @@ dependencies = [
 name = "skyscrapers-tauri"
 version = "0.1.0"
 dependencies = [
+ "rand",
+ "rand_chacha",
  "serde",
  "serde_json",
+ "skyscrapers-core",
+ "skyscrapers-generator",
+ "skyscrapers-solver",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",

@@ -6,8 +6,8 @@ import {
   type Difficulty,
   type Puzzle,
 } from "skyscrapers-player";
-import { WasmEngine } from "skyscrapers-player/wasm";
 import "skyscrapers-player/styles.css";
+import { TauriEngine } from "./engine/tauri-engine";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 
 function parseUrlParams(): {
@@ -71,7 +71,7 @@ function formatGenerateError(
 }
 
 function App() {
-  const engine = useMemo(() => new WasmEngine(), []);
+  const engine = useMemo(() => new TauriEngine(), []);
   const [current, setCurrent] = useState<{
     puzzle: Puzzle;
     solution: number[][];
