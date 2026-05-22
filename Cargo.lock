@@ -3298,7 +3298,6 @@ dependencies = [
  "rand",
  "rand_chacha",
  "serde",
- "serde_json",
  "skyscrapers-core",
  "skyscrapers-generator",
  "skyscrapers-solver",
