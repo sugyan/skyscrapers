@@ -6,7 +6,7 @@ import type {
   Puzzle,
 } from "./types";
 import { validateBoard } from "../utils/validation";
-import { computeRowColValues } from "../utils/board";
+import { withAllCandidatesFilled } from "../utils/board";
 
 const MAX_HISTORY = 100;
 
@@ -207,25 +207,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "FILL_ALL_CANDIDATES": {
-      const newBoard = deepCopyBoard(state.board);
-      const { rowVals, colVals } = computeRowColValues(newBoard);
-      let changed = false;
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-          const cell = newBoard[r][c];
-          if (cell.given) continue;
-          if (cell.value !== null) continue;
-          if (cell.candidates.size > 0) continue;
-          const candidates = new Set<number>();
-          for (let v = 1; v <= n; v++) {
-            if (!rowVals[r].has(v) && !colVals[c].has(v)) candidates.add(v);
-          }
-          if (candidates.size === 0) continue;
-          cell.candidates = candidates;
-          changed = true;
-        }
-      }
-      if (!changed) return state;
+      const newBoard = withAllCandidatesFilled(state.board);
+      if (newBoard === state.board) return state;
       return { ...state, board: newBoard, history: pushHistory(state) };
     }
 

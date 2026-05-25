@@ -1,6 +1,5 @@
 interface GameControlsProps {
   canUndo: boolean;
-  canHint: boolean;
   onUndo: () => void;
   onReset: () => void;
   onHint: () => void;
@@ -10,7 +9,6 @@ interface GameControlsProps {
 
 export function GameControls({
   canUndo,
-  canHint,
   onUndo,
   onReset,
   onHint,
@@ -38,12 +36,7 @@ export function GameControls({
         </button>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <button
-          className={secondaryBtn}
-          onClick={onHint}
-          disabled={!canHint}
-          title={canHint ? undefined : "Fill memo first to use Hint"}
-        >
+        <button className={secondaryBtn} onClick={onHint}>
           Hint
         </button>
         <button className={secondaryBtn} onClick={onFillCandidates}>

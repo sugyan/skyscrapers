@@ -19,6 +19,33 @@ export function computeRowColValues(board: BoardCell[][]): {
   return { rowVals, colVals };
 }
 
+/**
+ * Returns a copy of `board` where every empty, non-given cell with no pencil
+ * marks has its candidate set populated to all values not present in the
+ * cell's row or column. Cells that already have any candidates are left
+ * untouched. Returns the original board if nothing changes.
+ */
+export function withAllCandidatesFilled(board: BoardCell[][]): BoardCell[][] {
+  const n = board.length;
+  const { rowVals, colVals } = computeRowColValues(board);
+  let changed = false;
+  const next: BoardCell[][] = board.map((row, r) =>
+    row.map((cell, c) => {
+      if (cell.given) return cell;
+      if (cell.value !== null) return cell;
+      if (cell.candidates.size > 0) return cell;
+      const candidates = new Set<number>();
+      for (let v = 1; v <= n; v++) {
+        if (!rowVals[r].has(v) && !colVals[c].has(v)) candidates.add(v);
+      }
+      if (candidates.size === 0) return cell;
+      changed = true;
+      return { ...cell, candidates };
+    }),
+  );
+  return changed ? next : board;
+}
+
 export function blockedValuesAt(
   board: BoardCell[][],
   row: number,

@@ -12,6 +12,7 @@ import {
 interface HintPanelProps {
   hint: HintResult | null;
   error: string | null;
+  autoFilledMemo?: boolean;
   board: BoardCell[][];
   onApply: () => void;
   onClose: () => void;
@@ -68,6 +69,7 @@ function CandidateChips({ diff, n }: { diff: CellCandidateDiff; n: number }) {
 export function HintPanel({
   hint,
   error,
+  autoFilledMemo,
   board,
   onApply,
   onClose,
@@ -131,6 +133,12 @@ export function HintPanel({
       <p className="text-amber-700 dark:text-amber-200/90 mb-3">
         {reasonText(hint)}
       </p>
+
+      {autoFilledMemo && (
+        <p className="text-xs text-amber-700/90 dark:text-amber-300/80 mb-3">
+          Memo marks were filled in automatically so the hint could be computed.
+        </p>
+      )}
 
       {diffs.length > 0 && (
         <div className="mb-3">
