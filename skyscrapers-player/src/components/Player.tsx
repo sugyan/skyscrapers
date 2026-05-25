@@ -96,9 +96,10 @@ export function Player({
     }
 
     // The hint engine reads the user's pencil marks to produce a meaningful
-    // candidate diff. If no marks have been entered yet, fill them in first
-    // so the hint has something to compare against, and surface that to the
-    // user as a notice on the hint panel.
+    // candidate diff. Any empty cell with no marks would otherwise leave the
+    // solver without a baseline to reason from, so fill in candidates for
+    // every such cell first and surface that to the user as a notice on the
+    // hint panel. Cells the user has already marked are left alone.
     const filledBoard = withAllCandidatesFilled(state.board);
     const autoFilled = filledBoard !== state.board;
     if (autoFilled) {

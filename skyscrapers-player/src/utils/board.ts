@@ -20,10 +20,14 @@ export function computeRowColValues(board: BoardCell[][]): {
 }
 
 /**
- * Returns a copy of `board` where every empty, non-given cell with no pencil
- * marks has its candidate set populated to all values not present in the
- * cell's row or column. Cells that already have any candidates are left
- * untouched. Returns the original board if nothing changes.
+ * Returns a new board where every empty, non-given cell with no pencil marks
+ * has its candidate set populated to all values not present in the cell's row
+ * or column. Cells that already have any candidates are left untouched.
+ *
+ * If nothing changes, the original `board` reference is returned. Otherwise a
+ * fresh outer array is returned, but unchanged cells are reused by reference
+ * (structural sharing) — callers should treat the board as immutable and
+ * never mutate cells in place.
  */
 export function withAllCandidatesFilled(board: BoardCell[][]): BoardCell[][] {
   const n = board.length;
