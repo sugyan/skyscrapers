@@ -95,6 +95,12 @@ export function Player({
       return;
     }
 
+    // Clear any stale hint before we mutate the board — otherwise the open
+    // HintPanel would briefly render against the new auto-filled board while
+    // the next request is in flight, showing diffs that don't match.
+    setHint(null);
+    setHintError(null);
+
     // The hint engine reads the user's pencil marks to produce a meaningful
     // candidate diff. Any empty cell with no marks would otherwise leave the
     // solver without a baseline to reason from, so fill in candidates for
