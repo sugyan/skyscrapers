@@ -90,6 +90,11 @@ export function HintPanel({
             ✕
           </button>
         </div>
+        {autoFilledMemo && (
+          <p className="text-xs text-amber-700/90 dark:text-amber-300/80 mt-2">
+            Memo marks were filled in automatically while requesting the hint.
+          </p>
+        )}
       </div>
     );
   }

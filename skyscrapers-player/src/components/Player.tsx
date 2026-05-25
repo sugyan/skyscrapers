@@ -105,22 +105,23 @@ export function Player({
       rawDispatch({ type: "FILL_ALL_CANDIDATES" });
     }
 
+    // The auto-fill is a board mutation the user sees regardless of how the
+    // hint request resolves, so keep the notice tied to that fact — not to
+    // whether a hint was actually produced.
+    setHintAutoFilledMemo(autoFilled);
     try {
       const result = await engine.requestHint(puzzle, filledBoard);
       if (result === null) {
         setHint(null);
         setHintError("No hint available.");
-        setHintAutoFilledMemo(false);
       } else {
         setHint(result);
         setHintError(null);
-        setHintAutoFilledMemo(autoFilled);
         rawDispatch({ type: "DESELECT" });
       }
     } catch (e) {
       setHint(null);
       setHintError(`Hint failed: ${(e as Error).message}`);
-      setHintAutoFilledMemo(false);
     }
   }, [engine, puzzle, solution, state.board]);
 
