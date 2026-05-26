@@ -28,11 +28,11 @@ describe("withAllCandidatesFilled", () => {
     ]);
     const next = withAllCandidatesFilled(board);
     // Row 0 has 1; col 1 has nothing → cell (0,1) candidates = {2,3}
-    expect([...next[0][1].candidates].sort()).toEqual([2, 3]);
+    expect([...next[0][1].candidates].sort((a, b) => a - b)).toEqual([2, 3]);
     // Cell (1,1): row 1 empty, col 1 empty → {1,2,3}
-    expect([...next[1][1].candidates].sort()).toEqual([1, 2, 3]);
+    expect([...next[1][1].candidates].sort((a, b) => a - b)).toEqual([1, 2, 3]);
     // Cell (2,0): col 0 has 1; row 2 has 3 → {2}
-    expect([...next[2][0].candidates].sort()).toEqual([2]);
+    expect([...next[2][0].candidates].sort((a, b) => a - b)).toEqual([2]);
   });
 
   it("returns the same reference when nothing changes", () => {
