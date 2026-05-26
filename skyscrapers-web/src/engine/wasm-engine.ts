@@ -1,51 +1,15 @@
 import init, { generate_puzzle, next_hint } from "skyscrapers-generator";
-import type { BoardCell, Puzzle } from "../state/types";
-import { computeRowColValues } from "../utils/board";
-import type {
-  Difficulty,
-  GenerateResult,
-  HintResult,
-  SkyscrapersEngine,
-} from "./types";
-
-/**
- * Shape returned by WASM generate_puzzle (via serde-wasm-bindgen).
- * Note: serde-wasm-bindgen serializes `None` as `undefined`, not `null`.
- */
-export interface WasmPuzzleResult {
-  puzzle: {
-    board: { n: number; cells: (number | null | undefined)[][] };
-    clues: {
-      n: number;
-      top: (number | null | undefined)[];
-      bottom: (number | null | undefined)[];
-      left: (number | null | undefined)[];
-      right: (number | null | undefined)[];
-    };
-  };
-  solution: { n: number; cells: number[][] };
-}
-
-export function convertWasmResult(raw: WasmPuzzleResult): GenerateResult {
-  const { puzzle: wp, solution: ws } = raw;
-  const puzzle: Puzzle = {
-    n: wp.board.n,
-    board: wp.board.cells.map((row) =>
-      row.map((value) => ({
-        value: value ?? null,
-        given: value != null,
-        candidates: new Set<number>(),
-      })),
-    ),
-    clues: {
-      top: wp.clues.top.map((v) => v ?? null),
-      bottom: wp.clues.bottom.map((v) => v ?? null),
-      left: wp.clues.left.map((v) => v ?? null),
-      right: wp.clues.right.map((v) => v ?? null),
-    },
-  };
-  return { puzzle, solution: ws.cells };
-}
+import {
+  computeRowColValues,
+  convertPuzzleResult,
+  type BoardCell,
+  type Difficulty,
+  type GenerateResult,
+  type HintResult,
+  type Puzzle,
+  type PuzzleResult,
+  type SkyscrapersEngine,
+} from "skyscrapers-player";
 
 let initPromise: Promise<void> | null = null;
 
@@ -124,8 +88,8 @@ export class WasmEngine implements SkyscrapersEngine {
     difficulty?: Difficulty,
   ): Promise<GenerateResult> {
     await ensureInit();
-    const raw = generate_puzzle(n, seed, difficulty) as WasmPuzzleResult;
-    return convertWasmResult(raw);
+    const raw = generate_puzzle(n, seed, difficulty) as PuzzleResult;
+    return convertPuzzleResult(raw);
   }
 
   async requestHint(

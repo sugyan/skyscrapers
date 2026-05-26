@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { convertWasmResult } from "./wasm-engine";
-import { normalizeDifficultyParam } from "./types";
+import { convertPuzzleResult } from "./puzzle-result";
 
-describe("convertWasmResult", () => {
+describe("convertPuzzleResult", () => {
   it("converts a 4x4 puzzle result with null values", () => {
     const raw = {
       puzzle: {
@@ -34,7 +33,7 @@ describe("convertWasmResult", () => {
       },
     };
 
-    const result = convertWasmResult(raw);
+    const result = convertPuzzleResult(raw);
 
     expect(result.puzzle.n).toBe(4);
     expect(result.puzzle.board[1][1]).toEqual({
@@ -63,7 +62,8 @@ describe("convertWasmResult", () => {
   });
 
   it("normalizes undefined to null (serde-wasm-bindgen behavior)", () => {
-    // serde-wasm-bindgen serializes None as undefined, not null
+    // serde-wasm-bindgen serializes None as undefined, not null. The Tauri
+    // IPC boundary serializes it as null. The converter accepts both.
     const raw = {
       puzzle: {
         board: {
@@ -92,9 +92,8 @@ describe("convertWasmResult", () => {
       },
     };
 
-    const result = convertWasmResult(raw);
+    const result = convertPuzzleResult(raw);
 
-    // Board: undefined normalized to null, given is false for empty cells
     expect(result.puzzle.board[0][0]).toEqual({
       value: null,
       given: false,
@@ -111,33 +110,9 @@ describe("convertWasmResult", () => {
       candidates: new Set(),
     });
 
-    // Clues: undefined normalized to null
     expect(result.puzzle.clues.top).toEqual([null, 1, null]);
     expect(result.puzzle.clues.bottom).toEqual([null, null, 2]);
     expect(result.puzzle.clues.left).toEqual([null, null, null]);
     expect(result.puzzle.clues.right).toEqual([3, null, null]);
-  });
-});
-
-describe("normalizeDifficultyParam", () => {
-  it("returns the canonical value for current labels", () => {
-    expect(normalizeDifficultyParam("easy")).toBe("easy");
-    expect(normalizeDifficultyParam("medium")).toBe("medium");
-    expect(normalizeDifficultyParam("hard")).toBe("hard");
-    expect(normalizeDifficultyParam("expert")).toBe("expert");
-    expect(normalizeDifficultyParam("master")).toBe("master");
-  });
-
-  it("matches case-insensitively", () => {
-    expect(normalizeDifficultyParam("EXPERT")).toBe("expert");
-    expect(normalizeDifficultyParam("Master")).toBe("master");
-  });
-
-  it("returns undefined for missing or invalid input", () => {
-    expect(normalizeDifficultyParam(null)).toBeUndefined();
-    expect(normalizeDifficultyParam(undefined)).toBeUndefined();
-    expect(normalizeDifficultyParam("")).toBeUndefined();
-    expect(normalizeDifficultyParam("trivial")).toBeUndefined();
-    expect(normalizeDifficultyParam("grandmaster")).toBeUndefined();
   });
 });

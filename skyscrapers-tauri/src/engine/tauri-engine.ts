@@ -1,12 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
-import { convertWasmResult, type WasmPuzzleResult } from "skyscrapers-player/wasm";
-import type {
-  BoardCell,
-  Difficulty,
-  GenerateResult,
-  HintResult,
-  Puzzle,
-  SkyscrapersEngine,
+import {
+  computeRowColValues,
+  convertPuzzleResult,
+  type BoardCell,
+  type Difficulty,
+  type GenerateResult,
+  type HintResult,
+  type Puzzle,
+  type PuzzleResult,
+  type SkyscrapersEngine,
 } from "skyscrapers-player";
 
 /** Build the JSON shape Rust's `Puzzle` expects from a player-shape Puzzle. */
@@ -35,25 +37,6 @@ function boardToRust(board: BoardCell[][]) {
   };
 }
 
-function computeRowColValues(board: BoardCell[][]): {
-  rowVals: Set<number>[];
-  colVals: Set<number>[];
-} {
-  const n = board.length;
-  const rowVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-  const colVals: Set<number>[] = Array.from({ length: n }, () => new Set());
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const v = board[r][c].value;
-      if (v !== null) {
-        rowVals[r].add(v);
-        colVals[c].add(v);
-      }
-    }
-  }
-  return { rowVals, colVals };
-}
-
 function userCandidatesToRust(board: BoardCell[][]): number[][][] {
   const { rowVals, colVals } = computeRowColValues(board);
   return board.map((row, r) =>
@@ -72,12 +55,12 @@ export class TauriEngine implements SkyscrapersEngine {
     seed: bigint,
     difficulty?: Difficulty,
   ): Promise<GenerateResult> {
-    const raw = await invoke<WasmPuzzleResult>("generate_puzzle", {
+    const raw = await invoke<PuzzleResult>("generate_puzzle", {
       n,
       seed: seed.toString(),
       difficulty: difficulty ?? null,
     });
-    return convertWasmResult(raw);
+    return convertPuzzleResult(raw);
   }
 
   async requestHint(

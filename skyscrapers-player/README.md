@@ -2,7 +2,7 @@
 
 Embeddable React component for playing [Skyscrapers](https://www.nikoli.co.jp/en/puzzles/skyscrapers/) pencil puzzles, plus a pluggable `SkyscrapersEngine` interface for generation and hint logic.
 
-The bundled `WasmEngine` runs the Rust solver in-process via WebAssembly. A consumer that prefers to host the solver server-side can implement `SkyscrapersEngine` against their own HTTP API and pass it to `<Player>` instead.
+The package is transport-neutral: it ships the `<Player>` UI, the `SkyscrapersEngine` interface, and a small `convertPuzzleResult` helper for normalising the Rust solver's JSON output — but no engine implementation. Each consumer brings its own engine. In this repo, `skyscrapers-web` ships a `WasmEngine` that runs the Rust solver in-process via WebAssembly, and `skyscrapers-tauri` ships a `TauriEngine` that calls native Rust over IPC. A server-side deployment can implement `SkyscrapersEngine` against an HTTP API the same way.
 
 ## Status
 
@@ -15,16 +15,16 @@ Not published to npm. Two install paths:
   npm install github:sugyan/skyscrapers#player-dist
   ```
 
-  The branch contains a self-contained installable package — the source under `src/`, a pre-built `dist/styles.css`, and the WebAssembly bindings vendored as a sibling directory. Your bundler (Vite, Next.js with `transpilePackages`, etc.) needs to be able to process `.ts`/`.tsx` from `node_modules`.
+  The branch contains a self-contained installable package: the source under `src/` and a pre-built `dist/styles.css`. Your bundler (Vite, Next.js with `transpilePackages`, etc.) needs to be able to process `.ts`/`.tsx` from `node_modules`.
 
 ## Usage
 
 ```tsx
 import { Player, type Puzzle } from "skyscrapers-player";
-import { WasmEngine } from "skyscrapers-player/wasm";
 import "skyscrapers-player/styles.css";
+import { MyEngine } from "./my-engine"; // your SkyscrapersEngine implementation
 
-const engine = new WasmEngine();
+const engine = new MyEngine();
 
 function App({ puzzle, solution }: { puzzle: Puzzle; solution: number[][] }) {
   return <Player puzzle={puzzle} solution={solution} engine={engine} />;
@@ -43,7 +43,9 @@ interface SkyscrapersEngine {
 }
 ```
 
-To run the solver remotely, implement these three methods against your API and pass the instance as the `engine` prop. The `skyscrapers-player/wasm` subpath is opt-in — consumers that don't import it keep the WebAssembly bindings out of their bundle entirely.
+Implement these three methods against your transport of choice (WebAssembly, Tauri IPC, HTTP) and pass the instance as the `engine` prop. The package also re-exports a transport-neutral `convertPuzzleResult(raw: PuzzleResult): GenerateResult` helper that turns the JSON shape Rust's `generate_puzzle` returns into the player's domain `Puzzle`, so your engine implementation can focus on the transport.
+
+See `skyscrapers-web/src/engine/wasm-engine.ts` and `skyscrapers-tauri/src/engine/tauri-engine.ts` for reference implementations.
 
 ## Styling
 

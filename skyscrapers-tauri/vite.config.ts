@@ -15,7 +15,7 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
-    exclude: ["skyscrapers-generator", "skyscrapers-player"],
+    exclude: ["skyscrapers-player"],
   },
   clearScreen: false,
   server: {

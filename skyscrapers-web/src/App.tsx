@@ -6,7 +6,7 @@ import {
   type Difficulty,
   type Puzzle,
 } from "skyscrapers-player";
-import { WasmEngine } from "skyscrapers-player/wasm";
+import { WasmEngine } from "./engine/wasm-engine";
 import "skyscrapers-player/styles.css";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 
@@ -72,46 +72,57 @@ function formatGenerateError(
 
 function App() {
   const engine = useMemo(() => new WasmEngine(), []);
+  // URL params are parsed once on first render and threaded into the
+  // initial state of the form fields. Deriving the initial values here
+  // instead of inside an effect avoids the `react-hooks/set-state-in-effect`
+  // warning (cascading renders from synchronous setState in an effect)
+  // and keeps the effect below focused on its actual side effect: the
+  // async puzzle-generation request.
+  const initialParams = useMemo(() => parseUrlParams(), []);
   const [current, setCurrent] = useState<{
     puzzle: Puzzle;
     solution: number[][];
   } | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [size, setSize] = useState<number>(5);
-  const [seedInput, setSeedInput] = useState("");
-  const [difficulty, setDifficulty] = useState<Difficulty | "">("");
+  const [generating, setGenerating] = useState<boolean>(initialParams !== null);
+  const [size, setSize] = useState<number>(initialParams?.n ?? 5);
+  const [seedInput, setSeedInput] = useState<string>(
+    initialParams ? initialParams.seed.toString() : "",
+  );
+  const [difficulty, setDifficulty] = useState<Difficulty | "">(
+    initialParams?.difficulty ?? "",
+  );
   const [lastSeed, setLastSeed] = useState<string | null>(null);
   const [lastDifficulty, setLastDifficulty] = useState<Difficulty | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
 
-  // Generate from URL params on initial load
+  // Generate from URL params on initial load. The effect body itself
+  // performs no synchronous setState — all updates happen in async
+  // callbacks once the engine call settles.
   useEffect(() => {
-    const params = parseUrlParams();
-    if (params) {
-      setSize(params.n);
-      setSeedInput(params.seed.toString());
-      setDifficulty(params.difficulty ?? "");
-      setGenerating(true);
-      engine
-        .generatePuzzle(params.n, params.seed, params.difficulty)
-        .then((result) => {
-          setLastSeed(params.seed.toString());
-          setLastDifficulty(params.difficulty ?? null);
-          setCurrent(result);
-        })
-        .catch((e) => {
-          setError(
-            formatGenerateError(
-              e,
-              params.n,
-              params.difficulty ? params.difficulty : null,
-            ),
-          );
-        })
-        .finally(() => setGenerating(false));
-    }
-  }, [engine]);
+    if (!initialParams) return;
+    engine
+      .generatePuzzle(
+        initialParams.n,
+        initialParams.seed,
+        initialParams.difficulty,
+      )
+      .then((result) => {
+        setLastSeed(initialParams.seed.toString());
+        setLastDifficulty(initialParams.difficulty ?? null);
+        setCurrent(result);
+      })
+      .catch((e) => {
+        setError(
+          formatGenerateError(
+            e,
+            initialParams.n,
+            initialParams.difficulty ? initialParams.difficulty : null,
+          ),
+        );
+      })
+      .finally(() => setGenerating(false));
+  }, [engine, initialParams]);
 
   const handleGenerate = async () => {
     setGenerating(true);

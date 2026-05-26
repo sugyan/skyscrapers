@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Embeddable React component for playing Skyscrapers puzzles, with a pluggable engine (WASM or remote API).",
+  "description": "Embeddable React component for playing Skyscrapers puzzles, with a pluggable engine interface (consumers provide the engine: WASM, Tauri IPC, remote API, etc.).",
   "license": "MIT",
   "files": [
     "dist",
@@ -19,10 +19,6 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     },
-    "./wasm": {
-      "types": "./src/wasm.ts",
-      "import": "./src/wasm.ts"
-    },
     "./styles.css": "./src/styles/app.css"
   },
   "scripts": {
@@ -36,11 +32,9 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
-  "dependencies": {
-    "skyscrapers-generator": "file:../skyscrapers-generator/pkg"
-  },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@tailwindcss/cli": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
@@ -50,7 +44,6 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.2.2",
-    "@tailwindcss/cli": "^4.2.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vitest": "^4.1.1"
