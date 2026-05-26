@@ -4,12 +4,13 @@ export type { PlayerProps } from "./components/Player";
 
 // Engine interface + shared engine types.
 //
-// `WasmEngine` is deliberately NOT re-exported here — importing it would
-// pull `skyscrapers-generator` (the WebAssembly bindings) into the module
-// graph for every consumer, even those that plug in their own remote-API
-// engine. Import it from the dedicated subpath when you want it:
-//
-//     import { WasmEngine } from "skyscrapers-player/wasm";
+// The player package is transport-neutral: it exposes the
+// `SkyscrapersEngine` interface and the JSON shape Rust returns from
+// `generate_puzzle`, but does NOT ship an engine implementation. Each
+// consumer (web demo, Tauri app, future remote-API client) owns its own
+// engine — e.g. `skyscrapers-web/src/engine/wasm-engine.ts` calls into
+// the `skyscrapers-generator` WebAssembly bindings, while the Tauri app
+// invokes Rust commands directly.
 export type {
   SkyscrapersEngine,
   GenerateResult,
@@ -23,6 +24,12 @@ export type {
   Difficulty,
 } from "./engine/types";
 export { DIFFICULTIES, normalizeDifficultyParam } from "./engine/types";
+
+// Transport-neutral helpers for engines that wrap the Rust solver
+// (whether over WebAssembly or Tauri IPC).
+export type { PuzzleResult } from "./engine/puzzle-result";
+export { convertPuzzleResult } from "./engine/puzzle-result";
+export { computeRowColValues } from "./utils/board";
 
 // Domain types consumers may need for constructing or inspecting puzzles.
 export type {

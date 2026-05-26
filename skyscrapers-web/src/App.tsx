@@ -6,7 +6,7 @@ import {
   type Difficulty,
   type Puzzle,
 } from "skyscrapers-player";
-import { WasmEngine } from "skyscrapers-player/wasm";
+import { WasmEngine } from "./engine/wasm-engine";
 import "skyscrapers-player/styles.css";
 import { HowToPlayModal } from "./components/HowToPlayModal";
 
