@@ -7,7 +7,7 @@ import type {
 } from "../engine/types";
 import { createInitialState, gameReducer } from "../state/reducer";
 import { relevantCells } from "../utils/hint";
-import { blockedValuesAt } from "../utils/board";
+import { blockedValuesAt, withAllCandidatesFilled } from "../utils/board";
 import { PuzzleGrid } from "./PuzzleGrid";
 import { NumberPad } from "./NumberPad";
 import { GameControls } from "./GameControls";
@@ -41,6 +41,7 @@ export function Player({
 
   const [hint, setHint] = useState<HintResult | null>(null);
   const [hintError, setHintError] = useState<string | null>(null);
+  const [hintAutoFilledMemo, setHintAutoFilledMemo] = useState(false);
   const [filterValue, setFilterValue] = useState<number | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const lastTapRef = useRef<{ r: number; c: number; t: number } | null>(null);
@@ -59,6 +60,7 @@ export function Player({
         case "UNDO":
           setHint(null);
           setHintError(null);
+          setHintAutoFilledMemo(false);
           break;
         default:
           break;
@@ -89,11 +91,33 @@ export function Player({
       rawDispatch({ type: "CHECK" });
       setHint(null);
       setHintError("Fix incorrect entries first.");
+      setHintAutoFilledMemo(false);
       return;
     }
 
+    // Clear any stale hint before we mutate the board — otherwise the open
+    // HintPanel would briefly render against the new auto-filled board while
+    // the next request is in flight, showing diffs that don't match.
+    setHint(null);
+    setHintError(null);
+
+    // The hint engine reads the user's pencil marks to produce a meaningful
+    // candidate diff. Any empty cell with no marks would otherwise leave the
+    // solver without a baseline to reason from, so fill in candidates for
+    // every such cell first and surface that to the user as a notice on the
+    // hint panel. Cells the user has already marked are left alone.
+    const filledBoard = withAllCandidatesFilled(state.board);
+    const autoFilled = filledBoard !== state.board;
+    if (autoFilled) {
+      rawDispatch({ type: "FILL_ALL_CANDIDATES" });
+    }
+
+    // The auto-fill is a board mutation the user sees regardless of how the
+    // hint request resolves, so keep the notice tied to that fact — not to
+    // whether a hint was actually produced.
+    setHintAutoFilledMemo(autoFilled);
     try {
-      const result = await engine.requestHint(puzzle, state.board);
+      const result = await engine.requestHint(puzzle, filledBoard);
       if (result === null) {
         setHint(null);
         setHintError("No hint available.");
@@ -123,6 +147,7 @@ export function Player({
   const handleCloseHint = useCallback(() => {
     setHint(null);
     setHintError(null);
+    setHintAutoFilledMemo(false);
   }, []);
 
   const handleKeyDown = useCallback(
@@ -249,19 +274,6 @@ export function Player({
       ? state.board[state.selectedCell[0]][state.selectedCell[1]]
       : null;
 
-  const allEmptyHaveCandidates = (() => {
-    const n = puzzle.n;
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        const cell = state.board[r][c];
-        if (cell.given) continue;
-        if (cell.value !== null) continue;
-        if (cell.candidates.size === 0) return false;
-      }
-    }
-    return true;
-  })();
-
   return (
     <div
       className="flex flex-col items-center p-5 sm:p-8"
@@ -385,7 +397,6 @@ export function Player({
       />
       <GameControls
         canUndo={state.history.length > 0}
-        canHint={allEmptyHaveCandidates}
         onUndo={() => dispatch({ type: "UNDO" })}
         onReset={() => setConfirmReset(true)}
         onHint={handleHint}
@@ -395,6 +406,7 @@ export function Player({
       <HintPanel
         hint={hint}
         error={hintError}
+        autoFilledMemo={hintAutoFilledMemo}
         board={state.board}
         onApply={handleApplyHint}
         onClose={handleCloseHint}
