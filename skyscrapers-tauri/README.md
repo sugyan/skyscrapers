@@ -46,6 +46,37 @@ from the repo root therefore skip this crate. Build it via
 `npm run tauri build` (or `cargo build -p skyscrapers-tauri` after
 installing the platform deps).
 
+Tauri-specific CI lives in three workflows:
+
+- `.github/workflows/tauri-check.yml` runs on every PR that touches
+  files reachable from the Tauri bundle. A 3-OS matrix
+  (macOS / Ubuntu 22.04 / Windows) executes `tauri-action --no-bundle`
+  as a build smoke test — Rust + frontend compile, no installer assembly.
+- `.github/workflows/tagpr.yml` watches `main` and uses
+  [Songmu/tagpr](https://github.com/Songmu/tagpr) to maintain a single
+  "release skyscrapers-tauri vX.Y.Z" PR that bumps
+  `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`
+  in lockstep (see `.tagpr` at the repo root).
+- `.github/workflows/tauri-release.yml` is triggered by the
+  `skyscrapers-tauri-v*` tag that tagpr cuts when its PR is merged.
+  It builds `.app` / `.dmg` (arm64 + x86_64), `.AppImage` / `.deb`, and
+  `.msi` in parallel and uploads them to a draft GitHub Release. The
+  macOS bundle is signed with the Developer ID certificate and notarised
+  if the `APPLE_*` repository secrets are present.
+
+## Release
+
+1. Land regular feature PRs on `main`. Add a `tagpr:minor` or
+   `tagpr:major` label if you want the next release to bump beyond the
+   default `patch`.
+2. tagpr opens / refreshes a release PR on `main` after each merge.
+   Merge it when you want to cut a release.
+3. The resulting `skyscrapers-tauri-vX.Y.Z` tag triggers
+   `tauri-release.yml`. Wait for the matrix to finish, then publish the
+   draft Release.
+4. The Windows installer is currently unsigned — users will see a
+   SmartScreen warning ("More info" → "Run anyway").
+
 ## Mobile
 
 iOS and Android support are not initialised yet. They are added on top

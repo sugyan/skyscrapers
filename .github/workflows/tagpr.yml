@@ -1,0 +1,34 @@
+name: tagpr
+
+# Watches main; on every merge that touches a crate or package included
+# in the Tauri bundle, tagpr opens or updates a "release skyscrapers-tauri
+# vX.Y.Z" PR that bumps the three Tauri version files in lockstep
+# (see .tagpr). Merging that PR creates the
+# `skyscrapers-tauri-vX.Y.Z` tag, which in turn triggers
+# `.github/workflows/tauri-release.yml`.
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "skyscrapers-tauri/**"
+      - "skyscrapers-core/**"
+      - "skyscrapers-generator/**"
+      - "skyscrapers-solver/**"
+      - "skyscrapers-player/**"
+  workflow_dispatch:
+
+jobs:
+  tagpr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Run tagpr
+        uses: Songmu/tagpr@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

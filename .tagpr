@@ -1,0 +1,8 @@
+[tagpr]
+    vPrefix = true
+    tagPrefix = skyscrapers-tauri-v
+    releaseBranch = main
+    versionFile = skyscrapers-tauri/package.json,skyscrapers-tauri/src-tauri/Cargo.toml,skyscrapers-tauri/src-tauri/tauri.conf.json
+    command = cargo update -p skyscrapers-tauri --offline || cargo update -p skyscrapers-tauri
+    changelog = true
+    releaseTagTemplate = skyscrapers-tauri-v{{.Version}}
