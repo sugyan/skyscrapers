@@ -9,6 +9,11 @@ on:
       - "skyscrapers-generator/**"
       - "skyscrapers-solver/**"
       - "skyscrapers-player/**"
+      # Workspace manifest / lockfile: the Tauri crate inherits settings and
+      # resolved dependency versions from these, so a change here can break
+      # the build even when no crate directory is touched.
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/tauri-check.yml"
 
 # A new push to the same PR cancels the in-flight matrix; we only care
@@ -64,7 +69,7 @@ jobs:
       # still exercising the full Rust + frontend build, which is what
       # we want for a PR smoke check.
       - name: Build (no bundle)
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # action-v0.6.2
         with:
           projectPath: skyscrapers-tauri
           args: --no-bundle

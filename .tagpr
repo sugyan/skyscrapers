@@ -3,6 +3,10 @@
     tagPrefix = skyscrapers-tauri-v
     releaseBranch = main
     versionFile = skyscrapers-tauri/package.json,skyscrapers-tauri/src-tauri/Cargo.toml,skyscrapers-tauri/src-tauri/tauri.conf.json
-    command = cargo update -p skyscrapers-tauri --offline || cargo update -p skyscrapers-tauri
+    # After tagpr bumps the three version files, sync both lockfiles so the
+    # release PR is self-consistent: Cargo.lock (skyscrapers-tauri entry) and
+    # skyscrapers-tauri/package-lock.json (whose root version field is checked
+    # by `npm ci` in the build workflows).
+    command = sh -c "cargo update -p skyscrapers-tauri && npm --prefix skyscrapers-tauri install --package-lock-only --ignore-scripts"
     changelog = true
     releaseTagTemplate = skyscrapers-tauri-v{{.Version}}

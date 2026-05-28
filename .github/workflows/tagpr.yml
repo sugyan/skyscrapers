@@ -15,6 +15,10 @@ on:
       - "skyscrapers-generator/**"
       - "skyscrapers-solver/**"
       - "skyscrapers-player/**"
+      # Workspace manifest / lockfile changes can alter the Tauri bundle via
+      # shared dependencies, so they should also drive a release PR.
+      - "Cargo.toml"
+      - "Cargo.lock"
   workflow_dispatch:
 
 jobs:
@@ -28,7 +32,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+      # Needed so the `.tagpr` command can refresh skyscrapers-tauri's
+      # package-lock.json version alongside the Cargo lockfile. (cargo is
+      # already present on the ubuntu-latest runner image.)
+      - name: Set up Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: lts/*
       - name: Run tagpr
-        uses: Songmu/tagpr@v1
+        uses: Songmu/tagpr@555e72cee68c09d43dc2337dc9ba890955b630da # v1.19.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
