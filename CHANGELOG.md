@@ -1,0 +1,58 @@
+# Changelog
+
+## [v0.1.0](https://github.com/sugyan/skyscrapers/commits/skyscrapers-tauri/v0.1.0) - 2026-05-29
+- Add minimal API definition for latin-sampler v0.1 by @sugyan in https://github.com/sugyan/skyscrapers/pull/1
+- Implement MCMC moves and sample function for latin-sampler v0.1 by @sugyan in https://github.com/sugyan/skyscrapers/pull/2
+- Implement Jacobson-Matthews algorithm for ergodic Latin square sampling by @sugyan in https://github.com/sugyan/skyscrapers/pull/3
+- Performance improvements and uniformity verification tools by @sugyan in https://github.com/sugyan/skyscrapers/pull/4
+- Add fixed-interval sampling for improved uniformity by @sugyan in https://github.com/sugyan/skyscrapers/pull/5
+- Optimize sampling performance with stack allocations and auto-scaling burn_in by @sugyan in https://github.com/sugyan/skyscrapers/pull/6
+- Improve uniformity test and remove unnecessary sampling_interval by @sugyan in https://github.com/sugyan/skyscrapers/pull/7
+- Add Sampler iterator with thinning for independent samples by @sugyan in https://github.com/sugyan/skyscrapers/pull/9
+- Add skyscrapers-core and skyscrapers-generator (stage A) by @sugyan in https://github.com/sugyan/skyscrapers/pull/10
+- Add skyscrapers-solver with BacktrackingSolver by @sugyan in https://github.com/sugyan/skyscrapers/pull/11
+- Add skyscrapers-generator Stage B greedy removal by @sugyan in https://github.com/sugyan/skyscrapers/pull/12
+- Add skyscrapers-cli with generate and solve subcommands by @sugyan in https://github.com/sugyan/skyscrapers/pull/13
+- Add skyscrapers-web: puzzle player + GitHub Pages deploy by @sugyan in https://github.com/sugyan/skyscrapers/pull/14
+- Migrate skyscrapers-web to Tailwind CSS v4 by @sugyan in https://github.com/sugyan/skyscrapers/pull/15
+- Add lint, format, test CI for skyscrapers-web by @sugyan in https://github.com/sugyan/skyscrapers/pull/16
+- Improve skyscrapers-web: clue arrows, check button, sample redesign by @sugyan in https://github.com/sugyan/skyscrapers/pull/17
+- Add candidates (pencil marks) and fix 4x4 sample puzzle by @sugyan in https://github.com/sugyan/skyscrapers/pull/18
+- Add SAT-based solver using varisat by @sugyan in https://github.com/sugyan/skyscrapers/pull/19
+- Improve BacktrackingSolver performance with early clue checking by @sugyan in https://github.com/sugyan/skyscrapers/pull/20
+- Remove SAT-based solver by @sugyan in https://github.com/sugyan/skyscrapers/pull/21
+- Add WASM support to skyscrapers-generator by @sugyan in https://github.com/sugyan/skyscrapers/pull/22
+- Refactor core types to 2D storage, add serde feature, return solution from generate by @sugyan in https://github.com/sugyan/skyscrapers/pull/23
+- Integrate WASM puzzle generator into web app by @sugyan in https://github.com/sugyan/skyscrapers/pull/24
+- Add How to Play modal for puzzle rules by @sugyan in https://github.com/sugyan/skyscrapers/pull/25
+- Improve web UI usability and visual feedback by @sugyan in https://github.com/sugyan/skyscrapers/pull/26
+- Add logic solver with human-technique difficulty rating by @sugyan in https://github.com/sugyan/skyscrapers/pull/27
+- Add ALS-XZ logic technique for finer difficulty granularity by @sugyan in https://github.com/sugyan/skyscrapers/pull/28
+- Decompose logic solver step trace and add solve --logic CLI by @sugyan in https://github.com/sugyan/skyscrapers/pull/29
+- Refactor logic solver for clarity and reuse by @sugyan in https://github.com/sugyan/skyscrapers/pull/30
+- Add difficulty-controlled puzzle generation by @sugyan in https://github.com/sugyan/skyscrapers/pull/31
+- Expose difficulty-controlled generation in web UI by @sugyan in https://github.com/sugyan/skyscrapers/pull/32
+- Add narrow VisibilityAnalysis technique and surface init pruning by @sugyan in https://github.com/sugyan/skyscrapers/pull/34
+- Remove W-Wing logic technique by @sugyan in https://github.com/sugyan/skyscrapers/pull/35
+- Add skyscrapers-analysis crate and commit logic-solver analysis doc by @sugyan in https://github.com/sugyan/skyscrapers/pull/36
+- Add Hint button backed by the logic solver by @sugyan in https://github.com/sugyan/skyscrapers/pull/37
+- Web UI: pencil-mark-driven hint workflow, Undo, and control reorganization by @sugyan in https://github.com/sugyan/skyscrapers/pull/38
+- Web UI: small mobile follow-ups (tap-to-deselect, NumberPad pointerdown) by @sugyan in https://github.com/sugyan/skyscrapers/pull/39
+- Simplify difficulty rating: drop redundant techniques, merge to 5 levels by @sugyan in https://github.com/sugyan/skyscrapers/pull/40
+- Add XY-Chain technique; move ALS-XZ to Expert by @sugyan in https://github.com/sugyan/skyscrapers/pull/41
+- Split PermutationEnumeration: trivial cases drop to Hard by @sugyan in https://github.com/sugyan/skyscrapers/pull/42
+- core: validate value ranges in Board::set and Clues setters by @sugyan in https://github.com/sugyan/skyscrapers/pull/43
+- Web UI: hint clarity, button layout, reset safety, single-candidate shortcut by @sugyan in https://github.com/sugyan/skyscrapers/pull/44
+- Web UI: extend double-tap confirm to effective single candidate by @sugyan in https://github.com/sugyan/skyscrapers/pull/45
+- Dispatch SimplePermutation before AlsXz at Hard tier by @sugyan in https://github.com/sugyan/skyscrapers/pull/46
+- docs: regenerate logic-solver-analysis against current solver by @sugyan in https://github.com/sugyan/skyscrapers/pull/47
+- Extract player UI into skyscrapers-player package by @sugyan in https://github.com/sugyan/skyscrapers/pull/48
+- Web UI: dedupe react to fix duplicate-instance hook crash by @sugyan in https://github.com/sugyan/skyscrapers/pull/50
+- Auto-build player-dist branch on main push by @sugyan in https://github.com/sugyan/skyscrapers/pull/49
+- docs: rewrite root README and add per-crate READMEs by @sugyan in https://github.com/sugyan/skyscrapers/pull/51
+- Web UI: shrink NumberPad buttons for n=7,8 to avoid mobile wrap by @sugyan in https://github.com/sugyan/skyscrapers/pull/52
+- Add skyscrapers-tauri: native desktop/mobile app via Tauri v2 by @sugyan in https://github.com/sugyan/skyscrapers/pull/53
+- Web UI: auto-fill memo when Hint is pressed on an empty grid by @sugyan in https://github.com/sugyan/skyscrapers/pull/54
+- Web UI: replace default Vite favicon and page title by @sugyan in https://github.com/sugyan/skyscrapers/pull/55
+- Make skyscrapers-player transport-neutral; move WasmEngine to web by @sugyan in https://github.com/sugyan/skyscrapers/pull/56
+- Add Tauri CI: PR smoke build + tagpr-driven release pipeline by @sugyan in https://github.com/sugyan/skyscrapers/pull/57
