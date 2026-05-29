@@ -1,12 +1,12 @@
 name: Tauri release
 
-# Triggered by tags created by tagpr (see .tagpr at the repo root) when
-# the auto-opened "release skyscrapers-tauri vX.Y.Z" PR is merged.
+# Triggered by the `skyscrapers-tauri/vX.Y.Z` tag that tagpr creates
+# (see .tagpr at the repo root) when its release PR is merged.
 # `workflow_dispatch` lets the user re-run a release from the Actions UI
 # (e.g. after rotating Apple signing secrets).
 on:
   push:
-    tags: ["skyscrapers-tauri-v*"]
+    tags: ["skyscrapers-tauri/v*"]
   workflow_dispatch:
 
 jobs:
@@ -82,7 +82,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: skyscrapers-tauri
-          tagName: skyscrapers-tauri-v__VERSION__
+          tagName: skyscrapers-tauri/v__VERSION__
           releaseName: "Skyscrapers Tauri v__VERSION__"
           releaseBody: "See the assets to download this version and install."
           releaseDraft: true

@@ -1,11 +1,19 @@
 name: tagpr
 
 # Watches main; on every merge that touches a crate or package included
-# in the Tauri bundle, tagpr opens or updates a "release skyscrapers-tauri
-# vX.Y.Z" PR that bumps the three Tauri version files in lockstep
-# (see .tagpr). Merging that PR creates the
-# `skyscrapers-tauri-vX.Y.Z` tag, which in turn triggers
+# in the Tauri bundle, tagpr opens or updates a "[skyscrapers-tauri]
+# Release for X.Y.Z" PR that bumps the three Tauri version files in
+# lockstep (see .tagpr). Merging that PR creates the
+# `skyscrapers-tauri/vX.Y.Z` tag, which in turn triggers
 # `.github/workflows/tauri-release.yml`.
+#
+# That trigger only fires if the tag is pushed with a PAT / GitHub App
+# token: tags pushed with the default GITHUB_TOKEN do NOT start other
+# workflows. We therefore use TAGPR_GITHUB_TOKEN when available (a
+# fine-grained PAT with contents:write + pull-requests:write), falling
+# back to GITHUB_TOKEN so the release PR still opens — in that fallback
+# the tag won't auto-build and the release must be started manually via
+# tauri-release.yml's workflow_dispatch.
 on:
   push:
     branches: ["main"]
@@ -34,6 +42,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          # Persisted as the git credential for tagpr's `git push --tags`;
+          # using the PAT here is what lets the new tag trigger the release.
+          token: ${{ secrets.TAGPR_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
       # Needed so the `.tagpr` command can refresh skyscrapers-tauri's
       # package-lock.json version alongside the Cargo lockfile. (cargo is
       # already present on the ubuntu-latest runner image.)
@@ -44,4 +55,4 @@ jobs:
       - name: Run tagpr
         uses: Songmu/tagpr@555e72cee68c09d43dc2337dc9ba890955b630da # v1.19.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TAGPR_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}

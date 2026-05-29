@@ -1,12 +1,20 @@
 [tagpr]
     vPrefix = true
-    tagPrefix = skyscrapers-tauri-v
+    # tagpr always appends a "/" after tagPrefix and (with vPrefix) a "v",
+    # so this yields tags like "skyscrapers-tauri/v0.1.1". The release
+    # workflow trigger and tauri-action tagName must match that shape.
+    tagPrefix = skyscrapers-tauri
     releaseBranch = main
     versionFile = skyscrapers-tauri/package.json,skyscrapers-tauri/src-tauri/Cargo.toml,skyscrapers-tauri/src-tauri/tauri.conf.json
     # After tagpr bumps the three version files, sync both lockfiles so the
     # release PR is self-consistent: Cargo.lock (skyscrapers-tauri entry) and
     # skyscrapers-tauri/package-lock.json (whose root version field is checked
-    # by `npm ci` in the build workflows).
-    command = sh -c "cargo update -p skyscrapers-tauri && npm --prefix skyscrapers-tauri install --package-lock-only --ignore-scripts"
+    # by `npm ci` in the build workflows). tagpr runs any command containing
+    # whitespace via `sh -c`, so the value is a bare command (no `sh -c` /
+    # quoting wrapper — this is gitconfig, not TOML).
+    command = cargo update -p skyscrapers-tauri && npm --prefix skyscrapers-tauri install --package-lock-only --ignore-scripts
     changelog = true
-    releaseTagTemplate = skyscrapers-tauri-v{{.Version}}
+    # tauri-release.yml owns the GitHub Release (it uploads the signed
+    # bundles), so tagpr must not create a competing release at the tag.
+    # It still creates and pushes the tag, which is what triggers the build.
+    release = false
