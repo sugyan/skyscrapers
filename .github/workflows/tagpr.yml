@@ -15,10 +15,12 @@ on:
       - "skyscrapers-generator/**"
       - "skyscrapers-solver/**"
       - "skyscrapers-player/**"
-      # Workspace manifest / lockfile changes can alter the Tauri bundle via
-      # shared dependencies, so they should also drive a release PR.
+      # Workspace manifest changes (shared dependency versions, profiles)
+      # can alter the Tauri bundle, so they should drive a release PR too.
+      # Cargo.lock is intentionally NOT listed: nearly every workspace
+      # change touches it, which would churn the release PR for updates
+      # unrelated to the Tauri app.
       - "Cargo.toml"
-      - "Cargo.lock"
   workflow_dispatch:
 
 jobs:
