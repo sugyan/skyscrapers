@@ -67,19 +67,46 @@ jobs:
         working-directory: skyscrapers-tauri
         run: npm ci
 
-      - name: Build and release
-        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # action-v0.6.2
+      # macOS code signing is opt-in. The Tauri bundler treats the mere
+      # presence of $APPLE_CERTIFICATE — even when empty — as "sign this",
+      # then fails trying to import an empty certificate. So we only
+      # promote the APPLE_* secrets to the job environment (via
+      # $GITHUB_ENV) when the certificate is actually configured;
+      # otherwise they stay unset and the bundle is built unsigned, like
+      # the Windows/Linux artifacts. Scoping the secrets to this step's
+      # own env block means empty values never leak into the build step.
+      - name: Configure macOS code signing
+        if: matrix.platform == 'macos-latest'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS Developer ID signing + notarization. These are only
-          # populated for the macOS matrix entries; on Linux/Windows the
-          # action sees empty values and skips signing automatically.
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "APPLE_CERTIFICATE secret is not set — the macOS bundle will be built UNSIGNED."
+            exit 0
+          fi
+          # APPLE_CERTIFICATE is base64 and may be multi-line, so use the
+          # heredoc form of $GITHUB_ENV; the rest are single-line tokens.
+          {
+            echo "APPLE_CERTIFICATE<<__APPLE_CERT_EOF__"
+            echo "$APPLE_CERTIFICATE"
+            echo "__APPLE_CERT_EOF__"
+            echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
+            echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            echo "APPLE_ID=$APPLE_ID"
+            echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+          } >> "$GITHUB_ENV"
+          echo "macOS signing secrets detected — the bundle will be signed and notarised."
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # action-v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: skyscrapers-tauri
           tagName: skyscrapers-tauri/v__VERSION__
