@@ -61,9 +61,11 @@ Tauri-specific CI lives in three workflows:
 - `.github/workflows/tauri-release.yml` is triggered by the
   `skyscrapers-tauri/v*` tag that tagpr cuts when its PR is merged.
   It builds `.app` / `.dmg` (arm64 + x86_64), `.AppImage` / `.deb`, and
-  `.msi` in parallel and uploads them to a draft GitHub Release. The
-  macOS bundle is signed with the Developer ID certificate and notarised
-  if the `APPLE_*` repository secrets are present.
+  `.msi` in parallel and uploads them to a draft GitHub Release. macOS
+  code signing is opt-in: the bundle is signed with the Developer ID
+  certificate and notarised only when the `APPLE_*` repository secrets
+  are configured; otherwise it is built unsigned (like the Windows
+  installer). See "macOS signing" below.
 
 For the tag to actually start `tauri-release.yml`, tagpr must push it
 with a non-default token (GitHub does not run workflows for tags pushed
@@ -84,6 +86,22 @@ start the build manually via `tauri-release.yml`'s "Run workflow" button.
    draft Release.
 4. The Windows installer is currently unsigned — users will see a
    SmartScreen warning ("More info" → "Run anyway").
+
+### macOS signing
+
+By default the macOS bundle ships **unsigned**: users must right-click →
+"Open" (or run `xattr -dr com.apple.quarantine <app>`) the first time to
+get past Gatekeeper. To produce a signed + notarised build instead, add
+the Developer ID signing materials as repository secrets and the release
+workflow picks them up automatically:
+
+- `APPLE_CERTIFICATE` — base64 of the exported `.p12`
+- `APPLE_CERTIFICATE_PASSWORD`
+- `APPLE_SIGNING_IDENTITY` — e.g. `Developer ID Application: Name (TEAMID)`
+- `APPLE_ID`, `APPLE_PASSWORD` (app-specific password), `APPLE_TEAM_ID`
+
+If `APPLE_CERTIFICATE` is absent the workflow skips signing rather than
+failing the build.
 
 ## Mobile
 
