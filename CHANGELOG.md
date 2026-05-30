@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.1.1](https://github.com/sugyan/skyscrapers/compare/skyscrapers-tauri/v0.1.0...skyscrapers-tauri/v0.1.1) - 2026-05-30
+- Build macOS bundle unsigned when APPLE_* secrets are absent by @sugyan in https://github.com/sugyan/skyscrapers/pull/59
+
 ## [v0.1.0](https://github.com/sugyan/skyscrapers/commits/skyscrapers-tauri/v0.1.0) - 2026-05-29
 - Add minimal API definition for latin-sampler v0.1 by @sugyan in https://github.com/sugyan/skyscrapers/pull/1
 - Implement MCMC moves and sample function for latin-sampler v0.1 by @sugyan in https://github.com/sugyan/skyscrapers/pull/2
