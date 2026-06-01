@@ -82,10 +82,18 @@ start the build manually via `tauri-release.yml`'s "Run workflow" button.
 2. tagpr opens / refreshes a release PR on `main` after each merge.
    Merge it when you want to cut a release.
 3. The resulting `skyscrapers-tauri/vX.Y.Z` tag triggers
-   `tauri-release.yml`. Wait for the matrix to finish, then publish the
-   draft Release.
+   `tauri-release.yml`. The release notes are taken from this version's
+   section of `CHANGELOG.md` (which tagpr maintains). Wait for the matrix
+   to finish, then publish the draft Release.
 4. The Windows installer is currently unsigned — users will see a
    SmartScreen warning ("More info" → "Run anyway").
+
+This repository has **immutable releases** enabled, so a published release
+can no longer be edited and its assets are locked. The pipeline already
+follows the recommended flow — create a draft, attach every OS bundle,
+then publish — so the only rule is: **wait for all matrix jobs to finish
+before hitting Publish.** If a build needs fixing, discard the draft and
+re-cut the release rather than trying to edit a published one.
 
 ### macOS signing
 
