@@ -1,6 +1,6 @@
 [package]
 name = "skyscrapers-tauri"
-version = "0.1.1"
+version = "0.1.2"
 description = "Skyscrapers puzzle desktop/mobile app"
 authors = ["sugyan"]
 edition.workspace = true
