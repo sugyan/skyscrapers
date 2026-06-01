@@ -33,7 +33,7 @@ npm run tauri build    # produces a release binary + OS-specific bundle
 ```
 
 On macOS the artefacts land in
-`../target/release/bundle/macos/skyscrapers-tauri.app` (and
+`../target/release/bundle/macos/Skyscrapers.app` (and
 `../target/release/bundle/dmg/` if `bundle_dmg.sh` succeeds).
 
 ## CI / workspace note
@@ -60,7 +60,7 @@ Tauri-specific CI lives in three workflows:
   cuts a `skyscrapers-tauri/vX.Y.Z` tag.
 - `.github/workflows/tauri-release.yml` is triggered by the
   `skyscrapers-tauri/v*` tag that tagpr cuts when its PR is merged.
-  It builds `.app` / `.dmg` (arm64 + x86_64), `.AppImage` / `.deb`, and
+  It builds `.app` / `.dmg` (Apple Silicon / arm64 only), `.AppImage` / `.deb`, and
   `.msi` in parallel and uploads them to a draft GitHub Release. macOS
   code signing is opt-in: the bundle is signed with the Developer ID
   certificate and notarised only when the `APPLE_*` repository secrets

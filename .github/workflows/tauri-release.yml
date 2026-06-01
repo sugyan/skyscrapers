@@ -17,11 +17,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # One macOS job builds a universal (arm64 + x86_64) binary so a
-          # single download runs on both Apple Silicon and Intel Macs.
+          # Apple Silicon only. Intel Macs are EOL (Apple stopped selling
+          # them in 2023), so we skip the universal build to keep releases
+          # smaller and faster. Switch back to a universal target if Intel
+          # support is ever needed.
           - platform: macos-latest
-            rust_target: aarch64-apple-darwin,x86_64-apple-darwin
-            tauri_args: --target universal-apple-darwin
+            rust_target: aarch64-apple-darwin
+            tauri_args: --target aarch64-apple-darwin
           - platform: ubuntu-22.04
             rust_target: ""
             tauri_args: ""
