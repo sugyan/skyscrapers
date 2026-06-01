@@ -5,9 +5,6 @@ on:
     branches: ["main"]
     paths:
       - "skyscrapers-player/**"
-      - "skyscrapers-generator/**"
-      - "skyscrapers-core/**"
-      - "skyscrapers-solver/**"
       - "scripts/build-player-dist.sh"
       - ".github/workflows/player-dist.yml"
   workflow_dispatch:
@@ -25,16 +22,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-      - name: Install wasm-pack
-        uses: taiki-e/install-action@3235f8901fd37ffed0052b276cec25a362fb82e9 # v2.77.7
-        with:
-          tool: wasm-pack@0.14.0
-      - name: Build WASM package
-        run: wasm-pack build --target web skyscrapers-generator
       - name: Set up Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
