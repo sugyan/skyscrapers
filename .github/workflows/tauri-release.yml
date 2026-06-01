@@ -10,18 +10,51 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Pull this version's section out of CHANGELOG.md (maintained by tagpr) so
+  # the GitHub Release body shows a real changelog instead of a placeholder.
+  # Extracted once here and shared with the build matrix via job outputs,
+  # which also avoids relying on awk/jq being available on every runner OS.
+  changelog:
+    runs-on: ubuntu-latest
+    outputs:
+      body: ${{ steps.extract.outputs.body }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Extract release notes
+        id: extract
+        run: |
+          version="$(jq -r .version skyscrapers-tauri/src-tauri/tauri.conf.json)"
+          notes=""
+          if [ -f CHANGELOG.md ]; then
+            notes="$(awk -v v="## [v${version}]" \
+              'index($0,v)==1{f=1;next} /^## \[v/{if(f)exit} f' CHANGELOG.md)"
+          fi
+          if [ -z "$notes" ]; then
+            notes="See the assets to download this version and install."
+          fi
+          {
+            echo "body<<__CHANGELOG_EOF__"
+            echo "$notes"
+            echo "__CHANGELOG_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
   publish:
+    needs: changelog
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          # One macOS job builds a universal (arm64 + x86_64) binary so a
-          # single download runs on both Apple Silicon and Intel Macs.
+          # Apple Silicon only. Intel Macs are EOL (Apple stopped selling
+          # them in 2023), so we skip the universal build to keep releases
+          # smaller and faster. Switch back to a universal target if Intel
+          # support is ever needed.
           - platform: macos-latest
-            rust_target: aarch64-apple-darwin,x86_64-apple-darwin
-            tauri_args: --target universal-apple-darwin
+            rust_target: aarch64-apple-darwin
+            tauri_args: --target aarch64-apple-darwin
           - platform: ubuntu-22.04
             rust_target: ""
             tauri_args: ""
@@ -111,7 +144,31 @@ jobs:
           projectPath: skyscrapers-tauri
           tagName: skyscrapers-tauri/v__VERSION__
           releaseName: "Skyscrapers Tauri v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
+          releaseBody: ${{ needs.changelog.outputs.body }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.tauri_args }}
+
+  # Auto-publish the draft once every matrix bundle is attached. This must
+  # run as a separate job AFTER the whole matrix: with immutable releases
+  # enabled, publishing locks the release, so publishing mid-matrix would
+  # stop the remaining OS jobs from uploading their assets. Keeping the
+  # matrix on `releaseDraft: true` and flipping the draft here is the only
+  # safe way to fully automate publishing.
+  finalize:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(jq -r .version skyscrapers-tauri/src-tauri/tauri.conf.json)"
+          gh release edit "skyscrapers-tauri/v${version}" \
+            --repo "${{ github.repository }}" \
+            --draft=false

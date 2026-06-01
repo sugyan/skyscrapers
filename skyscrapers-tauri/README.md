@@ -33,7 +33,7 @@ npm run tauri build    # produces a release binary + OS-specific bundle
 ```
 
 On macOS the artefacts land in
-`../target/release/bundle/macos/skyscrapers-tauri.app` (and
+`../target/release/bundle/macos/Skyscrapers.app` (and
 `../target/release/bundle/dmg/` if `bundle_dmg.sh` succeeds).
 
 ## CI / workspace note
@@ -60,7 +60,7 @@ Tauri-specific CI lives in three workflows:
   cuts a `skyscrapers-tauri/vX.Y.Z` tag.
 - `.github/workflows/tauri-release.yml` is triggered by the
   `skyscrapers-tauri/v*` tag that tagpr cuts when its PR is merged.
-  It builds `.app` / `.dmg` (arm64 + x86_64), `.AppImage` / `.deb`, and
+  It builds `.app` / `.dmg` (Apple Silicon / arm64 only), `.AppImage` / `.deb`, and
   `.msi` in parallel and uploads them to a draft GitHub Release. macOS
   code signing is opt-in: the bundle is signed with the Developer ID
   certificate and notarised only when the `APPLE_*` repository secrets
@@ -82,10 +82,20 @@ start the build manually via `tauri-release.yml`'s "Run workflow" button.
 2. tagpr opens / refreshes a release PR on `main` after each merge.
    Merge it when you want to cut a release.
 3. The resulting `skyscrapers-tauri/vX.Y.Z` tag triggers
-   `tauri-release.yml`. Wait for the matrix to finish, then publish the
-   draft Release.
+   `tauri-release.yml`. It builds every OS bundle, attaches them to a draft
+   Release whose notes come from this version's section of `CHANGELOG.md`
+   (maintained by tagpr), and then a `finalize` job publishes the draft
+   automatically once all bundles are uploaded — no manual step required.
 4. The Windows installer is currently unsigned — users will see a
    SmartScreen warning ("More info" → "Run anyway").
+
+This repository has **immutable releases** enabled, so once published a
+release can no longer be edited and its assets are locked. The pipeline is
+built around this: the build matrix only ever touches a *draft*, and the
+separate `finalize` job flips it to published after every matrix job
+succeeds (publishing mid-matrix would lock out the remaining uploads). If a
+release turns out to be broken, bump the version and re-cut it rather than
+trying to edit the published one.
 
 ### macOS signing
 
