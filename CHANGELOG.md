@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.1.2](https://github.com/sugyan/skyscrapers/compare/skyscrapers-tauri/v0.1.1...skyscrapers-tauri/v0.1.2) - 2026-06-01
+- Rename app to Skyscrapers, add themed icon, build macOS arm64-only by @sugyan in https://github.com/sugyan/skyscrapers/pull/61
+
 ## [v0.1.1](https://github.com/sugyan/skyscrapers/compare/skyscrapers-tauri/v0.1.0...skyscrapers-tauri/v0.1.1) - 2026-05-30
 - Build macOS bundle unsigned when APPLE_* secrets are absent by @sugyan in https://github.com/sugyan/skyscrapers/pull/59
 
