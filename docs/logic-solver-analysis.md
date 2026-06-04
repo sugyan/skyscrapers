@@ -86,7 +86,10 @@ Generator success rate when a target difficulty is requested with
 
 Each cell shows `used / harder / unsolvable` for puzzles generated at
 the target difficulty and re-solved with the technique disabled
-(`max_attempts=500`).
+(`max_attempts=500`). Counts are over the seeds that successfully
+generated a puzzle at the target — failed seeds are skipped, so the
+per-cell denominator is the matching Target Yield above (every seed, for
+the tiers shown here).
 
 ### Disable XyChain
 

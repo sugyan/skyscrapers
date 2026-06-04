@@ -497,16 +497,19 @@ fn report_yield(n: usize, difficulty: Difficulty, samples: u64, max_attempts: us
         .count() as u64
 }
 
-/// `(used, harder, unsolvable)` counts for disabling `disabled` on puzzles
-/// generated at `difficulty`. Mirrors `technique_necessity` without printing.
+/// `(tested, used, harder, unsolvable)` counts for disabling `disabled` on
+/// puzzles generated at `difficulty`. Mirrors `technique_necessity` without
+/// printing. Seeds whose target-driven generation fails are skipped, so
+/// `tested` may be < `samples` (the effective denominator for the other
+/// counts); the caller surfaces this.
 fn report_necessity(
     n: usize,
     difficulty: Difficulty,
     samples: u64,
     max_attempts: usize,
     disabled: &[Technique],
-) -> (u64, u64, u64) {
-    let (mut used, mut harder, mut unsolvable) = (0u64, 0u64, 0u64);
+) -> (u64, u64, u64, u64) {
+    let (mut tested, mut used, mut harder, mut unsolvable) = (0u64, 0u64, 0u64, 0u64);
     for seed in 0..samples {
         let mut rng = ChaCha20Rng::seed_from_u64(seed);
         let params = GeneratorParams::new(n)
@@ -515,6 +518,7 @@ fn report_necessity(
         let Ok((puzzle, _sol)) = generate(&mut rng, &params) else {
             continue;
         };
+        tested += 1;
         let (base_diff, base_techs) = solve_baseline(&puzzle);
         if disabled.iter().any(|t| base_techs.contains(t)) {
             used += 1;
@@ -525,7 +529,7 @@ fn report_necessity(
             _ => {}
         }
     }
-    (used, harder, unsolvable)
+    (tested, used, harder, unsolvable)
 }
 
 fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
@@ -560,10 +564,11 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
 
     println!("\n## Technique Necessity (target-driven, {samples} seeds per cell)\n");
     println!(
-        "Each cell shows `used / harder / unsolvable` for puzzles generated at\nthe target difficulty and re-solved with the technique disabled\n(`max_attempts={necessity_attempts}`).\n"
+        "Each cell shows `used / harder / unsolvable` for puzzles generated at\nthe target difficulty and re-solved with the technique disabled\n(`max_attempts={necessity_attempts}`). Counts are over the seeds that\nsuccessfully generated a puzzle at the target — failed seeds are skipped,\nso the per-cell denominator is the matching Target Yield above (every\nseed, for the tiers shown here).\n"
     );
     let nec_sizes = [5usize, 6, 7];
     let nec_tiers = [Difficulty::Hard, Difficulty::Expert, Difficulty::Master];
+    let mut nec_genfail = 0u64;
     for tech in [
         Technique::XyChain,
         Technique::AlsXz,
@@ -577,13 +582,20 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
             let cells: Vec<String> = nec_tiers
                 .iter()
                 .map(|&d| {
-                    let (u, h, x) = report_necessity(n, d, samples, necessity_attempts, &[tech]);
+                    let (tested, u, h, x) =
+                        report_necessity(n, d, samples, necessity_attempts, &[tech]);
+                    nec_genfail += samples - tested;
                     format!("{u}/{h}/{x}")
                 })
                 .collect();
             println!("| {n} | {} |", cells.join(" | "));
         }
         println!();
+    }
+    if nec_genfail > 0 {
+        println!(
+            "> Note: {nec_genfail} seed(s) failed target generation and were\n> excluded, so those cells are out of fewer than {samples} seeds.\n"
+        );
     }
 
     println!(
