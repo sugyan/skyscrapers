@@ -1,11 +1,5 @@
 # Logic Solver Analysis
 
-> **Note:** The numeric sections below (Target Yield, Technique Usage,
-> Technique Necessity, Per-seed detail) predate two solver changes — the
-> XY-Chain length cap (XY-Wing only) and the fix that ranks difficulty by
-> tier rather than by `Technique` enum order — and should be regenerated
-> from `origin/main`. The "Implemented Techniques" section is current.
-
 Snapshot of the logic solver's behavior. Two complementary views:
 
 1. **Unseeded baseline** (sections "Batch Test Results" and "Technique
@@ -41,6 +35,10 @@ notes on dispatch ordering that aren't visible from the table:
   permutations) so `AlsXz` does not shadow trivial enumerations and
   inflate the reported tier.
 
+Difficulty is the tier of the hardest technique the solve actually
+needs, ranked by `Technique::difficulty()` (not by enum declaration
+order), so an Expert technique can never be masked by a lower-tier one.
+
 | Technique | Difficulty | Description |
 |-----------|-----------|-------------|
 | NakedSingles | Easy | Cell with one candidate |
@@ -71,16 +69,17 @@ Generator success rate when a target difficulty is requested with
 
 | n | easy | medium | hard | expert | master |
 |---|------|--------|------|--------|--------|
-| 4 | 100  | 100    | 100  | **66** | 100    |
+| 4 | 100  | 100    | 100  | **99** | 100    |
 | 5 | 100  | 100    | 100  | 100    | 100    |
 | 6 | 100  | 100    | 100  | 100    | 100    |
 | 7 | 100  | 100    | 100  | 100    | 100    |
 
-The only non-100% cell is **n=4 expert (66/100)**: genuine
-Expert-only 4×4 puzzles are rare because most 4×4 boards either solve
-at Hard via `SimplePermutation` or escalate past Expert into Master,
-leaving few that need exactly an Expert-tier technique. Every other
-(n, target) combination is reliably reachable.
+Every (n, target) combination is reliably reachable; the lowest cell is
+n=4 expert at 99/100. (Before the XY-Wing cap and the tier-ranked
+difficulty fix this cell sat at 66/100: genuine Expert 4×4 puzzles were
+scarce because Expert-tier deductions could be masked as Hard. Now that
+longer bivalue chains escalate to Expert via `AlsXz`, and `AlsXz` is no
+longer hidden behind a lower-tier label, Expert 4×4s are abundant.)
 
 ## Technique Necessity (target-driven, 100 puzzles per cell)
 
@@ -103,35 +102,39 @@ Run with `skyscrapers-analysis technique-necessity -n <N> --difficulty <D> --sam
 
 | n | hard    | expert  | master |
 |---|---------|---------|--------|
-| 5 | 36/2/0  | 41/5/0  | 61/0/0 |
-| 6 | 47/3/0  | 49/4/0  | 50/0/0 |
-| 7 | 58/12/0 | 59/9/0  | 50/0/0 |
+| 5 | 13/7/0  | 26/6/0  | 22/0/0 |
+| 6 | 9/1/0   | 18/0/0  | 14/0/0 |
+| 7 | 18/5/0  | 20/0/0  | 13/0/0 |
 
-XyChain is invoked in 36–61% of puzzles at every (n, tier) cell, but
-most of the work is substitutable: 0–12% of puzzles reclassify
-upward, and zero become unsolvable. It pulls the most weight at n=7
-Hard (12% bump to Expert), where `AlsXz` would otherwise have to
-cover the same eliminations.
+XyChain now only finds the XY-Wing, so its footprint is small (used in
+9–26% of cells). Removing it never makes a puzzle unsolvable and bumps
+0–7% up a tier — those are puzzles whose XY-Wing eliminations are
+otherwise reachable only through `AlsXz`. Since `AlsXz` never appears in
+Hard puzzles (see below), an XY-Wing removed from a Hard puzzle
+escalates it to Expert.
 
 ### Disable AlsXz
 
 | n | hard    | expert  | master |
 |---|---------|---------|--------|
-| 5 |  4/4/0  | 30/16/0 | 38/0/0 |
-| 6 | 11/11/0 | 25/9/0  | 41/0/0 |
-| 7 | 10/10/0 | 33/7/0  | 56/0/0 |
+| 5 | 0/0/0   | 58/48/0 | 48/0/0 |
+| 6 | 0/0/0   | 40/22/0 | 47/0/0 |
+| 7 | 0/0/0   | 44/24/0 | 66/0/0 |
 
-AlsXz pulls real weight at Hard and Expert: every used case in n=5,6,7
-Hard reclassifies upward when it's removed (4–11%), and 7–16% of
-Expert puzzles also bump up. Master tier is unaffected (forcing chains
-absorb the work), and no puzzle becomes unsolvable.
+`AlsXz` is now the dominant Expert-tier technique: it absorbs the longer
+bivalue-chain eliminations that `XyChain` no longer searches. It is used
+in 40–58% of Expert puzzles, and removing it reclassifies 22–48%
+upward. It is completely absent from Hard puzzles (0/0/0 everywhere) —
+confirming the tier separation from the difficulty-ranking fix: a puzzle
+that needs `AlsXz` is Expert, never Hard. Master tier is unaffected
+(forcing chains absorb the work), and no puzzle becomes unsolvable.
 
 ### Disable DualCluePermutation
 
-| n | hard    | expert    | master    |
-|---|---------|-----------|-----------|
-| 5 | 0/0/0   | 13/13/0   |  6/0/0    |
-| 6 | 0/0/0   |  7/7/0    | 24/0/0    |
+| n | hard    | expert    | master     |
+|---|---------|-----------|------------|
+| 5 | 0/0/0   | 10/10/0   |  6/0/0     |
+| 6 | 0/0/0   |  7/7/0    | 24/0/0     |
 | 7 | 0/0/0   | 16/16/0   | 30/0/**2** |
 
 DualCluePermutation never fires on Hard puzzles (nothing to disable),
@@ -144,33 +147,33 @@ removal forces a logical solve to fail.
 
 | n | Easy | Medium | Hard | Expert | Master | Unsolved | Success |
 |---|------|--------|------|--------|--------|----------|---------|
-| 4 | 7    | 13     | 76   |  0     |  4     | 0        | **100%** |
-| 5 | 0    |  1     | 71   |  9     | 19     | 0        | **100%** |
-| 6 | 0    |  0     | 22   | 27     | 49     | 2        | **98%**  |
+| 4 | 7    | 13     | 75   |  1     |  4     | 0        | **100%** |
+| 5 | 0    |  1     | 69   | 11     | 19     | 0        | **100%** |
+| 6 | 0    |  0     | 19   | 29     | 50     | 2        | **98%**  |
 | 7 | 0    |  0     |  0   | 16     | 76     | 8        | **92%**  |
 
-Under no-target generation, the modal tier shifts from Hard at n=4
-(76%) through Hard/Expert/Master at n=5,6 to a Master-dominated tail
-at n=7 (76% Master, 8% unsolvable). No Expert puzzle showed up at n=4
-in this 100-seed slice — consistent with the 66/100 target-yield rate
-above.
+Under no-target generation, the modal tier runs from Hard at n=4 (75%)
+through a Hard/Expert/Master spread at n=5,6 to a Master-dominated tail
+at n=7 (76% Master, 8% unsolvable). A handful of n=4–6 puzzles that the
+pre-cap solver reported as Hard now register as Expert instead, since
+longer bivalue chains are no longer credited as Hard.
 
 ## Technique Usage (total step count across 100 puzzles per size)
 
 | Technique | n=4 | n=5 | n=6 | n=7 |
 |-----------|-----|-----|-----|-----|
-| NakedSingles | 1112 | 1747 | 2465 | 3070 |
+| NakedSingles | 1115 | 1769 | 2467 | 3109 |
 | CluePruning | 378 | 646 | 948 | 1333 |
-| HiddenSingles | 263 | 523 | 773 | 1010 |
-| SimplePermutation | 186 | 407 | 643 | 728 |
-| VisibilityAnalysis | 51 | 105 | 113 | 100 |
-| PermutationEnumeration | 1 | 68 | 362 | 1012 |
-| NakedSets | 11 | 66 | 105 | 156 |
-| XyChain | 25 | 71 | 74 | 91 |
-| AlsXz | 3 | 30 | 53 | 73 |
-| XWing | 5 | 35 | 71 | 95 |
-| SimpleForcingChain | 5 | 27 | 119 | 148 |
-| FullForcingChain | 1 | 21 | 78 | 289 |
+| HiddenSingles | 260 | 501 | 771 | 971 |
+| SimplePermutation | 186 | 409 | 646 | 729 |
+| VisibilityAnalysis | 51 | 105 | 112 | 100 |
+| PermutationEnumeration | 1 | 68 | 361 | 1013 |
+| NakedSets | 11 | 63 | 101 | 151 |
+| XyChain | 11 | 18 | 13 | 17 |
+| AlsXz | 4 | 45 | 63 | 111 |
+| XWing | 5 | 34 | 67 | 98 |
+| SimpleForcingChain | 5 | 28 | 113 | 157 |
+| FullForcingChain | 1 | 21 | 78 | 281 |
 | DualCluePermutation | — | 4 | 15 | 33 |
 
 ## Technique Usage (puzzles in which it appears)
@@ -181,13 +184,13 @@ above.
 | CluePruning | 100 | 100 | 100 | 100 |
 | HiddenSingles | 83 | 98 | 99 | 98 |
 | SimplePermutation | 80 | 99 | 98 | 96 |
-| VisibilityAnalysis | 47 | 71 | 64 | 63 |
-| NakedSets | 10 | 45 | 60 | 75 |
-| XyChain | 14 | 38 | 41 | 42 |
-| XWing | 5 | 32 | 51 | 59 |
-| AlsXz | 1 | 15 | 30 | 46 |
+| VisibilityAnalysis | 47 | 71 | 63 | 63 |
 | PermutationEnumeration | 1 | 23 | 75 | 100 |
-| SimpleForcingChain | 4 | 16 | 38 | 53 |
+| NakedSets | 10 | 44 | 59 | 73 |
+| XyChain | 9 | 16 | 12 | 14 |
+| AlsXz | 2 | 18 | 35 | 56 |
+| XWing | 5 | 31 | 49 | 62 |
+| SimpleForcingChain | 4 | 16 | 38 | 55 |
 | FullForcingChain | 1 | 10 | 40 | 74 |
 | DualCluePermutation | — | 3 | 11 | 24 |
 
@@ -201,29 +204,34 @@ above.
    reasoning the larger board admits.
 
 2. **`SimplePermutation` is the workhorse Hard-tier technique.** It
-   fires in ≥96% of puzzles at every size and is the largest
+   fires in ≥96% of puzzles at n=5..7 (80% at n=4) and is the largest
    non-singles step count at n=4..6. `PermutationEnumeration` covers
    the non-trivial cases (1% of n=4 puzzles, 100% at n=7), so the
    two-label split keeps trivial firings at Hard and lets only
    non-trivial enumerations escalate to Expert.
 
-3. **`AlsXz` is rare at small n.** Because `SimplePermutation`
-   preempts it whenever the line is trivially enumerable, `AlsXz`
-   fires in only 1% of n=4 and 15% of n=5 puzzles, rising to 46% at
-   n=7. It remains load-bearing where it does fire (4–16% reclassify
-   upward when disabled).
+3. **`AlsXz` is now the primary Expert-tier workhorse.** It took over
+   the longer-chain eliminations that `XyChain` used to report, firing
+   in 2% of n=4 and 18% of n=5 puzzles, rising to 56% at n=7. It
+   remains load-bearing wherever it fires (22–48% of Expert puzzles
+   reclassify upward when it is removed).
 
-4. **All Hard/Expert techniques pull weight.** Disabling `AlsXz` bumps
-   4–16% of puzzles up a tier across n=5..7 Hard/Expert; disabling
-   `XyChain` bumps 0–12% (no unsolvables); disabling
+4. **`XyChain` is bounded to the XY-Wing.** With the length-3 cap it has
+   a small footprint (≤18 steps at every size, 9–16% of puzzles); the
+   longer bivalue chains it used to find now surface as `AlsXz` at
+   Expert, matching their forcing-chain-like solving effort.
+
+5. **All Hard/Expert techniques pull weight.** Disabling `AlsXz` bumps
+   22–48% of Expert puzzles up a tier across n=5..7; disabling
+   `XyChain` bumps 0–7% (no unsolvables); disabling
    `DualCluePermutation` reclassifies every Expert firing upward and
    makes 2/100 n=7 master puzzles unsolvable.
 
-5. **`VisibilityAnalysis` is surprisingly productive at Medium tier**:
+6. **`VisibilityAnalysis` is surprisingly productive at Medium tier**:
    47–71% of puzzles invoke it, and it is the reason a non-trivial
    share of n=4 puzzles register as Medium rather than Hard.
 
-6. **Unsolvable puzzles** (no logical solve at depth 1 even with all
+7. **Unsolvable puzzles** (no logical solve at depth 1 even with all
    techniques): 0 at n=4/5, 2 at n=6, 8 at n=7. These are the puzzles
    where even `FullForcingChain` cannot finish without nested
    assumptions.
@@ -252,7 +260,7 @@ seed= 12  yes  easy         NakedSingles, CluePruning
 seed= 13  yes  hard         NakedSingles, HiddenSingles, CluePruning, XyChain, SimplePermutation
 seed= 14  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 15  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, SimplePermutation
-seed= 16  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation
+seed= 16  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 17  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 18  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 19  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
@@ -268,7 +276,7 @@ seed= 28  yes  hard         NakedSingles, CluePruning, SimplePermutation
 seed= 29  yes  hard         NakedSingles, HiddenSingles, CluePruning, XyChain, SimplePermutation
 seed= 30  yes  medium       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis
 seed= 31  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
-seed= 32  yes  hard         NakedSingles, CluePruning, XyChain, SimplePermutation
+seed= 32  yes  hard         NakedSingles, CluePruning, SimplePermutation
 seed= 33  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, SimpleForcingChain
 seed= 34  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 35  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
@@ -288,7 +296,7 @@ seed= 48  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePerm
 seed= 49  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 50  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 51  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation, SimpleForcingChain
-seed= 52  yes  hard         NakedSingles, CluePruning, XyChain, SimplePermutation
+seed= 52  yes  hard         NakedSingles, CluePruning, SimplePermutation
 seed= 53  yes  medium       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis
 seed= 54  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 55  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation
@@ -300,13 +308,13 @@ seed= 60  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePerm
 seed= 61  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 62  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 63  yes  medium       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis
-seed= 64  yes  hard         NakedSingles, HiddenSingles, CluePruning, XyChain, SimplePermutation
+seed= 64  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 65  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 66  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 67  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 68  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 69  yes  easy         NakedSingles, CluePruning
-seed= 70  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
+seed= 70  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation
 seed= 71  yes  medium       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis
 seed= 72  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 73  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
@@ -320,7 +328,7 @@ seed= 80  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePerm
 seed= 81  yes  hard         NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation
 seed= 82  yes  medium       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis
 seed= 83  yes  hard         NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation
-seed= 84  yes  hard         NakedSingles, HiddenSingles, CluePruning, XyChain, SimplePermutation
+seed= 84  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 85  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 86  yes  hard         NakedSingles, CluePruning, SimplePermutation
 seed= 87  yes  hard         NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation
@@ -344,7 +352,7 @@ seed= 99  yes  easy         NakedSingles, CluePruning
 seed=  0  yes  master       NakedSingles, HiddenSingles, CluePruning, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed=  1  yes  hard         NakedSingles, HiddenSingles, CluePruning, XWing, SimplePermutation
 seed=  2  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
-seed=  3  yes  hard         NakedSingles, HiddenSingles, CluePruning, XyChain, SimplePermutation
+seed=  3  yes  hard         NakedSingles, CluePruning, XyChain, SimplePermutation
 seed=  4  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation
 seed=  5  yes  expert       NakedSingles, HiddenSingles, CluePruning, SimplePermutation, PermutationEnumeration
 seed=  6  yes  medium       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis
@@ -357,16 +365,16 @@ seed= 12  yes  hard         NakedSingles, HiddenSingles, CluePruning, Visibility
 seed= 13  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 14  yes  hard         NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation
 seed= 15  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
-seed= 16  yes  master       NakedSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 17  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation
+seed= 16  yes  master       NakedSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 17  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 18  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, AlsXz, SimplePermutation, SimpleForcingChain
 seed= 19  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
-seed= 20  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation
-seed= 21  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 20  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
+seed= 21  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 22  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
-seed= 23  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation
-seed= 24  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
-seed= 25  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 23  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation
+seed= 24  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 25  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 26  yes  hard         NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation
 seed= 27  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 28  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
@@ -385,21 +393,21 @@ seed= 40  yes  hard         NakedSingles, HiddenSingles, CluePruning, Visibility
 seed= 41  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation
 seed= 42  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
 seed= 43  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
-seed= 44  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, SimplePermutation, SimpleForcingChain, FullForcingChain
+seed= 44  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, AlsXz, SimplePermutation, SimpleForcingChain, FullForcingChain
 seed= 45  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 46  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
 seed= 47  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 48  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain
 seed= 49  yes  expert       NakedSingles, HiddenSingles, CluePruning, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation
 seed= 50  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
-seed= 51  yes  hard         NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, SimplePermutation
+seed= 51  yes  hard         NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation
 seed= 52  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation, PermutationEnumeration
-seed= 53  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation
+seed= 53  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 54  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
-seed= 55  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation
-seed= 56  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, SimpleForcingChain
-seed= 57  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation
-seed= 58  yes  hard         NakedSingles, HiddenSingles, CluePruning, XyChain, SimplePermutation
+seed= 55  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation
+seed= 56  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, AlsXz, SimplePermutation, SimpleForcingChain
+seed= 57  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
+seed= 58  yes  expert       NakedSingles, HiddenSingles, CluePruning, XyChain, AlsXz, SimplePermutation
 seed= 59  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
 seed= 60  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 61  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation, PermutationEnumeration
@@ -412,20 +420,20 @@ seed= 67  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets,
 seed= 68  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 69  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
 seed= 70  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation, SimpleForcingChain
-seed= 71  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
+seed= 71  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
 seed= 72  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 73  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
-seed= 74  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation
+seed= 74  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 75  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration
 seed= 76  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
-seed= 77  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
+seed= 77  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
 seed= 78  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation
 seed= 79  yes  master       NakedSingles, HiddenSingles, CluePruning, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 80  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
+seed= 80  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
 seed= 81  yes  hard         NakedSingles, HiddenSingles, CluePruning, XWing, SimplePermutation
-seed= 82  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, SimplePermutation
-seed= 83  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
-seed= 84  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation
+seed= 82  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation
+seed= 83  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
+seed= 84  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 85  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 86  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 87  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
@@ -434,32 +442,32 @@ seed= 89  yes  hard         NakedSingles, HiddenSingles, CluePruning, Visibility
 seed= 90  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 91  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 92  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
-seed= 93  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation
+seed= 93  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 94  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 95  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, PermutationEnumeration
-seed= 96  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation
+seed= 96  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 97  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
 seed= 98  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
-seed= 99  yes  master       NakedSingles, CluePruning, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 99  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 ```
 
 ### n=6 Detail (seeds 0-99)
 
 ```
 seed=  0  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
-seed=  1  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
-seed=  2  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed=  1  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
+seed=  2  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed=  3  yes  expert       NakedSingles, HiddenSingles, CluePruning, AlsXz, SimplePermutation, PermutationEnumeration
-seed=  4  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration, FullForcingChain
-seed=  5  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, SimplePermutation, PermutationEnumeration
+seed=  4  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, FullForcingChain
+seed=  5  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, PermutationEnumeration
 seed=  6  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed=  7  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration
-seed=  8  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed=  7  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration
+seed=  8  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed=  9  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 10  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 11  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration
-seed= 12  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, SimpleForcingChain
-seed= 13  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration, FullForcingChain
+seed= 12  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, SimpleForcingChain
+seed= 13  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 14  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 15  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 16  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration
@@ -470,30 +478,30 @@ seed= 20  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets,
 seed= 21  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 22  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration
 seed= 23  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration
-seed= 24  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration
+seed= 24  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration
 seed= 25  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 26  yes  master       NakedSingles, HiddenSingles, CluePruning, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 27  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
-seed= 28  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration
+seed= 28  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 29  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
-seed= 30  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration
+seed= 30  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation, PermutationEnumeration
 seed= 31  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation
 seed= 32  yes  master       NakedSingles, HiddenSingles, CluePruning, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 33  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
 seed= 34  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
 seed= 35  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 36  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
-seed= 37  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 37  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 38  yes  expert       NakedSingles, HiddenSingles, CluePruning, SimplePermutation, PermutationEnumeration, DualCluePermutation
-seed= 39  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain
+seed= 39  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain
 seed= 40  yes  expert       NakedSingles, HiddenSingles, CluePruning, SimplePermutation, PermutationEnumeration
 seed= 41  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
-seed= 42  yes  hard         NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, SimplePermutation
-seed= 43  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 42  yes  expert       NakedSingles, HiddenSingles, CluePruning, AlsXz, SimplePermutation
+seed= 43  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 44  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 45  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 46  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration
-seed= 47  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration
+seed= 45  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 46  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
+seed= 47  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration
 seed= 48  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
 seed= 49  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 50  yes  expert       NakedSingles, HiddenSingles, CluePruning, XWing, SimplePermutation, PermutationEnumeration
@@ -502,50 +510,50 @@ seed= 52  yes  master       NakedSingles, HiddenSingles, CluePruning, Visibility
 seed= 53  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 54  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 55  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
-seed= 56  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration
+seed= 56  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration
 seed= 57  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 58  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation
-seed= 59  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XyChain, SimplePermutation, PermutationEnumeration
+seed= 58  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
+seed= 59  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration
 seed= 60  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 61  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
-seed= 62  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, SimplePermutation, SimpleForcingChain, FullForcingChain
+seed= 62  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, SimpleForcingChain, FullForcingChain
 seed= 63  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
 seed= 64  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration
 seed= 65  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 66  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 67  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 67  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 68  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 69  no
-seed= 70  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation
+seed= 70  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation
 seed= 71  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
 seed= 72  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 73  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 74  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
-seed= 75  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 75  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 76  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 77  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 77  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 78  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration
-seed= 79  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration
-seed= 80  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 79  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
+seed= 80  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 81  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 82  no
-seed= 83  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
+seed= 83  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
 seed= 84  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 85  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration
-seed= 86  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 86  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 87  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation
 seed= 88  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 89  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XyChain, SimplePermutation, PermutationEnumeration
+seed= 89  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation, PermutationEnumeration
 seed= 90  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration
 seed= 91  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 92  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation
 seed= 93  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation
-seed= 94  yes  hard         NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, AlsXz, SimplePermutation
+seed= 94  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, AlsXz, SimplePermutation
 seed= 95  yes  hard         NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation
 seed= 96  yes  expert       NakedSingles, HiddenSingles, CluePruning, SimplePermutation, PermutationEnumeration
 seed= 97  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 98  yes  hard         NakedSingles, HiddenSingles, CluePruning, XyChain, SimplePermutation
-seed= 99  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 98  yes  hard         NakedSingles, HiddenSingles, CluePruning, SimplePermutation
+seed= 99  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 ```
 
 ### n=7 Detail (seeds 0-99)
@@ -553,90 +561,90 @@ seed= 99  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets,
 ```
 seed=  0  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed=  1  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed=  2  yes  expert       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, SimplePermutation, PermutationEnumeration
+seed=  2  yes  expert       NakedSingles, HiddenSingles, CluePruning, XWing, AlsXz, SimplePermutation, PermutationEnumeration
 seed=  3  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed=  4  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed=  5  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed=  6  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed=  7  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed=  7  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed=  8  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed=  9  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
-seed= 10  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, FullForcingChain
-seed= 11  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration
+seed= 10  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
+seed= 11  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
 seed= 12  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 13  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain
-seed= 14  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
+seed= 14  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 15  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
-seed= 16  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
+seed= 16  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
 seed= 17  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration
 seed= 18  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
 seed= 19  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 20  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 21  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 22  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 23  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 23  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 24  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
-seed= 25  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 26  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 25  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 26  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 27  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration, SimpleForcingChain
-seed= 28  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
-seed= 29  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
-seed= 30  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 31  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, FullForcingChain
+seed= 28  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 29  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
+seed= 30  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 31  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 32  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, PermutationEnumeration
-seed= 33  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, FullForcingChain
+seed= 33  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 34  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 35  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 36  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
-seed= 37  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain
-seed= 38  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
-seed= 39  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
+seed= 37  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 38  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 39  yes  master       NakedSingles, HiddenSingles, CluePruning, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 40  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 41  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 42  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, FullForcingChain
-seed= 43  yes  master       NakedSingles, HiddenSingles, CluePruning, XyChain, SimplePermutation, PermutationEnumeration, FullForcingChain
-seed= 44  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 43  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
+seed= 44  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 45  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 46  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
-seed= 47  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XyChain, SimplePermutation, PermutationEnumeration
+seed= 47  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, SimplePermutation, PermutationEnumeration
 seed= 48  no
 seed= 49  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 50  no
-seed= 51  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 52  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 53  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 54  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 51  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 52  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 53  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 54  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 55  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
-seed= 56  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation
+seed= 56  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation
 seed= 57  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 58  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
+seed= 58  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 59  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 60  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration
-seed= 61  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration
+seed= 61  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration
 seed= 62  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 63  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, DualCluePermutation
-seed= 64  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain
+seed= 64  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 65  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
 seed= 66  no
 seed= 67  no
 seed= 68  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration
-seed= 69  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
+seed= 69  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 70  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
-seed= 71  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 72  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 71  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 72  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 73  no
 seed= 74  no
 seed= 75  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 76  yes  master       NakedSingles, HiddenSingles, CluePruning, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 77  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 78  yes  expert       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration
-seed= 79  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 79  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 80  yes  expert       NakedSingles, HiddenSingles, CluePruning, SimplePermutation, PermutationEnumeration
 seed= 81  yes  expert       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration
-seed= 82  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 82  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 83  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, XWing, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
 seed= 84  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 85  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
+seed= 85  yes  master       NakedSingles, HiddenSingles, CluePruning, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 86  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, AlsXz, SimplePermutation, PermutationEnumeration, DualCluePermutation, FullForcingChain
 seed= 87  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, SimplePermutation, PermutationEnumeration, DualCluePermutation, SimpleForcingChain, FullForcingChain
 seed= 88  yes  master       NakedSingles, HiddenSingles, CluePruning, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
@@ -647,8 +655,8 @@ seed= 92  yes  expert       NakedSingles, HiddenSingles, CluePruning, Visibility
 seed= 93  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
 seed= 94  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 95  yes  master       NakedSingles, HiddenSingles, CluePruning, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, SimpleForcingChain
-seed= 96  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XWing, XyChain, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
-seed= 97  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, XyChain, AlsXz, SimplePermutation, PermutationEnumeration, FullForcingChain
+seed= 96  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, PermutationEnumeration, SimpleForcingChain, FullForcingChain
+seed= 97  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, NakedSets, AlsXz, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 98  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, SimplePermutation, PermutationEnumeration, FullForcingChain
 seed= 99  yes  master       NakedSingles, HiddenSingles, CluePruning, VisibilityAnalysis, XWing, SimplePermutation, PermutationEnumeration, FullForcingChain
 ```
@@ -667,6 +675,11 @@ cargo run --release -p skyscrapers-analysis -- target-yield \
 cargo run --release -p skyscrapers-analysis -- technique-necessity \
   -n <SIZE> --difficulty <LEVEL> --samples 100 --max-attempts 500 \
   --disable <TECH>[,<TECH>...]
+
+# Reproduce a single puzzle and print its logic trace (optionally with
+# techniques disabled, e.g. to see what solves it without XyChain)
+cargo run --release -p skyscrapers-analysis -- explain \
+  -n <SIZE> --seed <SEED> --difficulty <LEVEL> [--disable <TECH>[,<TECH>...]]
 
 # Per-puzzle trace
 cargo run --release -p skyscrapers-cli -- generate -n 7 --seed 42 \
