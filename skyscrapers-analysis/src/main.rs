@@ -116,6 +116,25 @@ enum Command {
         #[arg(long, value_delimiter = ',')]
         disable: Vec<String>,
     },
+
+    /// Run the full analysis suite and emit the data-driven sections of
+    /// `docs/logic-solver-analysis.md` as Markdown (Target Yield, Technique
+    /// Necessity, Batch Test Results, Technique Usage). Per-seed dumps and
+    /// the interpretive prose are intentionally not generated. Redirect to
+    /// refresh the doc's tables in one reproducible command.
+    Report {
+        /// Number of seeds / puzzles per cell.
+        #[arg(long, default_value_t = 100)]
+        samples: u64,
+
+        /// Max generation attempts per seed for target-driven runs.
+        #[arg(long, default_value_t = 300)]
+        yield_attempts: usize,
+
+        /// Max generation attempts per seed for technique-necessity runs.
+        #[arg(long, default_value_t = 500)]
+        necessity_attempts: usize,
+    },
 }
 
 fn main() {
@@ -141,6 +160,11 @@ fn main() {
             difficulty,
             disable,
         } => explain(n as usize, seed, difficulty, &disable),
+        Command::Report {
+            samples,
+            yield_attempts,
+            necessity_attempts,
+        } => report(samples, yield_attempts, necessity_attempts),
     }
 }
 
@@ -394,6 +418,223 @@ fn technique_necessity(
     println!("  still_solved_easier:  {still_solved_easier}");
     println!("  still_solved_harder:  {still_solved_harder}");
     println!("  became_unsolvable:    {became_unsolvable}");
+}
+
+/// Difficulty tiers in ascending order, for table columns.
+const ALL_DIFFICULTIES: [Difficulty; 5] = [
+    Difficulty::Easy,
+    Difficulty::Medium,
+    Difficulty::Hard,
+    Difficulty::Expert,
+    Difficulty::Master,
+];
+
+/// Techniques in a stable display order for the usage tables.
+const TECHNIQUE_ROWS: [Technique; 13] = [
+    Technique::NakedSingles,
+    Technique::CluePruning,
+    Technique::HiddenSingles,
+    Technique::SimplePermutation,
+    Technique::VisibilityAnalysis,
+    Technique::PermutationEnumeration,
+    Technique::NakedSets,
+    Technique::XyChain,
+    Technique::AlsXz,
+    Technique::XWing,
+    Technique::SimpleForcingChain,
+    Technique::FullForcingChain,
+    Technique::DualCluePermutation,
+];
+
+/// Unseeded batch aggregates for one size (no per-seed records — `report`
+/// only needs the totals). Mirrors the generation used by `batch_difficulty`.
+struct BatchTotals {
+    counts: BTreeMap<Difficulty, usize>,
+    unsolved: usize,
+    tech_puzzles: BTreeMap<Technique, usize>,
+    tech_steps: BTreeMap<Technique, usize>,
+}
+
+fn report_batch(n: usize, samples: u64) -> BatchTotals {
+    let mut totals = BatchTotals {
+        counts: Default::default(),
+        unsolved: 0,
+        tech_puzzles: Default::default(),
+        tech_steps: Default::default(),
+    };
+    for seed in 0..samples {
+        let mut rng = ChaCha20Rng::seed_from_u64(seed);
+        let params = GeneratorParams::new(n);
+        let Ok((puzzle, _sol)) = generate(&mut rng, &params) else {
+            continue;
+        };
+        let res = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        let techs: BTreeSet<Technique> = res.steps.iter().map(|s| s.technique).collect();
+        for t in &techs {
+            *totals.tech_puzzles.entry(*t).or_default() += 1;
+        }
+        for step in &res.steps {
+            *totals.tech_steps.entry(step.technique).or_default() += 1;
+        }
+        match res.difficulty {
+            Some(d) => *totals.counts.entry(d).or_default() += 1,
+            None => totals.unsolved += 1,
+        }
+    }
+    totals
+}
+
+/// Number of seeds for which the generator reached the target difficulty.
+fn report_yield(n: usize, difficulty: Difficulty, samples: u64, max_attempts: usize) -> u64 {
+    (0..samples)
+        .filter(|seed| {
+            let mut rng = ChaCha20Rng::seed_from_u64(*seed);
+            let params = GeneratorParams::new(n)
+                .with_target_difficulty(difficulty)
+                .with_max_attempts(max_attempts);
+            generate(&mut rng, &params).is_ok()
+        })
+        .count() as u64
+}
+
+/// `(used, harder, unsolvable)` counts for disabling `disabled` on puzzles
+/// generated at `difficulty`. Mirrors `technique_necessity` without printing.
+fn report_necessity(
+    n: usize,
+    difficulty: Difficulty,
+    samples: u64,
+    max_attempts: usize,
+    disabled: &[Technique],
+) -> (u64, u64, u64) {
+    let (mut used, mut harder, mut unsolvable) = (0u64, 0u64, 0u64);
+    for seed in 0..samples {
+        let mut rng = ChaCha20Rng::seed_from_u64(seed);
+        let params = GeneratorParams::new(n)
+            .with_target_difficulty(difficulty)
+            .with_max_attempts(max_attempts);
+        let Ok((puzzle, _sol)) = generate(&mut rng, &params) else {
+            continue;
+        };
+        let (base_diff, base_techs) = solve_baseline(&puzzle);
+        if disabled.iter().any(|t| base_techs.contains(t)) {
+            used += 1;
+        }
+        match (base_diff, solve_with_disabled(&puzzle, disabled)) {
+            (Some(b), Some(a)) if a > b => harder += 1,
+            (Some(_), None) => unsolvable += 1,
+            _ => {}
+        }
+    }
+    (used, harder, unsolvable)
+}
+
+fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
+    let sizes = [4usize, 5, 6, 7];
+    // Generation/solve is fast for small n but the n=7 target-driven runs are
+    // the slow part; surface progress on stderr so a redirected stdout stays
+    // clean Markdown.
+    eprintln!("running batch ({} seeds/size)…", samples);
+    let batches: Vec<(usize, BatchTotals)> = sizes
+        .iter()
+        .map(|&n| (n, report_batch(n, samples)))
+        .collect();
+
+    println!(
+        "## Target Yield (seeds 0-{}, {} puzzles per (size, target))\n",
+        samples - 1,
+        samples
+    );
+    println!(
+        "Generator success rate when a target difficulty is requested with\n`max_attempts={yield_attempts}` per seed.\n"
+    );
+    println!("| n | easy | medium | hard | expert | master |");
+    println!("|---|------|--------|------|--------|--------|");
+    for &n in &sizes {
+        eprintln!("yield n={n}…");
+        let cells: Vec<String> = ALL_DIFFICULTIES
+            .iter()
+            .map(|&d| report_yield(n, d, samples, yield_attempts).to_string())
+            .collect();
+        println!("| {n} | {} |", cells.join(" | "));
+    }
+
+    println!("\n## Technique Necessity (target-driven, {samples} puzzles per cell)\n");
+    println!(
+        "Each cell shows `used / harder / unsolvable` for puzzles generated at\nthe target difficulty and re-solved with the technique disabled\n(`max_attempts={necessity_attempts}`).\n"
+    );
+    let nec_sizes = [5usize, 6, 7];
+    let nec_tiers = [Difficulty::Hard, Difficulty::Expert, Difficulty::Master];
+    for tech in [
+        Technique::XyChain,
+        Technique::AlsXz,
+        Technique::DualCluePermutation,
+    ] {
+        println!("### Disable {tech:?}\n");
+        println!("| n | hard | expert | master |");
+        println!("|---|------|--------|--------|");
+        for &n in &nec_sizes {
+            eprintln!("necessity {tech:?} n={n}…");
+            let cells: Vec<String> = nec_tiers
+                .iter()
+                .map(|&d| {
+                    let (u, h, x) = report_necessity(n, d, samples, necessity_attempts, &[tech]);
+                    format!("{u}/{h}/{x}")
+                })
+                .collect();
+            println!("| {n} | {} |", cells.join(" | "));
+        }
+        println!();
+    }
+
+    println!(
+        "## Batch Test Results (seeds 0-{}, {} puzzles per size)\n",
+        samples - 1,
+        samples
+    );
+    println!("| n | Easy | Medium | Hard | Expert | Master | Unsolved | Success |");
+    println!("|---|------|--------|------|--------|--------|----------|---------|");
+    for (n, b) in &batches {
+        let tier_cells: Vec<String> = ALL_DIFFICULTIES
+            .iter()
+            .map(|d| b.counts.get(d).copied().unwrap_or(0).to_string())
+            .collect();
+        let solved = samples as usize - b.unsolved;
+        let pct = solved as f64 / samples as f64 * 100.0;
+        println!(
+            "| {n} | {} | {} | {:.0}% |",
+            tier_cells.join(" | "),
+            b.unsolved,
+            pct
+        );
+    }
+
+    print_usage_table("total step count", &batches, &sizes, |b| &b.tech_steps);
+    print_usage_table("puzzles in which it appears", &batches, &sizes, |b| {
+        &b.tech_puzzles
+    });
+    eprintln!("done.");
+}
+
+fn print_usage_table(
+    title: &str,
+    batches: &[(usize, BatchTotals)],
+    sizes: &[usize],
+    pick: impl Fn(&BatchTotals) -> &BTreeMap<Technique, usize>,
+) {
+    println!("\n## Technique Usage ({title} across 100 puzzles per size)\n");
+    let header: Vec<String> = sizes.iter().map(|n| format!("n={n}")).collect();
+    println!("| Technique | {} |", header.join(" | "));
+    println!("|-----------|{}", "-----|".repeat(sizes.len()));
+    for tech in TECHNIQUE_ROWS {
+        let cells: Vec<String> = batches
+            .iter()
+            .map(|(_, b)| match pick(b).get(&tech).copied().unwrap_or(0) {
+                0 => "—".to_string(),
+                v => v.to_string(),
+            })
+            .collect();
+        println!("| {tech:?} | {} |", cells.join(" | "));
+    }
 }
 
 fn explain(n: usize, seed: u64, difficulty: Option<Difficulty>, disable: &[String]) {
