@@ -62,11 +62,12 @@ order), so an Expert technique can never be masked by a lower-tier one.
 | SimpleForcingChain | Master | Assumption + basic propagation |
 | FullForcingChain | Master | Assumption + full propagation |
 
-`SimplePermutation` is a label, not an independently dispatchable
-technique: it is produced by the same permutation code path as
-`PermutationEnumeration`. The `technique-necessity`/`report` tools
-therefore reject `--disable SimplePermutation` and only let you disable
-`PermutationEnumeration` (which suppresses both labels).
+`SimplePermutation` and `PermutationEnumeration` are two separate
+dispatchable techniques backed by the same `permutation` module:
+`apply_simple` (trivial lines — ≤3 free cells, or ≤8 valid permutations)
+is reported as `SimplePermutation` (Hard), and `apply_complex`
+(non-trivial lines) as `PermutationEnumeration` (Expert). Either can be
+disabled independently via `--disable`.
 
 <!-- BEGIN GENERATED (skyscrapers-analysis report) -->
 ## Target Yield (seeds 0-99, 100 puzzles per (size, target))

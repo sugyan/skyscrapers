@@ -608,20 +608,27 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
         );
     }
 
-    print_usage_table("total step count", &batches, &sizes, |b| &b.tech_steps);
-    print_usage_table("puzzles in which it appears", &batches, &sizes, |b| {
-        &b.tech_puzzles
+    print_usage_table("total step count", samples, &batches, &sizes, |b| {
+        &b.tech_steps
     });
+    print_usage_table(
+        "puzzles in which it appears",
+        samples,
+        &batches,
+        &sizes,
+        |b| &b.tech_puzzles,
+    );
     eprintln!("done.");
 }
 
 fn print_usage_table(
     title: &str,
+    samples: u64,
     batches: &[(usize, BatchTotals)],
     sizes: &[usize],
     pick: impl Fn(&BatchTotals) -> &BTreeMap<Technique, usize>,
 ) {
-    println!("\n## Technique Usage ({title} across 100 puzzles per size)\n");
+    println!("\n## Technique Usage ({title} across {samples} puzzles per size)\n");
     let header: Vec<String> = sizes.iter().map(|n| format!("n={n}")).collect();
     println!("| Technique | {} |", header.join(" | "));
     println!("|-----------|{}", "-----|".repeat(sizes.len()));
