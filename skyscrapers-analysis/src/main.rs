@@ -451,14 +451,23 @@ const TECHNIQUE_ROWS: [Technique; 13] = [
 struct BatchTotals {
     counts: BTreeMap<Difficulty, usize>,
     unsolved: usize,
+    gen_failed: usize,
     tech_puzzles: BTreeMap<Technique, usize>,
     tech_steps: BTreeMap<Technique, usize>,
+}
+
+impl BatchTotals {
+    /// Puzzles actually generated (solved into a tier or left unsolved).
+    fn generated(&self) -> usize {
+        self.counts.values().sum::<usize>() + self.unsolved
+    }
 }
 
 fn report_batch(n: usize, samples: u64) -> BatchTotals {
     let mut totals = BatchTotals {
         counts: Default::default(),
         unsolved: 0,
+        gen_failed: 0,
         tech_puzzles: Default::default(),
         tech_steps: Default::default(),
     };
@@ -466,6 +475,7 @@ fn report_batch(n: usize, samples: u64) -> BatchTotals {
         let mut rng = ChaCha20Rng::seed_from_u64(seed);
         let params = GeneratorParams::new(n);
         let Ok((puzzle, _sol)) = generate(&mut rng, &params) else {
+            totals.gen_failed += 1;
             continue;
         };
         let res = LogicSolver.solve_with_difficulty(&puzzle, 1);
@@ -568,12 +578,13 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
     );
     let nec_sizes = [5usize, 6, 7];
     let nec_tiers = [Difficulty::Hard, Difficulty::Expert, Difficulty::Master];
-    let mut nec_genfail = 0u64;
-    for tech in [
+    let nec_techs = [
         Technique::XyChain,
         Technique::AlsXz,
         Technique::DualCluePermutation,
-    ] {
+    ];
+    let mut nec_genfail = 0u64;
+    for tech in nec_techs {
         println!("### Disable {tech:?}\n");
         println!("| n | hard | expert | master |");
         println!("|---|------|--------|--------|");
@@ -584,7 +595,12 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
                 .map(|&d| {
                     let (tested, u, h, x) =
                         report_necessity(n, d, samples, necessity_attempts, &[tech]);
-                    nec_genfail += samples - tested;
+                    // Generation failures depend only on (n, tier), not on the
+                    // disabled technique, so count them once (first tech pass)
+                    // rather than once per section.
+                    if tech == nec_techs[0] {
+                        nec_genfail += samples - tested;
+                    }
                     format!("{u}/{h}/{x}")
                 })
                 .collect();
@@ -605,18 +621,32 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
     );
     println!("| n | Easy | Medium | Hard | Expert | Master | Unsolved | Success |");
     println!("|---|------|--------|------|--------|--------|----------|---------|");
+    let mut batch_genfail = 0usize;
     for (n, b) in &batches {
+        batch_genfail += b.gen_failed;
         let tier_cells: Vec<String> = ALL_DIFFICULTIES
             .iter()
             .map(|d| b.counts.get(d).copied().unwrap_or(0).to_string())
             .collect();
-        let solved = samples as usize - b.unsolved;
-        let pct = solved as f64 / samples as f64 * 100.0;
+        // Denominator is puzzles actually generated, so a generation failure
+        // can't silently inflate the success rate.
+        let generated = b.generated();
+        let solved = generated - b.unsolved;
+        let pct = if generated == 0 {
+            0.0
+        } else {
+            solved as f64 / generated as f64 * 100.0
+        };
         println!(
             "| {n} | {} | {} | {:.0}% |",
             tier_cells.join(" | "),
             b.unsolved,
             pct
+        );
+    }
+    if batch_genfail > 0 {
+        println!(
+            "\n> Note: {batch_genfail} seed(s) failed generation and are excluded;\n> Success is over puzzles actually generated, not all {samples} seeds."
         );
     }
 
