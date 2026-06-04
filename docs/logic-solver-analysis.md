@@ -70,7 +70,7 @@ is reported as `SimplePermutation` (Hard), and `apply_complex`
 disabled independently via `--disable`.
 
 <!-- BEGIN GENERATED (skyscrapers-analysis report) -->
-## Target Yield (seeds 0-99, 100 puzzles per (size, target))
+## Target Yield (seeds 0-99, 100 seeds per (size, target))
 
 Generator success rate when a target difficulty is requested with
 `max_attempts=300` per seed.
@@ -82,7 +82,7 @@ Generator success rate when a target difficulty is requested with
 | 6 | 100 | 100 | 100 | 100 | 100 |
 | 7 | 100 | 100 | 100 | 100 | 100 |
 
-## Technique Necessity (target-driven, 100 puzzles per cell)
+## Technique Necessity (target-driven, 100 seeds per cell)
 
 Each cell shows `used / harder / unsolvable` for puzzles generated at
 the target difficulty and re-solved with the technique disabled
@@ -112,7 +112,7 @@ the target difficulty and re-solved with the technique disabled
 | 6 | 0/0/0 | 7/7/0 | 24/0/0 |
 | 7 | 0/0/0 | 16/16/0 | 30/0/2 |
 
-## Batch Test Results (seeds 0-99, 100 puzzles per size)
+## Batch Test Results (seeds 0-99, 100 seeds per size)
 
 | n | Easy | Medium | Hard | Expert | Master | Unsolved | Success |
 |---|------|--------|------|--------|--------|----------|---------|
@@ -121,7 +121,7 @@ the target difficulty and re-solved with the technique disabled
 | 6 | 0 | 0 | 19 | 29 | 50 | 2 | 98% |
 | 7 | 0 | 0 | 0 | 16 | 76 | 8 | 92% |
 
-## Technique Usage (total step count across 100 puzzles per size)
+## Technique Usage (total step count across 100 seeds per size)
 
 | Technique | n=4 | n=5 | n=6 | n=7 |
 |-----------|-----|-----|-----|-----|
@@ -139,7 +139,7 @@ the target difficulty and re-solved with the technique disabled
 | FullForcingChain | 1 | 21 | 78 | 281 |
 | DualCluePermutation | — | 4 | 15 | 33 |
 
-## Technique Usage (puzzles in which it appears across 100 puzzles per size)
+## Technique Usage (puzzles in which it appears across 100 seeds per size)
 
 | Technique | n=4 | n=5 | n=6 | n=7 |
 |-----------|-----|-----|-----|-----|

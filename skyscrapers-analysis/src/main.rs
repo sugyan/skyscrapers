@@ -123,8 +123,8 @@ enum Command {
     /// the interpretive prose are intentionally not generated. Redirect to
     /// refresh the doc's tables in one reproducible command.
     Report {
-        /// Number of seeds / puzzles per cell.
-        #[arg(long, default_value_t = 100)]
+        /// Number of seeds per cell (must be >= 1).
+        #[arg(long, default_value_t = 100, value_parser = clap::value_parser!(u64).range(1..))]
         samples: u64,
 
         /// Max generation attempts per seed for target-driven runs.
@@ -540,7 +540,7 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
         .collect();
 
     println!(
-        "## Target Yield (seeds 0-{}, {} puzzles per (size, target))\n",
+        "## Target Yield (seeds 0-{}, {} seeds per (size, target))\n",
         samples - 1,
         samples
     );
@@ -558,7 +558,7 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
         println!("| {n} | {} |", cells.join(" | "));
     }
 
-    println!("\n## Technique Necessity (target-driven, {samples} puzzles per cell)\n");
+    println!("\n## Technique Necessity (target-driven, {samples} seeds per cell)\n");
     println!(
         "Each cell shows `used / harder / unsolvable` for puzzles generated at\nthe target difficulty and re-solved with the technique disabled\n(`max_attempts={necessity_attempts}`).\n"
     );
@@ -587,7 +587,7 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
     }
 
     println!(
-        "## Batch Test Results (seeds 0-{}, {} puzzles per size)\n",
+        "## Batch Test Results (seeds 0-{}, {} seeds per size)\n",
         samples - 1,
         samples
     );
@@ -628,7 +628,7 @@ fn print_usage_table(
     sizes: &[usize],
     pick: impl Fn(&BatchTotals) -> &BTreeMap<Technique, usize>,
 ) {
-    println!("\n## Technique Usage ({title} across {samples} puzzles per size)\n");
+    println!("\n## Technique Usage ({title} across {samples} seeds per size)\n");
     let header: Vec<String> = sizes.iter().map(|n| format!("n={n}")).collect();
     println!("| Technique | {} |", header.join(" | "));
     println!("|-----------|{}", "-----|".repeat(sizes.len()));
