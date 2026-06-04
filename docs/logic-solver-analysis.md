@@ -1,5 +1,11 @@
 # Logic Solver Analysis
 
+> **Note:** The numeric sections below (Target Yield, Technique Usage,
+> Technique Necessity, Per-seed detail) predate two solver changes — the
+> XY-Chain length cap (XY-Wing only) and the fix that ranks difficulty by
+> tier rather than by `Technique` enum order — and should be regenerated
+> from `origin/main`. The "Implemented Techniques" section is current.
+
 Snapshot of the logic solver's behavior. Two complementary views:
 
 1. **Unseeded baseline** (sections "Batch Test Results" and "Technique
@@ -21,10 +27,13 @@ traces for reference.
 The solver dispatches the techniques below in roughly tier order. Two
 notes on dispatch ordering that aren't visible from the table:
 
-- `XyChain` is searched before `AlsXz`. Many bivalue (size-2) ALS-XZ
-  patterns are structurally length-4 XY-Chains; surfacing them as
-  XyChain matches the human-friendly framing and keeps Hard-tier
-  deductions from being reported as Expert.
+- `XyChain` is capped at length 3, i.e. it only finds the classic
+  XY-Wing. It is searched before `AlsXz` so genuine XY-Wings are
+  credited as Hard, but longer bivalue chains are *not* searched here:
+  they are structurally equivalent to size-2 ALS-XZ patterns and need
+  the same "if this then … then contradiction" mental trace as a
+  forcing chain, so they are deliberately left to `AlsXz` and reported
+  at Expert.
 - `SimplePermutation` (the `apply_simple` permutation pass) is
   dispatched before `AlsXz`; the heavier `PermutationEnumeration`
   (`apply_complex`) is dispatched after. The two share a code path but
@@ -40,9 +49,9 @@ notes on dispatch ordering that aren't visible from the table:
 | VisibilityAnalysis | Medium | Clue visibility count forces monotonic prefix |
 | NakedSets | Hard | k cells sharing k values |
 | XWing / Swordfish | Hard | Fish pattern elimination |
-| XyChain | Hard | Chain of bivalue cells whose endpoints share a value (length ≥ 3; subsumes XY-Wing) |
+| XyChain | Hard | XY-Wing: a length-3 bivalue chain (pivot + two wings). Longer chains are not searched — they fall through to AlsXz |
 | SimplePermutation | Hard | Single-clue permutation check on a line trivial enough to enumerate by hand (≤3 free cells, or ≤8 valid permutations) |
-| AlsXz | Expert | Two almost locked sets + restricted common candidate (size ≥ 2 — bivalue cases are absorbed by XyChain) |
+| AlsXz | Expert | Two almost locked sets + restricted common candidate (size ≥ 2). Includes the size-2 ALS patterns that longer bivalue chains form, now that XyChain is capped at the XY-Wing |
 | PermutationEnumeration | Expert | Single-clue permutation check on a non-trivial line |
 | DualCluePermutation | Expert | Both opposing clues simultaneously |
 | SimpleForcingChain | Master | Assumption + basic propagation |

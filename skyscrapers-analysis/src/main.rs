@@ -12,7 +12,7 @@ use rand_chacha::ChaCha20Rng;
 use skyscrapers_core::Puzzle;
 use skyscrapers_generator::{GeneratorParams, generate};
 use skyscrapers_solver::logic::analysis_hooks;
-use skyscrapers_solver::logic::difficulty::Technique;
+use skyscrapers_solver::logic::difficulty::{Action, Line, Reason, Step, Technique};
 use skyscrapers_solver::{Difficulty, LogicSolver};
 
 #[derive(Parser)]
@@ -94,6 +94,28 @@ enum Command {
         #[arg(long, value_delimiter = ',', required = true)]
         disable: Vec<String>,
     },
+
+    /// Reproduce a single puzzle (by seed/n/difficulty, same as the CLI
+    /// `generate`) and print its logic-solver trace and difficulty, optionally
+    /// with some techniques disabled. Useful for asking "what solves this
+    /// puzzle if technique X is taken away?".
+    Explain {
+        /// Grid size (1-9)
+        #[arg(short, default_value_t = 7, value_parser = clap::value_parser!(u64).range(1..=9))]
+        n: u64,
+
+        /// RNG seed (must match the seed used with the CLI `generate`)
+        #[arg(long)]
+        seed: u64,
+
+        /// Target difficulty (must match what was used with `generate`)
+        #[arg(long)]
+        difficulty: Option<Difficulty>,
+
+        /// Comma-separated technique names to disable, e.g. `XyChain`
+        #[arg(long, value_delimiter = ',')]
+        disable: Vec<String>,
+    },
 }
 
 fn main() {
@@ -113,6 +135,12 @@ fn main() {
             max_attempts,
             disable,
         } => technique_necessity(n as usize, difficulty, samples, max_attempts, &disable),
+        Command::Explain {
+            n,
+            seed,
+            difficulty,
+            disable,
+        } => explain(n as usize, seed, difficulty, &disable),
     }
 }
 
@@ -366,4 +394,167 @@ fn technique_necessity(
     println!("  still_solved_easier:  {still_solved_easier}");
     println!("  still_solved_harder:  {still_solved_harder}");
     println!("  became_unsolvable:    {became_unsolvable}");
+}
+
+fn explain(n: usize, seed: u64, difficulty: Option<Difficulty>, disable: &[String]) {
+    let disabled = match parse_techniques(disable) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(2);
+        }
+    };
+
+    // Reproduce the puzzle exactly as `skyscrapers-cli generate` would.
+    let mut rng = ChaCha20Rng::seed_from_u64(seed);
+    let mut params = GeneratorParams::new(n);
+    if let Some(d) = difficulty {
+        params = params.with_target_difficulty(d);
+    }
+    let (puzzle, _sol) = match generate(&mut rng, &params) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("error: generation failed: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    println!("{puzzle}");
+    let disabled_str: Vec<String> = disabled.iter().map(|t| format!("{t:?}")).collect();
+    println!(
+        "\n=== Logic trace (n={n}, seed={seed}, disable=[{}]) ===",
+        disabled_str.join(", ")
+    );
+
+    let result = {
+        let _guard = DisabledTechniquesGuard::new(&disabled);
+        LogicSolver.solve_with_difficulty(&puzzle, 1)
+    };
+
+    // Per-technique step tally and the longest XY-Chain seen, so the trade-off
+    // between "removed XY-Chain" and "what replaced it" is visible at a glance.
+    let mut tech_steps: BTreeMap<Technique, usize> = Default::default();
+    let mut max_xy_len = 0usize;
+    for step in &result.steps {
+        *tech_steps.entry(step.technique).or_default() += 1;
+        if let Reason::XyChainElimination { chain, .. } = &step.reason {
+            max_xy_len = max_xy_len.max(chain.len());
+        }
+        println!("{}", format_step(step));
+    }
+
+    println!("\n=== Summary ===");
+    match result.difficulty {
+        Some(d) => println!("  difficulty: {d}  ({} steps)", result.steps.len()),
+        None => println!(
+            "  difficulty: UNSOLVABLE  (stuck after {} steps)",
+            result.steps.len()
+        ),
+    }
+    if max_xy_len > 0 {
+        println!("  longest XY-Chain: {max_xy_len} cells");
+    }
+    println!("  technique step counts:");
+    let mut v: Vec<_> = tech_steps.iter().collect();
+    v.sort_by(|a, b| b.1.cmp(a.1));
+    for (t, c) in v {
+        println!("    {t:?}: {c}");
+    }
+}
+
+/// 1-based `RrCc` cell label, matching the CLI trace's convention.
+fn cell_label(row: usize, col: usize) -> String {
+    format!("R{}C{}", row + 1, col + 1)
+}
+
+fn line_label(line: &Line) -> String {
+    match line {
+        Line::Row(r) => format!("Row {}", r + 1),
+        Line::Col(c) => format!("Col {}", c + 1),
+    }
+}
+
+/// Compact one-line rendering of a step: technique, actions, and a brief
+/// reason. Enough detail to follow the solve and spot chain lengths without
+/// reusing the CLI's (private) formatter.
+fn format_step(step: &Step) -> String {
+    let actions: Vec<String> = step
+        .actions
+        .iter()
+        .map(|a| match a {
+            Action::Place { row, col, value } => format!("{value}@{}", cell_label(*row, *col)),
+            Action::Eliminate { row, col, value } => format!("-{value} {}", cell_label(*row, *col)),
+        })
+        .collect();
+
+    let reason = match &step.reason {
+        Reason::XyChainElimination {
+            chain,
+            eliminated_value,
+        } => {
+            let path: Vec<String> = chain.iter().map(|(r, c)| cell_label(*r, *c)).collect();
+            format!(
+                "XY-Chain len={} ({}) elim {eliminated_value}",
+                chain.len(),
+                path.join("->")
+            )
+        }
+        Reason::SingleCandidate { row, col } => {
+            format!("naked single {}", cell_label(*row, *col))
+        }
+        Reason::UniqueInLine { line, value } => {
+            format!("hidden single {value} in {}", line_label(line))
+        }
+        Reason::SetInLine { line, values, .. } => {
+            format!("naked set {values:?} in {}", line_label(line))
+        }
+        Reason::FishPattern { value, .. } => format!("fish on {value}"),
+        Reason::PermutationElimination { line, .. } => {
+            format!("permutation in {}", line_label(line))
+        }
+        Reason::DualCluePermutationElimination { line, .. } => {
+            format!("dual-clue permutation in {}", line_label(line))
+        }
+        Reason::AlsXzElimination {
+            als_a,
+            als_b,
+            rcc_value,
+            eliminated_value,
+        } => {
+            let fmt_als = |als: &[(usize, usize)]| -> String {
+                als.iter()
+                    .map(|(r, c)| cell_label(*r, *c))
+                    .collect::<Vec<_>>()
+                    .join("+")
+            };
+            // Wing patterns are tiny ALS-XZ: |A|=|B|=1 is an XY-Wing, and
+            // |A|+|B|=3 (one bivalue, one size-2 ALS) is an XYZ/W-Wing. Tag
+            // the size so we can tell Hard-tier wings from genuine Expert ALS.
+            let tag = match (als_a.len(), als_b.len()) {
+                (1, 1) => " [XY-Wing-sized]",
+                (1, 2) | (2, 1) => " [XYZ/W-Wing-sized]",
+                _ => "",
+            };
+            format!(
+                "ALS-XZ |A|={} |B|={} rcc={rcc_value} elim {eliminated_value} (A={}, B={}){tag}",
+                als_a.len(),
+                als_b.len(),
+                fmt_als(als_a),
+                fmt_als(als_b),
+            )
+        }
+        Reason::ForcingChainElimination {
+            assumed_cell,
+            assumed_value,
+        } => format!(
+            "forcing chain {}={assumed_value}",
+            cell_label(assumed_cell.0, assumed_cell.1)
+        ),
+        Reason::InitialClueConstraint { .. } => "initial clue pruning".to_string(),
+        Reason::VisibilityForcing { line, .. } => {
+            format!("visibility forcing in {}", line_label(line))
+        }
+    };
+
+    format!("[{:?}] {}  ({reason})", step.technique, actions.join(", "))
 }
