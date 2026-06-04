@@ -235,11 +235,16 @@ mod tests {
     fn does_not_find_length_4_chain() {
         // The same configuration the old `finds_chain_of_length_4` test used —
         // a length-4 bivalue chain whose only elimination needs all four cells.
-        // With `MAX_CHAIN_LENGTH = 3` this is now intentionally *not* found
-        // here; such deductions are left to the Expert-tier `AlsXz` technique.
+        // With `MAX_CHAIN_LENGTH = 3` this is now intentionally *not* found:
+        // `XyChain` no longer searches chains longer than the XY-Wing.
         //
         //   R1C1 {2,3} —col1— R3C1 {1,2} —row3— R3C3 {1,2} —col3— R4C3 {2,3}
         //   would eliminate 3 from R4C1, but no shorter sub-chain does.
+        //
+        // (In a real solve a length-4 chain typically coincides with a size-2
+        // ALS-XZ and is recovered there at Expert; this synthetic fixture uses
+        // two identical {1,2} cells — a naked pair, not an ALS — so it just
+        // exercises the length cap in isolation.)
 
         let board = Board::new_empty(5);
         let clues = Clues::new_all_none(5);
