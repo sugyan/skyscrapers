@@ -87,8 +87,13 @@ impl LogicSolver {
                 TechniqueResult::Progress(step) => {
                     let technique = step.technique;
                     steps.push(step);
+                    // Rank by difficulty *tier*, not by the `Technique`
+                    // enum's declaration order — the enum is not sorted by
+                    // difficulty (e.g. `AlsXz` = Expert is declared before
+                    // `SimplePermutation` = Hard), so an Ord comparison would
+                    // let a lower-tier technique mask a higher-tier one.
                     match max_technique {
-                        Some(current) if technique > current => {
+                        Some(current) if technique.difficulty() > current.difficulty() => {
                             max_technique = Some(technique);
                         }
                         None => {

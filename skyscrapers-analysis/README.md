@@ -13,6 +13,8 @@ cargo run -p skyscrapers-analysis -- <subcommand> [args]
 - `batch-difficulty -n <N> [--seeds <K>]` — Generate puzzles across a seed range and summarize the logic-solver difficulty distribution.
 - `target-yield -n <N> --difficulty <LEVEL> [--samples <K>] [--max-attempts <M>]` — Measure how often the generator hits a target difficulty under a per-seed `max_attempts` budget.
 - `technique-necessity -n <N> --difficulty <LEVEL> --disable <T1,T2,...> [--samples <K>] [--max-attempts <M>]` — For puzzles generated at a target difficulty, measure what changes when the listed techniques are disabled in the logic solver. See the source for the caveat about top-level vs. nested step counting.
+- `explain -n <N> --seed <SEED> [--difficulty <LEVEL>] [--disable <T1,T2,...>]` — Reproduce a single puzzle (same generation as `skyscrapers-cli generate`) and print its logic trace and difficulty, optionally with techniques disabled. Useful for "what solves this puzzle if technique X is removed?".
+- `report [--samples <K>] [--yield-attempts <M>] [--necessity-attempts <M>]` — Run the full suite and emit the data-driven sections of `docs/logic-solver-analysis.md` as Markdown (Target Yield, Technique Necessity, Batch Test Results, Technique Usage). Progress goes to stderr so stdout stays clean Markdown.
 
 ## Example
 
@@ -21,6 +23,13 @@ Re-run the technique-necessity sweep for Hard at n=7 with `NakedSets` disabled:
 ```bash
 cargo run -p skyscrapers-analysis --release -- technique-necessity \
   -n 7 --difficulty hard --samples 200 --disable NakedSets
+```
+
+Regenerate the data tables in `docs/logic-solver-analysis.md` in one command (the hand-written prose around them is preserved manually):
+
+```bash
+cargo run -p skyscrapers-analysis --release -- report > /tmp/report.md
+# then splice the generated sections into docs/logic-solver-analysis.md
 ```
 
 Run `cargo run -p skyscrapers-analysis -- --help` for the full flag list on any subcommand.

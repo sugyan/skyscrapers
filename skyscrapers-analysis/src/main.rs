@@ -12,7 +12,7 @@ use rand_chacha::ChaCha20Rng;
 use skyscrapers_core::Puzzle;
 use skyscrapers_generator::{GeneratorParams, generate};
 use skyscrapers_solver::logic::analysis_hooks;
-use skyscrapers_solver::logic::difficulty::Technique;
+use skyscrapers_solver::logic::difficulty::{Action, Line, Reason, Step, Technique};
 use skyscrapers_solver::{Difficulty, LogicSolver};
 
 #[derive(Parser)]
@@ -94,6 +94,47 @@ enum Command {
         #[arg(long, value_delimiter = ',', required = true)]
         disable: Vec<String>,
     },
+
+    /// Reproduce a single puzzle (by seed/n/difficulty, same as the CLI
+    /// `generate`) and print its logic-solver trace and difficulty, optionally
+    /// with some techniques disabled. Useful for asking "what solves this
+    /// puzzle if technique X is taken away?".
+    Explain {
+        /// Grid size (1-9)
+        #[arg(short, long, default_value_t = 7, value_parser = clap::value_parser!(u64).range(1..=9))]
+        n: u64,
+
+        /// RNG seed (must match the seed used with the CLI `generate`)
+        #[arg(long)]
+        seed: u64,
+
+        /// Target difficulty (must match what was used with `generate`)
+        #[arg(long)]
+        difficulty: Option<Difficulty>,
+
+        /// Comma-separated technique names to disable, e.g. `XyChain`
+        #[arg(long, value_delimiter = ',')]
+        disable: Vec<String>,
+    },
+
+    /// Run the full analysis suite and emit the data-driven sections of
+    /// `docs/logic-solver-analysis.md` as Markdown (Target Yield, Technique
+    /// Necessity, Batch Test Results, Technique Usage). Per-seed dumps and
+    /// the interpretive prose are intentionally not generated. Redirect to
+    /// refresh the doc's tables in one reproducible command.
+    Report {
+        /// Number of seeds per cell (must be >= 1).
+        #[arg(long, default_value_t = 100, value_parser = clap::value_parser!(u64).range(1..))]
+        samples: u64,
+
+        /// Max generation attempts per seed for target-driven runs.
+        #[arg(long, default_value_t = 300)]
+        yield_attempts: usize,
+
+        /// Max generation attempts per seed for technique-necessity runs.
+        #[arg(long, default_value_t = 500)]
+        necessity_attempts: usize,
+    },
 }
 
 fn main() {
@@ -113,6 +154,17 @@ fn main() {
             max_attempts,
             disable,
         } => technique_necessity(n as usize, difficulty, samples, max_attempts, &disable),
+        Command::Explain {
+            n,
+            seed,
+            difficulty,
+            disable,
+        } => explain(n as usize, seed, difficulty, &disable),
+        Command::Report {
+            samples,
+            yield_attempts,
+            necessity_attempts,
+        } => report(samples, yield_attempts, necessity_attempts),
     }
 }
 
@@ -366,4 +418,433 @@ fn technique_necessity(
     println!("  still_solved_easier:  {still_solved_easier}");
     println!("  still_solved_harder:  {still_solved_harder}");
     println!("  became_unsolvable:    {became_unsolvable}");
+}
+
+/// Difficulty tiers in ascending order, for table columns.
+const ALL_DIFFICULTIES: [Difficulty; 5] = [
+    Difficulty::Easy,
+    Difficulty::Medium,
+    Difficulty::Hard,
+    Difficulty::Expert,
+    Difficulty::Master,
+];
+
+/// Techniques in a stable display order for the usage tables.
+const TECHNIQUE_ROWS: [Technique; 13] = [
+    Technique::NakedSingles,
+    Technique::CluePruning,
+    Technique::HiddenSingles,
+    Technique::SimplePermutation,
+    Technique::VisibilityAnalysis,
+    Technique::PermutationEnumeration,
+    Technique::NakedSets,
+    Technique::XyChain,
+    Technique::AlsXz,
+    Technique::XWing,
+    Technique::SimpleForcingChain,
+    Technique::FullForcingChain,
+    Technique::DualCluePermutation,
+];
+
+/// Unseeded batch aggregates for one size (no per-seed records — `report`
+/// only needs the totals). Mirrors the generation used by `batch_difficulty`.
+struct BatchTotals {
+    counts: BTreeMap<Difficulty, usize>,
+    unsolved: usize,
+    gen_failed: usize,
+    tech_puzzles: BTreeMap<Technique, usize>,
+    tech_steps: BTreeMap<Technique, usize>,
+}
+
+impl BatchTotals {
+    /// Puzzles actually generated (solved into a tier or left unsolved).
+    fn generated(&self) -> usize {
+        self.counts.values().sum::<usize>() + self.unsolved
+    }
+}
+
+fn report_batch(n: usize, samples: u64) -> BatchTotals {
+    let mut totals = BatchTotals {
+        counts: Default::default(),
+        unsolved: 0,
+        gen_failed: 0,
+        tech_puzzles: Default::default(),
+        tech_steps: Default::default(),
+    };
+    for seed in 0..samples {
+        let mut rng = ChaCha20Rng::seed_from_u64(seed);
+        let params = GeneratorParams::new(n);
+        let Ok((puzzle, _sol)) = generate(&mut rng, &params) else {
+            totals.gen_failed += 1;
+            continue;
+        };
+        let res = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        let techs: BTreeSet<Technique> = res.steps.iter().map(|s| s.technique).collect();
+        for t in &techs {
+            *totals.tech_puzzles.entry(*t).or_default() += 1;
+        }
+        for step in &res.steps {
+            *totals.tech_steps.entry(step.technique).or_default() += 1;
+        }
+        match res.difficulty {
+            Some(d) => *totals.counts.entry(d).or_default() += 1,
+            None => totals.unsolved += 1,
+        }
+    }
+    totals
+}
+
+/// Number of seeds for which the generator reached the target difficulty.
+fn report_yield(n: usize, difficulty: Difficulty, samples: u64, max_attempts: usize) -> u64 {
+    (0..samples)
+        .filter(|seed| {
+            let mut rng = ChaCha20Rng::seed_from_u64(*seed);
+            let params = GeneratorParams::new(n)
+                .with_target_difficulty(difficulty)
+                .with_max_attempts(max_attempts);
+            generate(&mut rng, &params).is_ok()
+        })
+        .count() as u64
+}
+
+/// `(tested, used, harder, unsolvable)` counts for disabling `disabled` on
+/// puzzles generated at `difficulty`. Mirrors `technique_necessity` without
+/// printing. Seeds whose target-driven generation fails are skipped, so
+/// `tested` may be < `samples` (the effective denominator for the other
+/// counts); the caller surfaces this.
+fn report_necessity(
+    n: usize,
+    difficulty: Difficulty,
+    samples: u64,
+    max_attempts: usize,
+    disabled: &[Technique],
+) -> (u64, u64, u64, u64) {
+    let (mut tested, mut used, mut harder, mut unsolvable) = (0u64, 0u64, 0u64, 0u64);
+    for seed in 0..samples {
+        let mut rng = ChaCha20Rng::seed_from_u64(seed);
+        let params = GeneratorParams::new(n)
+            .with_target_difficulty(difficulty)
+            .with_max_attempts(max_attempts);
+        let Ok((puzzle, _sol)) = generate(&mut rng, &params) else {
+            continue;
+        };
+        tested += 1;
+        let (base_diff, base_techs) = solve_baseline(&puzzle);
+        if disabled.iter().any(|t| base_techs.contains(t)) {
+            used += 1;
+        }
+        match (base_diff, solve_with_disabled(&puzzle, disabled)) {
+            (Some(b), Some(a)) if a > b => harder += 1,
+            (Some(_), None) => unsolvable += 1,
+            _ => {}
+        }
+    }
+    (tested, used, harder, unsolvable)
+}
+
+fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
+    let sizes = [4usize, 5, 6, 7];
+    // Generation/solve is fast for small n but the n=7 target-driven runs are
+    // the slow part; surface progress on stderr so a redirected stdout stays
+    // clean Markdown.
+    eprintln!("running batch ({} seeds/size)…", samples);
+    let batches: Vec<(usize, BatchTotals)> = sizes
+        .iter()
+        .map(|&n| (n, report_batch(n, samples)))
+        .collect();
+
+    println!(
+        "## Target Yield (seeds 0-{}, {} seeds per (size, target))\n",
+        samples - 1,
+        samples
+    );
+    println!(
+        "Generator success rate when a target difficulty is requested with\n`max_attempts={yield_attempts}` per seed.\n"
+    );
+    println!("| n | easy | medium | hard | expert | master |");
+    println!("|---|------|--------|------|--------|--------|");
+    for &n in &sizes {
+        eprintln!("yield n={n}…");
+        let cells: Vec<String> = ALL_DIFFICULTIES
+            .iter()
+            .map(|&d| report_yield(n, d, samples, yield_attempts).to_string())
+            .collect();
+        println!("| {n} | {} |", cells.join(" | "));
+    }
+
+    println!("\n## Technique Necessity (target-driven, {samples} seeds per cell)\n");
+    println!(
+        "Each cell shows `used / harder / unsolvable` for puzzles generated at\nthe target difficulty and re-solved with the technique disabled\n(`max_attempts={necessity_attempts}`). Counts are over the seeds that\nsuccessfully generated a puzzle at the target — failed seeds are skipped,\nso the per-cell denominator is the matching Target Yield above (every\nseed, for the tiers shown here). `used` counts only techniques that\nsurface as top-level solve steps; a technique firing solely inside\nforcing-chain propagation is not counted (the `harder`/`unsolvable`\noutcomes are unaffected).\n"
+    );
+    let nec_sizes = [5usize, 6, 7];
+    let nec_tiers = [Difficulty::Hard, Difficulty::Expert, Difficulty::Master];
+    let nec_techs = [
+        Technique::XyChain,
+        Technique::AlsXz,
+        Technique::DualCluePermutation,
+    ];
+    let mut nec_genfail = 0u64;
+    for tech in nec_techs {
+        println!("### Disable {tech:?}\n");
+        println!("| n | hard | expert | master |");
+        println!("|---|------|--------|--------|");
+        for &n in &nec_sizes {
+            eprintln!("necessity {tech:?} n={n}…");
+            let cells: Vec<String> = nec_tiers
+                .iter()
+                .map(|&d| {
+                    let (tested, u, h, x) =
+                        report_necessity(n, d, samples, necessity_attempts, &[tech]);
+                    // Generation failures depend only on (n, tier), not on the
+                    // disabled technique, so count them once (first tech pass)
+                    // rather than once per section.
+                    if tech == nec_techs[0] {
+                        nec_genfail += samples - tested;
+                    }
+                    format!("{u}/{h}/{x}")
+                })
+                .collect();
+            println!("| {n} | {} |", cells.join(" | "));
+        }
+        println!();
+    }
+    if nec_genfail > 0 {
+        println!(
+            "> Note: {nec_genfail} seed(s) failed target generation and were\n> excluded, so those cells are out of fewer than {samples} seeds.\n"
+        );
+    }
+
+    println!(
+        "## Batch Test Results (seeds 0-{}, {} seeds per size)\n",
+        samples - 1,
+        samples
+    );
+    println!("| n | Easy | Medium | Hard | Expert | Master | Unsolved | Success |");
+    println!("|---|------|--------|------|--------|--------|----------|---------|");
+    let mut batch_genfail = 0usize;
+    for (n, b) in &batches {
+        batch_genfail += b.gen_failed;
+        let tier_cells: Vec<String> = ALL_DIFFICULTIES
+            .iter()
+            .map(|d| b.counts.get(d).copied().unwrap_or(0).to_string())
+            .collect();
+        // Denominator is puzzles actually generated, so a generation failure
+        // can't silently inflate the success rate.
+        let generated = b.generated();
+        let solved = generated - b.unsolved;
+        let pct = if generated == 0 {
+            0.0
+        } else {
+            solved as f64 / generated as f64 * 100.0
+        };
+        println!(
+            "| {n} | {} | {} | {:.0}% |",
+            tier_cells.join(" | "),
+            b.unsolved,
+            pct
+        );
+    }
+    if batch_genfail > 0 {
+        println!(
+            "\n> Note: {batch_genfail} seed(s) failed generation and are excluded;\n> Success is over puzzles actually generated, not all {samples} seeds."
+        );
+    }
+
+    print_usage_table("total step count", samples, &batches, &sizes, |b| {
+        &b.tech_steps
+    });
+    print_usage_table(
+        "puzzles in which it appears",
+        samples,
+        &batches,
+        &sizes,
+        |b| &b.tech_puzzles,
+    );
+    eprintln!("done.");
+}
+
+fn print_usage_table(
+    title: &str,
+    samples: u64,
+    batches: &[(usize, BatchTotals)],
+    sizes: &[usize],
+    pick: impl Fn(&BatchTotals) -> &BTreeMap<Technique, usize>,
+) {
+    println!("\n## Technique Usage ({title} across {samples} seeds per size)\n");
+    let header: Vec<String> = sizes.iter().map(|n| format!("n={n}")).collect();
+    println!("| Technique | {} |", header.join(" | "));
+    println!("|-----------|{}", "-----|".repeat(sizes.len()));
+    for tech in TECHNIQUE_ROWS {
+        let cells: Vec<String> = batches
+            .iter()
+            .map(|(_, b)| match pick(b).get(&tech).copied().unwrap_or(0) {
+                0 => "—".to_string(),
+                v => v.to_string(),
+            })
+            .collect();
+        println!("| {tech:?} | {} |", cells.join(" | "));
+    }
+}
+
+fn explain(n: usize, seed: u64, difficulty: Option<Difficulty>, disable: &[String]) {
+    let disabled = match parse_techniques(disable) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(2);
+        }
+    };
+
+    // Reproduce the puzzle exactly as `skyscrapers-cli generate` would.
+    let mut rng = ChaCha20Rng::seed_from_u64(seed);
+    let mut params = GeneratorParams::new(n);
+    if let Some(d) = difficulty {
+        params = params.with_target_difficulty(d);
+    }
+    let (puzzle, _sol) = match generate(&mut rng, &params) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("error: generation failed: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    println!("{puzzle}");
+    let disabled_str: Vec<String> = disabled.iter().map(|t| format!("{t:?}")).collect();
+    println!(
+        "\n=== Logic trace (n={n}, seed={seed}, disable=[{}]) ===",
+        disabled_str.join(", ")
+    );
+
+    let result = {
+        let _guard = DisabledTechniquesGuard::new(&disabled);
+        LogicSolver.solve_with_difficulty(&puzzle, 1)
+    };
+
+    // Per-technique step tally and the longest XY-Chain seen, so the trade-off
+    // between "removed XY-Chain" and "what replaced it" is visible at a glance.
+    let mut tech_steps: BTreeMap<Technique, usize> = Default::default();
+    let mut max_xy_len = 0usize;
+    for step in &result.steps {
+        *tech_steps.entry(step.technique).or_default() += 1;
+        if let Reason::XyChainElimination { chain, .. } = &step.reason {
+            max_xy_len = max_xy_len.max(chain.len());
+        }
+        println!("{}", format_step(step));
+    }
+
+    println!("\n=== Summary ===");
+    match result.difficulty {
+        Some(d) => println!("  difficulty: {d}  ({} steps)", result.steps.len()),
+        None => println!(
+            "  difficulty: UNSOLVABLE  (stuck after {} steps)",
+            result.steps.len()
+        ),
+    }
+    if max_xy_len > 0 {
+        println!("  longest XY-Chain: {max_xy_len} cells");
+    }
+    println!("  technique step counts:");
+    let mut v: Vec<_> = tech_steps.iter().collect();
+    v.sort_by(|a, b| b.1.cmp(a.1));
+    for (t, c) in v {
+        println!("    {t:?}: {c}");
+    }
+}
+
+/// 1-based `RrCc` cell label, matching the CLI trace's convention.
+fn cell_label(row: usize, col: usize) -> String {
+    format!("R{}C{}", row + 1, col + 1)
+}
+
+fn line_label(line: &Line) -> String {
+    match line {
+        Line::Row(r) => format!("Row {}", r + 1),
+        Line::Col(c) => format!("Col {}", c + 1),
+    }
+}
+
+/// Compact one-line rendering of a step: technique, actions, and a brief
+/// reason. Enough detail to follow the solve and spot chain lengths without
+/// reusing the CLI's (private) formatter.
+fn format_step(step: &Step) -> String {
+    let actions: Vec<String> = step
+        .actions
+        .iter()
+        .map(|a| match a {
+            Action::Place { row, col, value } => format!("{value}@{}", cell_label(*row, *col)),
+            Action::Eliminate { row, col, value } => format!("-{value} {}", cell_label(*row, *col)),
+        })
+        .collect();
+
+    let reason = match &step.reason {
+        Reason::XyChainElimination {
+            chain,
+            eliminated_value,
+        } => {
+            let path: Vec<String> = chain.iter().map(|(r, c)| cell_label(*r, *c)).collect();
+            format!(
+                "XY-Chain len={} ({}) elim {eliminated_value}",
+                chain.len(),
+                path.join("->")
+            )
+        }
+        Reason::SingleCandidate { row, col } => {
+            format!("naked single {}", cell_label(*row, *col))
+        }
+        Reason::UniqueInLine { line, value } => {
+            format!("hidden single {value} in {}", line_label(line))
+        }
+        Reason::SetInLine { line, values, .. } => {
+            format!("naked set {values:?} in {}", line_label(line))
+        }
+        Reason::FishPattern { value, .. } => format!("fish on {value}"),
+        Reason::PermutationElimination { line, .. } => {
+            format!("permutation in {}", line_label(line))
+        }
+        Reason::DualCluePermutationElimination { line, .. } => {
+            format!("dual-clue permutation in {}", line_label(line))
+        }
+        Reason::AlsXzElimination {
+            als_a,
+            als_b,
+            rcc_value,
+            eliminated_value,
+        } => {
+            let fmt_als = |als: &[(usize, usize)]| -> String {
+                als.iter()
+                    .map(|(r, c)| cell_label(*r, *c))
+                    .collect::<Vec<_>>()
+                    .join("+")
+            };
+            // Wing patterns are tiny ALS-XZ: |A|=|B|=1 is an XY-Wing, and
+            // |A|+|B|=3 (one bivalue, one size-2 ALS) is an XYZ/W-Wing. Tag
+            // the size so we can tell Hard-tier wings from genuine Expert ALS.
+            let tag = match (als_a.len(), als_b.len()) {
+                (1, 1) => " [XY-Wing-sized]",
+                (1, 2) | (2, 1) => " [XYZ/W-Wing-sized]",
+                _ => "",
+            };
+            format!(
+                "ALS-XZ |A|={} |B|={} rcc={rcc_value} elim {eliminated_value} (A={}, B={}){tag}",
+                als_a.len(),
+                als_b.len(),
+                fmt_als(als_a),
+                fmt_als(als_b),
+            )
+        }
+        Reason::ForcingChainElimination {
+            assumed_cell,
+            assumed_value,
+        } => format!(
+            "forcing chain {}={assumed_value}",
+            cell_label(assumed_cell.0, assumed_cell.1)
+        ),
+        Reason::InitialClueConstraint { .. } => "initial clue pruning".to_string(),
+        Reason::VisibilityForcing { line, .. } => {
+            format!("visibility forcing in {}", line_label(line))
+        }
+    };
+
+    format!("[{:?}] {}  ({reason})", step.technique, actions.join(", "))
 }

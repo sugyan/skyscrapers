@@ -2,9 +2,14 @@ use crate::logic::difficulty::{Action, Reason, Step, Technique};
 use crate::logic::state::{SolveState, sees};
 use crate::logic::techniques::TechniqueResult;
 
-/// Bound on chain length. Skyscrapers is on n ≤ 9, so the bivalue graph stays
-/// tiny, but the cap protects against pathological backtracking on large n.
-const MAX_CHAIN_LENGTH: usize = 12;
+/// Bound on chain length. Capped at 3 so this technique only finds the classic
+/// XY-Wing (pivot + two wings). Longer bivalue chains are *not* searched here:
+/// their deductions are equivalent to ALS-XZ over larger almost-locked sets and
+/// require the same "if this then … then contradiction" mental trace as a
+/// forcing chain, so we let them fall through to the Expert-tier `AlsXz`
+/// technique rather than crediting them as Hard. (Length 2 = naked pair, handled
+/// by `NakedSets`.)
+const MAX_CHAIN_LENGTH: usize = 3;
 
 /// XY-Chain: chain of bivalue cells `A₁, A₂, …, Aₖ` whose endpoints both
 /// contain value `x` and whose adjacent cells share a row or column with
@@ -181,15 +186,65 @@ mod tests {
     }
 
     #[test]
-    fn finds_chain_of_length_4() {
-        // Reproduce the n=4 seed=20260506 hard puzzle's mid-solve state, but on
-        // a 5x5 board with manually planted candidates so we can exercise the
-        // chain in isolation:
+    fn finds_xy_wing() {
+        // Classic XY-Wing (a length-3 chain):
+        //
+        //   wing R1C2 {1,3} —col2— … no; build it as a chain through the pivot:
+        //   R1C2 {1,3} —row1— R1C1 {1,2} —col1— R2C1 {2,3}
+        //
+        //   Endpoints R1C2 and R2C1 both carry x = 3. Cell R2C2 sees R1C2
+        //   (col 2) and R2C1 (row 2), so 3 is eliminated from R2C2.
+
+        let board = Board::new_empty(5);
+        let clues = Clues::new_all_none(5);
+        let puzzle = Puzzle { board, clues };
+        let mut state = SolveState::new(&puzzle).unwrap();
+
+        let pair = |a: u8, b: u8| Candidates::single(a).union(Candidates::single(b));
+        let i01 = state.idx(0, 1);
+        let i00 = state.idx(0, 0);
+        let i10 = state.idx(1, 0);
+        let i11 = state.idx(1, 1);
+        state.candidates[i01] = pair(1, 3); // wing
+        state.candidates[i00] = pair(1, 2); // pivot
+        state.candidates[i10] = pair(2, 3); // wing
+        // R2C2 is the cell that sees both wings; it must still contain 3.
+        assert!(state.candidates[i11].contains(3));
+
+        let result = apply(&mut state);
+        match result {
+            TechniqueResult::Progress(step) => {
+                assert_eq!(step.technique, Technique::XyChain);
+                let has_target = step.actions.iter().any(|a| {
+                    matches!(
+                        a,
+                        Action::Eliminate {
+                            row: 1,
+                            col: 1,
+                            value: 3,
+                        }
+                    )
+                });
+                assert!(has_target, "Expected -3 from R2C2, got: {:?}", step.actions);
+            }
+            _ => panic!("Expected XY-Wing to find a pattern"),
+        }
+    }
+
+    #[test]
+    fn does_not_find_length_4_chain() {
+        // The same configuration the old `finds_chain_of_length_4` test used —
+        // a length-4 bivalue chain whose only elimination needs all four cells.
+        // With `MAX_CHAIN_LENGTH = 3` this is now intentionally *not* found:
+        // `XyChain` no longer searches chains longer than the XY-Wing.
         //
         //   R1C1 {2,3} —col1— R3C1 {1,2} —row3— R3C3 {1,2} —col3— R4C3 {2,3}
+        //   would eliminate 3 from R4C1, but no shorter sub-chain does.
         //
-        //   Endpoint x = 3. Cell R4C1 sees R1C1 (col 1) and R4C3 (row 4),
-        //   so 3 must be eliminated from R4C1.
+        // (In a real solve a length-4 chain typically coincides with a size-2
+        // ALS-XZ and is recovered there at Expert; this synthetic fixture uses
+        // two identical {1,2} cells — a naked pair, not an ALS — so it just
+        // exercises the length cap in isolation.)
 
         let board = Board::new_empty(5);
         let clues = Clues::new_all_none(5);
@@ -201,31 +256,14 @@ mod tests {
         let i20 = state.idx(2, 0);
         let i22 = state.idx(2, 2);
         let i32 = state.idx(3, 2);
-        let i30 = state.idx(3, 0);
         state.candidates[i00] = pair(2, 3);
         state.candidates[i20] = pair(1, 2);
         state.candidates[i22] = pair(1, 2);
         state.candidates[i32] = pair(2, 3);
 
-        assert!(state.candidates[i30].contains(3));
-
-        let result = apply(&mut state);
-        match result {
-            TechniqueResult::Progress(step) => {
-                assert_eq!(step.technique, Technique::XyChain);
-                let has_target = step.actions.iter().any(|a| {
-                    matches!(
-                        a,
-                        Action::Eliminate {
-                            row: 3,
-                            col: 0,
-                            value: 3,
-                        }
-                    )
-                });
-                assert!(has_target, "Expected -3 from R4C1, got: {:?}", step.actions);
-            }
-            _ => panic!("Expected XY-Chain to find a pattern"),
-        }
+        assert!(
+            matches!(apply(&mut state), TechniqueResult::NoProgress),
+            "length-4 chain should no longer be found with MAX_CHAIN_LENGTH = 3"
+        );
     }
 }
