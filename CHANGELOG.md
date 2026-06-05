@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.1.3](https://github.com/sugyan/skyscrapers/compare/skyscrapers-tauri/v0.1.2...skyscrapers-tauri/v0.1.3) - 2026-06-05
+- Fix player-dist workflow after transport-neutral player refactor by @sugyan in https://github.com/sugyan/skyscrapers/pull/63
+- Cap XY-Chain at the XY-Wing and rank difficulty by tier by @sugyan in https://github.com/sugyan/skyscrapers/pull/64
+- Adopt modern foo.rs module layout in skyscrapers-solver by @sugyan in https://github.com/sugyan/skyscrapers/pull/66
+
 ## [v0.1.2](https://github.com/sugyan/skyscrapers/compare/skyscrapers-tauri/v0.1.1...skyscrapers-tauri/v0.1.2) - 2026-06-01
 - Rename app to Skyscrapers, add themed icon, build macOS arm64-only by @sugyan in https://github.com/sugyan/skyscrapers/pull/61
 
