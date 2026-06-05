@@ -89,7 +89,10 @@ the target difficulty and re-solved with the technique disabled
 (`max_attempts=500`). Counts are over the seeds that successfully
 generated a puzzle at the target — failed seeds are skipped, so the
 per-cell denominator is the matching Target Yield above (every seed, for
-the tiers shown here).
+the tiers shown here). `used` counts only techniques that surface as
+top-level solve steps; a technique firing solely inside forcing-chain
+propagation is not counted (the `harder`/`unsolvable` outcomes are
+unaffected).
 
 ### Disable XyChain
 

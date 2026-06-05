@@ -101,7 +101,7 @@ enum Command {
     /// puzzle if technique X is taken away?".
     Explain {
         /// Grid size (1-9)
-        #[arg(short, default_value_t = 7, value_parser = clap::value_parser!(u64).range(1..=9))]
+        #[arg(short, long, default_value_t = 7, value_parser = clap::value_parser!(u64).range(1..=9))]
         n: u64,
 
         /// RNG seed (must match the seed used with the CLI `generate`)
@@ -574,7 +574,7 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
 
     println!("\n## Technique Necessity (target-driven, {samples} seeds per cell)\n");
     println!(
-        "Each cell shows `used / harder / unsolvable` for puzzles generated at\nthe target difficulty and re-solved with the technique disabled\n(`max_attempts={necessity_attempts}`). Counts are over the seeds that\nsuccessfully generated a puzzle at the target — failed seeds are skipped,\nso the per-cell denominator is the matching Target Yield above (every\nseed, for the tiers shown here).\n"
+        "Each cell shows `used / harder / unsolvable` for puzzles generated at\nthe target difficulty and re-solved with the technique disabled\n(`max_attempts={necessity_attempts}`). Counts are over the seeds that\nsuccessfully generated a puzzle at the target — failed seeds are skipped,\nso the per-cell denominator is the matching Target Yield above (every\nseed, for the tiers shown here). `used` counts only techniques that\nsurface as top-level solve steps; a technique firing solely inside\nforcing-chain propagation is not counted (the `harder`/`unsolvable`\noutcomes are unaffected).\n"
     );
     let nec_sizes = [5usize, 6, 7];
     let nec_tiers = [Difficulty::Hard, Difficulty::Expert, Difficulty::Master];
