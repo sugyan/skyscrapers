@@ -22,6 +22,7 @@ Applies human-traceable techniques in order of difficulty. Does not use backtrac
 | VisibilityAnalysis | Medium | Clue visibility count forces a monotonic prefix |
 | NakedSets | Hard | k cells in a line sharing exactly k candidates |
 | XWing / Swordfish | Hard | Fish pattern elimination (k=2, k=3) |
+| PrefixPermutation | Hard | Forward (prefix-only) visibility: cells up to the target fix how many buildings are visible so far, ruling out values that make the clue unreachable |
 | ALS-XZ | Hard | Two almost locked sets with a restricted common candidate |
 | PermutationEnumeration | Expert | Enumerate valid permutations for a single clue |
 | DualCluePermutation | Expert | Enumerate permutations using both opposing clues |

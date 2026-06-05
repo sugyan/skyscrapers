@@ -288,6 +288,7 @@ fn parse_techniques(names: &[String]) -> Result<Vec<Technique>, String> {
                 "xwing" => Ok(Technique::XWing),
                 "xychain" => Ok(Technique::XyChain),
                 "alsxz" => Ok(Technique::AlsXz),
+                "prefixpermutation" => Ok(Technique::PrefixPermutation),
                 "permutationenumeration" => Ok(Technique::PermutationEnumeration),
                 "simplepermutation" => Ok(Technique::SimplePermutation),
                 "dualcluepermutation" => Ok(Technique::DualCluePermutation),
@@ -430,10 +431,11 @@ const ALL_DIFFICULTIES: [Difficulty; 5] = [
 ];
 
 /// Techniques in a stable display order for the usage tables.
-const TECHNIQUE_ROWS: [Technique; 13] = [
+const TECHNIQUE_ROWS: [Technique; 14] = [
     Technique::NakedSingles,
     Technique::CluePruning,
     Technique::HiddenSingles,
+    Technique::PrefixPermutation,
     Technique::SimplePermutation,
     Technique::VisibilityAnalysis,
     Technique::PermutationEnumeration,

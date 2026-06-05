@@ -32,6 +32,7 @@ pub enum Technique {
     XWing,
     XyChain,
     AlsXz,
+    PrefixPermutation,
     SimplePermutation,
     PermutationEnumeration,
     DualCluePermutation,
@@ -45,9 +46,11 @@ impl Technique {
         match self {
             Self::NakedSingles | Self::HiddenSingles => Difficulty::Easy,
             Self::CluePruning | Self::VisibilityAnalysis => Difficulty::Medium,
-            Self::NakedSets | Self::XWing | Self::XyChain | Self::SimplePermutation => {
-                Difficulty::Hard
-            }
+            Self::NakedSets
+            | Self::XWing
+            | Self::XyChain
+            | Self::PrefixPermutation
+            | Self::SimplePermutation => Difficulty::Hard,
             Self::AlsXz | Self::PermutationEnumeration | Self::DualCluePermutation => {
                 Difficulty::Expert
             }

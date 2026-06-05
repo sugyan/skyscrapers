@@ -15,6 +15,7 @@ export const TECHNIQUE_LABELS: Record<Technique, string> = {
   "x-wing": "X-Wing",
   "xy-chain": "XY-Chain",
   "als-xz": "ALS-XZ",
+  "prefix-permutation": "Prefix Permutation",
   "simple-permutation": "Simple Permutation",
   "permutation-enumeration": "Permutation Enumeration",
   "dual-clue-permutation": "Dual-Clue Permutation",
@@ -37,6 +38,8 @@ export const TECHNIQUE_DESCRIPTIONS: Record<Technique, string> = {
     "A chain of cells with exactly two candidates each forces a value into one endpoint, so cells sharing a row or column with both ends can drop it.",
   "als-xz":
     "Two cell groups, each one short of being locked to a fixed set of values, share a common value, letting another shared value be eliminated from cells that share a row or column with both groups.",
+  "prefix-permutation":
+    "Reading out from an edge clue, the cells up to this one already fix how many buildings are visible so far. If every way of filling them makes the clue's count unreachable, the value is ruled out.",
   "simple-permutation":
     "Only one row/column permutation matches the clue, fixing some cells.",
   "permutation-enumeration":
@@ -151,7 +154,7 @@ export function reasonText(hint: HintResult): string {
     case "fish-pattern":
       return `Fish pattern on value ${reason.value}: candidates in ${reason.base_lines.map(lineLabel).join(", ")} are covered by ${reason.cover_lines.map(lineLabel).join(", ")}.`;
     case "permutation-elimination":
-      return `Permutation enumeration on ${lineLabel(reason.line)} (${cluePositionLabel(reason.clue)}) rules out the eliminated candidates.`;
+      return `Permutation reasoning on ${lineLabel(reason.line)} (${cluePositionLabel(reason.clue)}) rules out the eliminated candidates.`;
     case "dual-clue-permutation-elimination":
       return `Combining ${cluePositionLabel(reason.clue_a)} and ${cluePositionLabel(reason.clue_b)} on ${lineLabel(reason.line)} rules out the eliminated candidates.`;
     case "xy-chain-elimination": {
