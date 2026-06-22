@@ -1,5 +1,5 @@
 import type { Puzzle } from "../state/types";
-import type { GenerateResult } from "./types";
+import type { Difficulty, GenerateResult } from "./types";
 
 /**
  * Transport-neutral JSON shape returned by Rust's `generate_puzzle`,
@@ -22,6 +22,12 @@ export interface PuzzleResult {
     };
   };
   solution: { n: number; cells: number[][] };
+  /**
+   * The difficulty the solver rated the generated puzzle at. Absent/`undefined`
+   * (serde-wasm-bindgen serializes `None` as `undefined`) or `null` (Tauri IPC)
+   * when the puzzle is harder than the logic solver can rate.
+   */
+  difficulty?: Difficulty | null;
 }
 
 /** Convert a raw Rust-side puzzle result into the player's domain `Puzzle`. */
@@ -43,5 +49,5 @@ export function convertPuzzleResult(raw: PuzzleResult): GenerateResult {
       right: wp.clues.right.map((v) => v ?? null),
     },
   };
-  return { puzzle, solution: ws.cells };
+  return { puzzle, solution: ws.cells, difficulty: raw.difficulty ?? null };
 }

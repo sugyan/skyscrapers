@@ -13,6 +13,9 @@ use skyscrapers_solver::{Difficulty, LogicSolver, logic::difficulty::Step};
 struct PuzzleResult {
     puzzle: Puzzle,
     solution: Solution,
+    /// The difficulty the logic solver rated the generated puzzle at.
+    /// `None` when the puzzle is harder than the logic solver can rate.
+    difficulty: Option<Difficulty>,
 }
 
 /// Generate a Skyscrapers puzzle of size `n` with the given `seed`.
@@ -42,10 +45,14 @@ pub fn generate_puzzle(n: u8, seed: u64, difficulty: Option<String>) -> Result<J
     if let Some(d) = parsed_difficulty {
         params = params.with_target_difficulty(d);
     }
-    let (puzzle, solution) =
+    let (puzzle, solution, difficulty) =
         generate(&mut rng, &params).map_err(|e| JsError::new(&e.to_string()))?;
 
-    let result = PuzzleResult { puzzle, solution };
+    let result = PuzzleResult {
+        puzzle,
+        solution,
+        difficulty,
+    };
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsError::new(&e.to_string()))
 }
 

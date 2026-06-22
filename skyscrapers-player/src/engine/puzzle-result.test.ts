@@ -115,4 +115,67 @@ describe("convertPuzzleResult", () => {
     expect(result.puzzle.clues.left).toEqual([null, null, null]);
     expect(result.puzzle.clues.right).toEqual([3, null, null]);
   });
+
+  it("passes through the rated difficulty", () => {
+    const raw = {
+      puzzle: {
+        board: {
+          n: 2,
+          cells: [
+            [1, null],
+            [null, 2],
+          ],
+        },
+        clues: {
+          n: 2,
+          top: [null, null],
+          bottom: [null, null],
+          left: [null, null],
+          right: [null, null],
+        },
+      },
+      solution: {
+        n: 2,
+        cells: [
+          [1, 2],
+          [2, 1],
+        ],
+      },
+      difficulty: "hard" as const,
+    };
+
+    expect(convertPuzzleResult(raw).difficulty).toBe("hard");
+  });
+
+  it("normalizes a missing/undefined difficulty to null", () => {
+    const raw = {
+      puzzle: {
+        board: {
+          n: 2,
+          cells: [
+            [1, null],
+            [null, 2],
+          ],
+        },
+        clues: {
+          n: 2,
+          top: [null, null],
+          bottom: [null, null],
+          left: [null, null],
+          right: [null, null],
+        },
+      },
+      solution: {
+        n: 2,
+        cells: [
+          [1, 2],
+          [2, 1],
+        ],
+      },
+      // difficulty omitted: serde-wasm-bindgen serializes Rust's `None` as
+      // `undefined` when the puzzle is harder than the logic solver can rate.
+    };
+
+    expect(convertPuzzleResult(raw).difficulty).toBeNull();
+  });
 });

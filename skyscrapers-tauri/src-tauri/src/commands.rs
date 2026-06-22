@@ -12,6 +12,9 @@ use skyscrapers_solver::{Difficulty, LogicSolver, logic::difficulty::Step};
 pub struct PuzzleResult {
     puzzle: Puzzle,
     solution: Solution,
+    /// The difficulty the logic solver rated the generated puzzle at.
+    /// `None` when the puzzle is harder than the logic solver can rate.
+    difficulty: Option<Difficulty>,
 }
 
 #[derive(Serialize)]
@@ -48,9 +51,13 @@ pub fn generate_puzzle(
         params = params.with_target_difficulty(d);
     }
 
-    let (puzzle, solution) = generate(&mut rng, &params).map_err(|e| e.to_string())?;
+    let (puzzle, solution, difficulty) = generate(&mut rng, &params).map_err(|e| e.to_string())?;
 
-    Ok(PuzzleResult { puzzle, solution })
+    Ok(PuzzleResult {
+        puzzle,
+        solution,
+        difficulty,
+    })
 }
 
 #[tauri::command]

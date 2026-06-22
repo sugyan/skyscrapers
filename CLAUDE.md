@@ -74,7 +74,7 @@ The generator has two stages:
 
 - `solution_from_latin_square(ls) -> Solution` — converts 0-based LatinSquare to 1-based Solution
 - `derive_clues(solution) -> Clues` — computes all clue numbers from a solution
-- `generate(rng, params) -> Puzzle` — end-to-end puzzle generation (Stage A + B)
+- `generate(rng, params) -> Result<(Puzzle, Solution, Option<Difficulty>), GenerateError>` — end-to-end puzzle generation (Stage A + B). The third element is the difficulty the logic solver rated the generated puzzle at (`None` when the puzzle is harder than the logic solver can rate, only possible without a target difficulty)
 - `GeneratorParams` — configuration: `n`, `solver`, `sampler_params`. `new(n, solver)` uses default sampler params
 
 ## Implementation Status

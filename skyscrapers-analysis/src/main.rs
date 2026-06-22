@@ -177,7 +177,7 @@ fn batch_difficulty(n: usize, seeds: u64) {
     for seed in 0..seeds {
         let mut rng = ChaCha20Rng::seed_from_u64(seed);
         let params = GeneratorParams::new(n);
-        let (puzzle, _sol) = match generate(&mut rng, &params) {
+        let (puzzle, _sol, _diff) = match generate(&mut rng, &params) {
             Ok(v) => v,
             Err(_) => {
                 println!("seed={seed:>3}  gen_err");
@@ -362,7 +362,7 @@ fn technique_necessity(
         let params = GeneratorParams::new(n)
             .with_target_difficulty(difficulty)
             .with_max_attempts(max_attempts);
-        let (puzzle, _sol) = match generate(&mut rng, &params) {
+        let (puzzle, _sol, _diff) = match generate(&mut rng, &params) {
             Ok(v) => v,
             Err(_) => {
                 gen_failed += 1;
@@ -474,7 +474,7 @@ fn report_batch(n: usize, samples: u64) -> BatchTotals {
     for seed in 0..samples {
         let mut rng = ChaCha20Rng::seed_from_u64(seed);
         let params = GeneratorParams::new(n);
-        let Ok((puzzle, _sol)) = generate(&mut rng, &params) else {
+        let Ok((puzzle, _sol, _diff)) = generate(&mut rng, &params) else {
             totals.gen_failed += 1;
             continue;
         };
@@ -525,7 +525,7 @@ fn report_necessity(
         let params = GeneratorParams::new(n)
             .with_target_difficulty(difficulty)
             .with_max_attempts(max_attempts);
-        let Ok((puzzle, _sol)) = generate(&mut rng, &params) else {
+        let Ok((puzzle, _sol, _diff)) = generate(&mut rng, &params) else {
             continue;
         };
         tested += 1;
@@ -701,7 +701,7 @@ fn explain(n: usize, seed: u64, difficulty: Option<Difficulty>, disable: &[Strin
     if let Some(d) = difficulty {
         params = params.with_target_difficulty(d);
     }
-    let (puzzle, _sol) = match generate(&mut rng, &params) {
+    let (puzzle, _sol, _diff) = match generate(&mut rng, &params) {
         Ok(v) => v,
         Err(e) => {
             eprintln!("error: generation failed: {e}");

@@ -20,7 +20,7 @@ use skyscrapers_generator::{generate, GeneratorParams};
 
 let mut rng = ChaCha20Rng::seed_from_u64(42);
 let params = GeneratorParams::new(5);
-let (puzzle, _solution) = generate(&mut rng, &params).expect("generation succeeds");
+let (puzzle, _solution, _difficulty) = generate(&mut rng, &params).expect("generation succeeds");
 println!("{puzzle}");
 ```
 
@@ -29,7 +29,7 @@ Key items:
 - `solution_from_latin_square(&LatinSquare) -> Solution` — converts a 0-based `LatinSquare` to a 1-based `Solution`.
 - `derive_clues(&Solution) -> Clues` — thin convenience wrapper around `Clues::from_solution`.
 - `GeneratorParams::new(n)` plus builders `with_solver`, `with_target_difficulty`, `with_max_attempts`.
-- `generate(rng, &params) -> Result<(Puzzle, Solution), GenerateError>`.
+- `generate(rng, &params) -> Result<(Puzzle, Solution, Option<Difficulty>), GenerateError>` — the third element is the difficulty the logic solver rated the generated puzzle at (`None` when it is harder than the logic solver can rate).
 
 ## WebAssembly
 
