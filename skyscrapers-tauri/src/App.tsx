@@ -118,6 +118,9 @@ function App() {
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
+    // Clear the previous label so a failed generation can't show the new seed
+    // alongside a stale difficulty from an earlier success.
+    setLastDifficulty(null);
     const target: Difficulty | null = difficulty || null;
     try {
       const seed = seedInput.trim()

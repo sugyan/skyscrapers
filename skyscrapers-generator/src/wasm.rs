@@ -24,7 +24,10 @@ struct PuzzleResult {
 /// "master"), the generator retries until the produced puzzle exactly matches
 /// that target difficulty.
 ///
-/// Returns a JS object with `puzzle` and `solution` fields.
+/// Returns a JS object with `puzzle`, `solution`, and `difficulty` fields.
+/// `difficulty` is the level the logic solver rated the generated puzzle at,
+/// omitted (`undefined`) when the puzzle is harder than the logic solver can
+/// rate (only possible when no target `difficulty` was requested).
 #[wasm_bindgen]
 pub fn generate_puzzle(n: u8, seed: u64, difficulty: Option<String>) -> Result<JsValue, JsError> {
     if !(1..=9).contains(&n) {
