@@ -48,13 +48,15 @@ pub fn generate_puzzle(n: u8, seed: u64, difficulty: Option<String>) -> Result<J
     if let Some(d) = parsed_difficulty {
         params = params.with_target_difficulty(d);
     }
-    let (puzzle, solution, difficulty) =
+    // Distinct from the `difficulty` parameter above (the requested target):
+    // this is the difficulty the solver rated the produced puzzle at.
+    let (puzzle, solution, rated_difficulty) =
         generate(&mut rng, &params).map_err(|e| JsError::new(&e.to_string()))?;
 
     let result = PuzzleResult {
         puzzle,
         solution,
-        difficulty,
+        difficulty: rated_difficulty,
     };
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsError::new(&e.to_string()))
 }

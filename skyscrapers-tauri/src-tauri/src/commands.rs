@@ -51,12 +51,15 @@ pub fn generate_puzzle(
         params = params.with_target_difficulty(d);
     }
 
-    let (puzzle, solution, difficulty) = generate(&mut rng, &params).map_err(|e| e.to_string())?;
+    // Distinct from the `difficulty` parameter above (the requested target):
+    // this is the difficulty the solver rated the produced puzzle at.
+    let (puzzle, solution, rated_difficulty) =
+        generate(&mut rng, &params).map_err(|e| e.to_string())?;
 
     Ok(PuzzleResult {
         puzzle,
         solution,
-        difficulty,
+        difficulty: rated_difficulty,
     })
 }
 
