@@ -147,11 +147,12 @@ fn greedy_remove<R: rand::Rng>(
         }
     }
 
-    let difficulty = if target_difficulty.is_some() {
-        LogicSolver.solve_with_difficulty(&puzzle, 1).difficulty
-    } else {
-        None
-    };
+    // Always rate the final puzzle so the caller learns its actual
+    // difficulty, even when no target was requested ("Any" generation).
+    // `None` means the puzzle is harder than the logic solver can rate
+    // (it only guarantees uniqueness, not logic-solvability, when there
+    // is no target).
+    let difficulty = LogicSolver.solve_with_difficulty(&puzzle, 1).difficulty;
 
     (puzzle, difficulty)
 }
@@ -224,18 +225,21 @@ impl GeneratorParams {
 
 /// Generates a Skyscrapers puzzle with a guaranteed unique solution.
 ///
-/// Returns the puzzle and its solution.
+/// Returns the puzzle, its solution, and the difficulty the logic solver
+/// rated the puzzle at. The difficulty is `None` when the puzzle is harder
+/// than the logic solver can rate — only possible when no `target_difficulty`
+/// is set, since a target constrains removal to logic-solvable puzzles.
 ///
 /// When `target_difficulty` is set, retries with different latin squares
 /// until a puzzle matching the target difficulty is produced, or returns
 /// an error after `max_attempts`.
 ///
 /// Pipeline: sample latin square → convert to solution → derive board + clues
-/// → greedy removal → (puzzle, solution)
+/// → greedy removal → (puzzle, solution, difficulty)
 pub fn generate<R: rand::Rng>(
     rng: &mut R,
     params: &GeneratorParams,
-) -> Result<(Puzzle, Solution), GenerateError> {
+) -> Result<(Puzzle, Solution, Option<Difficulty>), GenerateError> {
     let attempts = if params.target_difficulty.is_some() {
         params.max_attempts
     } else {
@@ -256,8 +260,10 @@ pub fn generate<R: rand::Rng>(
         );
 
         match params.target_difficulty {
-            None => return Ok((puzzle, solution)),
-            Some(target) if difficulty == Some(target) => return Ok((puzzle, solution)),
+            None => return Ok((puzzle, solution, difficulty)),
+            Some(target) if difficulty == Some(target) => {
+                return Ok((puzzle, solution, difficulty));
+            }
             _ => continue,
         }
     }
@@ -372,7 +378,7 @@ mod tests {
     fn generate_produces_unique_solution() {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let params = make_generator_params(4);
-        let (puzzle, _solution) = generate(&mut rng, &params).unwrap();
+        let (puzzle, _solution, _diff) = generate(&mut rng, &params).unwrap();
 
         let solutions = BacktrackingSolver.solve(&puzzle, 2);
         assert_eq!(solutions.len(), 1);
@@ -382,7 +388,7 @@ mod tests {
     fn generate_removes_some_cells_and_clues() {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let params = make_generator_params(4);
-        let (puzzle, _solution) = generate(&mut rng, &params).unwrap();
+        let (puzzle, _solution, _diff) = generate(&mut rng, &params).unwrap();
         let n = puzzle.board.n();
 
         let mut given_count = 0;
@@ -423,11 +429,14 @@ mod tests {
     fn generate_deterministic_with_seed() {
         let params = make_generator_params(4);
 
-        let (puzzle1, sol1) = generate(&mut ChaCha20Rng::seed_from_u64(99), &params).unwrap();
-        let (puzzle2, sol2) = generate(&mut ChaCha20Rng::seed_from_u64(99), &params).unwrap();
+        let (puzzle1, sol1, diff1) =
+            generate(&mut ChaCha20Rng::seed_from_u64(99), &params).unwrap();
+        let (puzzle2, sol2, diff2) =
+            generate(&mut ChaCha20Rng::seed_from_u64(99), &params).unwrap();
 
         assert_eq!(puzzle1, puzzle2);
         assert_eq!(sol1, sol2);
+        assert_eq!(diff1, diff2);
     }
 
     #[test]
@@ -438,7 +447,7 @@ mod tests {
         // Test multiple seeds to cover different puzzle configurations
         for seed in 0..10 {
             let mut rng = ChaCha20Rng::seed_from_u64(seed);
-            let (puzzle, expected_solution) = generate(&mut rng, &params).unwrap();
+            let (puzzle, expected_solution, _diff) = generate(&mut rng, &params).unwrap();
 
             let bt_solutions = BacktrackingSolver.solve(&puzzle, 2);
             assert_eq!(
@@ -531,7 +540,10 @@ mod tests {
             .with_target_difficulty(Difficulty::Easy)
             .with_max_attempts(50);
         let mut rng = ChaCha20Rng::seed_from_u64(0);
-        let (puzzle, _solution) = generate(&mut rng, &params).expect("should find an Easy puzzle");
+        let (puzzle, _solution, difficulty) =
+            generate(&mut rng, &params).expect("should find an Easy puzzle");
+        // generate() reports the target difficulty it produced.
+        assert_eq!(difficulty, Some(Difficulty::Easy));
         let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
         assert_eq!(result.difficulty, Some(Difficulty::Easy));
         assert_eq!(result.solutions.len(), 1);
@@ -543,8 +555,9 @@ mod tests {
             .with_target_difficulty(Difficulty::Hard)
             .with_max_attempts(50);
         let mut rng = ChaCha20Rng::seed_from_u64(0);
-        let (puzzle, solution) =
+        let (puzzle, solution, difficulty) =
             generate(&mut rng, &params).expect("should find a Hard puzzle with a unique solution");
+        assert_eq!(difficulty, Some(Difficulty::Hard));
         let bt_solutions = BacktrackingSolver.solve(&puzzle, 2);
         assert_eq!(bt_solutions.len(), 1);
         assert_eq!(bt_solutions[0], solution);
@@ -556,17 +569,23 @@ mod tests {
         let result1 = generate(&mut ChaCha20Rng::seed_from_u64(0), &params);
         let result2 = generate(&mut ChaCha20Rng::seed_from_u64(0), &params);
         assert_eq!(result1.is_ok(), result2.is_ok());
-        if let (Ok((p1, s1)), Ok((p2, s2))) = (result1, result2) {
+        if let (Ok((p1, s1, d1)), Ok((p2, s2, d2))) = (result1, result2) {
             assert_eq!(p1, p2);
             assert_eq!(s1, s2);
+            assert_eq!(d1, d2);
         }
     }
 
     #[test]
-    fn generate_without_target_difficulty_unchanged() {
+    fn generate_without_target_difficulty_reports_difficulty() {
         let params = make_generator_params(4);
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        let result = generate(&mut rng, &params);
-        assert!(result.is_ok());
+        let (puzzle, _solution, difficulty) = generate(&mut rng, &params).unwrap();
+        // Even without a target, generate() reports the rated difficulty,
+        // matching an independent rating of the same puzzle.
+        assert_eq!(
+            difficulty,
+            LogicSolver.solve_with_difficulty(&puzzle, 1).difficulty
+        );
     }
 }

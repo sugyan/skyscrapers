@@ -97,7 +97,9 @@ function App() {
         .generatePuzzle(params.n, params.seed, params.difficulty)
         .then((result) => {
           setLastSeed(params.seed.toString());
-          setLastDifficulty(params.difficulty ?? null);
+          // Label reflects the puzzle's actual (solver-detected) difficulty, not
+          // the requested target — so "Any" generation still gets a label.
+          setLastDifficulty(result.difficulty);
           setCurrent(result);
         })
         .catch((e) => {
@@ -116,6 +118,9 @@ function App() {
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
+    // Clear the previous label so a failed generation can't show the new seed
+    // alongside a stale difficulty from an earlier success.
+    setLastDifficulty(null);
     const target: Difficulty | null = difficulty || null;
     try {
       const seed = seedInput.trim()
@@ -128,7 +133,9 @@ function App() {
         seed,
         target ?? undefined,
       );
-      setLastDifficulty(target);
+      // Label reflects the puzzle's actual (solver-detected) difficulty; the
+      // URL keeps the requested target so reloading reproduces the request.
+      setLastDifficulty(result.difficulty);
       setCurrent(result);
       updateUrl(size, seedStr, target);
     } catch (e) {

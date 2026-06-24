@@ -13,6 +13,9 @@ use skyscrapers_solver::{Difficulty, LogicSolver, logic::difficulty::Step};
 struct PuzzleResult {
     puzzle: Puzzle,
     solution: Solution,
+    /// The difficulty the logic solver rated the generated puzzle at.
+    /// `None` when the puzzle is harder than the logic solver can rate.
+    difficulty: Option<Difficulty>,
 }
 
 /// Generate a Skyscrapers puzzle of size `n` with the given `seed`.
@@ -21,7 +24,10 @@ struct PuzzleResult {
 /// "master"), the generator retries until the produced puzzle exactly matches
 /// that target difficulty.
 ///
-/// Returns a JS object with `puzzle` and `solution` fields.
+/// Returns a JS object with `puzzle`, `solution`, and `difficulty` fields.
+/// `difficulty` is the level the logic solver rated the generated puzzle at,
+/// omitted (`undefined`) when the puzzle is harder than the logic solver can
+/// rate (only possible when no target `difficulty` was requested).
 #[wasm_bindgen]
 pub fn generate_puzzle(n: u8, seed: u64, difficulty: Option<String>) -> Result<JsValue, JsError> {
     if !(1..=9).contains(&n) {
@@ -42,10 +48,16 @@ pub fn generate_puzzle(n: u8, seed: u64, difficulty: Option<String>) -> Result<J
     if let Some(d) = parsed_difficulty {
         params = params.with_target_difficulty(d);
     }
-    let (puzzle, solution) =
+    // Distinct from the `difficulty` parameter above (the requested target):
+    // this is the difficulty the solver rated the produced puzzle at.
+    let (puzzle, solution, rated_difficulty) =
         generate(&mut rng, &params).map_err(|e| JsError::new(&e.to_string()))?;
 
-    let result = PuzzleResult { puzzle, solution };
+    let result = PuzzleResult {
+        puzzle,
+        solution,
+        difficulty: rated_difficulty,
+    };
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsError::new(&e.to_string()))
 }
 
