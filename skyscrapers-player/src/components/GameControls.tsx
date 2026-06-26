@@ -30,16 +30,16 @@ export function GameControls({
 
   return (
     <div className="flex flex-col gap-2 my-4 w-full max-w-md">
-      <div className="flex items-stretch gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <button
-          className={`${primaryBtn} flex-1`}
+          className={primaryBtn}
           onClick={onUndo}
           disabled={!canUndo}
           aria-label="Undo"
         >
           Undo
         </button>
-        <button className={`${primaryBtn} flex-1`} onClick={onCheck}>
+        <button className={primaryBtn} onClick={onCheck}>
           Check
         </button>
         <HighlightSelector
