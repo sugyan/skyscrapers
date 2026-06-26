@@ -315,7 +315,7 @@ export function Player({
         puzzle={puzzle}
         board={state.board}
         selectedCell={state.selectedCell}
-        highlightValue={selectedCell?.value ?? filterValue}
+        highlightValue={filterValue}
         errors={state.errors}
         completed={state.completed}
         hint={hint}

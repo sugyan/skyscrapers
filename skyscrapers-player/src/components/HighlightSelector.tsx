@@ -90,7 +90,6 @@ export function HighlightSelector({
         type="button"
         className={`${pillBase} ${active ? pillActive : pillDefault}`}
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="true"
         aria-expanded={open}
         aria-label={
           active
@@ -107,7 +106,8 @@ export function HighlightSelector({
 
       {open && (
         <div
-          role="menu"
+          role="group"
+          aria-label="Highlight a number"
           className="absolute right-0 z-10 mt-1 p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-lg flex flex-wrap gap-1.5 w-max max-w-[calc(100vw-2.5rem)]"
         >
           {Array.from({ length: n }, (_, i) => {
