@@ -164,8 +164,9 @@ export function NumberPad({
   const btnDisabled =
     "border-gray-300 dark:border-slate-700 bg-gray-100 dark:bg-slate-900 text-gray-300 dark:text-slate-600 cursor-not-allowed";
 
-  // Answer row — value entry only. When no cell is selected the row is
-  // disabled; highlighting lives on its own dedicated control.
+  // Answer row — value entry only. The row is disabled (via answerDisabled)
+  // when there is no editable selected cell — nothing selected, or the
+  // selected cell is a given clue; highlighting lives on its own control.
   const answerButtons: React.ReactNode[] = [];
   for (let i = 1; i <= n; i++) {
     const remaining = n - (placedCounts.get(i) ?? 0);
