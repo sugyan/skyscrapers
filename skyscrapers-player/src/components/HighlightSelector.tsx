@@ -57,6 +57,13 @@ export function HighlightSelector({
         // highlight when no cell is selected.
         e.stopPropagation();
         setOpen(false);
+        return;
+      }
+      // With the popover open and focus inside the selector, keep keys that
+      // Player handles globally (digits, Space, Backspace/Delete, arrows, Tab)
+      // from bubbling to its window-level handler and mutating the board.
+      if (ref.current?.contains(document.activeElement)) {
+        e.stopPropagation();
       }
     };
     document.addEventListener("pointerdown", onPointerDown);
