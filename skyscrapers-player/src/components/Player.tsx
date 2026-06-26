@@ -65,10 +65,6 @@ export function Player({
         default:
           break;
       }
-      // Selecting a cell takes over the highlight, so clear any active filter.
-      if (action.type === "SELECT_CELL") {
-        setFilterValue(null);
-      }
       rawDispatch(action);
     },
     [rawDispatch],
@@ -319,7 +315,7 @@ export function Player({
         puzzle={puzzle}
         board={state.board}
         selectedCell={state.selectedCell}
-        highlightValue={selectedCell?.value ?? filterValue}
+        highlightValue={filterValue}
         errors={state.errors}
         completed={state.completed}
         hint={hint}
@@ -377,8 +373,6 @@ export function Player({
         board={state.board}
         currentValue={selectedCell?.value ?? null}
         currentCandidates={selectedCell?.candidates ?? null}
-        filterValue={selectedCell === null ? filterValue : null}
-        filterMode={state.selectedCell === null}
         answerDisabled={selectedCell === null || selectedCell.given}
         memoDisabled={
           selectedCell === null ||
@@ -391,11 +385,11 @@ export function Player({
           dispatch({ type: "TOGGLE_CANDIDATE", value })
         }
         onClearCandidates={() => dispatch({ type: "CLEAR_CANDIDATES" })}
-        onFilter={(value) =>
-          setFilterValue((prev) => (prev === value ? null : value))
-        }
       />
       <GameControls
+        n={puzzle.n}
+        highlightValue={filterValue}
+        onHighlightChange={setFilterValue}
         canUndo={state.history.length > 0}
         onUndo={() => dispatch({ type: "UNDO" })}
         onReset={() => setConfirmReset(true)}
