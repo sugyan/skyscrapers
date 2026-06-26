@@ -1,4 +1,9 @@
+import { HighlightSelector } from "./HighlightSelector";
+
 interface GameControlsProps {
+  n: number;
+  highlightValue: number | null;
+  onHighlightChange: (next: number | null) => void;
   canUndo: boolean;
   onUndo: () => void;
   onReset: () => void;
@@ -8,6 +13,9 @@ interface GameControlsProps {
 }
 
 export function GameControls({
+  n,
+  highlightValue,
+  onHighlightChange,
   canUndo,
   onUndo,
   onReset,
@@ -22,18 +30,23 @@ export function GameControls({
 
   return (
     <div className="flex flex-col gap-2 my-4 w-full max-w-md">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex items-stretch gap-2">
         <button
-          className={primaryBtn}
+          className={`${primaryBtn} flex-1`}
           onClick={onUndo}
           disabled={!canUndo}
           aria-label="Undo"
         >
           Undo
         </button>
-        <button className={primaryBtn} onClick={onCheck}>
+        <button className={`${primaryBtn} flex-1`} onClick={onCheck}>
           Check
         </button>
+        <HighlightSelector
+          n={n}
+          value={highlightValue}
+          onChange={onHighlightChange}
+        />
       </div>
       <div className="grid grid-cols-3 gap-2">
         <button className={secondaryBtn} onClick={onHint}>

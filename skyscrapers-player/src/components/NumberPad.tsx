@@ -5,15 +5,12 @@ interface NumberPadProps {
   board: BoardCell[][];
   currentValue: number | null;
   currentCandidates: Set<number> | null;
-  filterValue: number | null;
-  filterMode: boolean;
   answerDisabled: boolean;
   memoDisabled: boolean;
   onAnswer: (value: number) => void;
   onClearAnswer: () => void;
   onToggleCandidate: (value: number) => void;
   onClearCandidates: () => void;
-  onFilter: (value: number) => void;
 }
 
 function RemainingBars({ remaining }: { remaining: number }) {
@@ -126,15 +123,12 @@ export function NumberPad({
   board,
   currentValue,
   currentCandidates,
-  filterValue,
-  filterMode,
   answerDisabled,
   memoDisabled,
   onAnswer,
   onClearAnswer,
   onToggleCandidate,
   onClearCandidates,
-  onFilter,
 }: NumberPadProps) {
   // Count how many of each digit are placed on the board
   const placedCounts = new Map<number, number>();
@@ -167,38 +161,27 @@ export function NumberPad({
     "border-blue-500 dark:border-blue-400 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900/70 cursor-pointer";
   const btnActiveCandidate =
     "border-teal-500 dark:border-teal-400 bg-teal-100 dark:bg-teal-900/50 hover:bg-teal-200 dark:hover:bg-teal-900/70 cursor-pointer";
-  const btnActiveFilter =
-    "border-purple-500 dark:border-purple-400 bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900/70 cursor-pointer";
   const btnDisabled =
     "border-gray-300 dark:border-slate-700 bg-gray-100 dark:bg-slate-900 text-gray-300 dark:text-slate-600 cursor-not-allowed";
 
-  // Answer row. When `filterMode` is on (no cell selected), the row stays
-  // enabled and acts as a board-wide highlight filter instead of an input.
+  // Answer row — value entry only. When no cell is selected the row is
+  // disabled; highlighting lives on its own dedicated control.
   const answerButtons: React.ReactNode[] = [];
   for (let i = 1; i <= n; i++) {
     const remaining = n - (placedCounts.get(i) ?? 0);
-    const isAnswerActive = !filterMode && !answerDisabled && currentValue === i;
-    const isFilterActive = filterMode && filterValue === i;
-    const disabled = !filterMode && answerDisabled;
-    const stateClass = disabled
+    const isAnswerActive = !answerDisabled && currentValue === i;
+    const stateClass = answerDisabled
       ? btnDisabled
-      : isFilterActive
-        ? btnActiveFilter
-        : isAnswerActive
-          ? btnActiveAnswer
-          : btnDefault;
+      : isAnswerActive
+        ? btnActiveAnswer
+        : btnDefault;
     answerButtons.push(
       <div key={i} className="flex flex-col items-center">
         <RemainingBars remaining={remaining} />
         <button
           className={`${btnBase} ${digitTextClass} font-bold ${stateClass}`}
-          disabled={disabled}
-          {...tapProps(
-            () => (filterMode ? onFilter(i) : onAnswer(i)),
-            disabled,
-          )}
-          aria-pressed={isFilterActive || undefined}
-          title={filterMode ? "Highlight cells with this value" : undefined}
+          disabled={answerDisabled}
+          {...tapProps(() => onAnswer(i), answerDisabled)}
         >
           {i}
         </button>
