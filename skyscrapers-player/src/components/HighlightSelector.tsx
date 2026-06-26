@@ -6,23 +6,6 @@ interface HighlightSelectorProps {
   onChange: (next: number | null) => void;
 }
 
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`w-4 h-4 transition-transform duration-100 ${open ? "rotate-180" : ""}`}
-      aria-hidden="true"
-    >
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  );
-}
-
 function ClearIcon() {
   return (
     <svg
@@ -37,25 +20,6 @@ function ClearIcon() {
     >
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
-    </svg>
-  );
-}
-
-function HighlighterIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-4 h-4 shrink-0"
-      aria-hidden="true"
-    >
-      <path d="M3 19h4l10.5-10.5a2.83 2.83 0 1 0-4-4L3 15v4" />
-      <path d="M12.5 5.5l4 4" />
-      <path d="M4.5 13.5l4 4" />
     </svg>
   );
 }
@@ -121,7 +85,7 @@ export function HighlightSelector({
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative flex" ref={ref}>
       <button
         type="button"
         className={`${pillBase} ${active ? pillActive : pillDefault}`}
@@ -134,13 +98,11 @@ export function HighlightSelector({
             : "Highlight a number"
         }
       >
-        <HighlighterIcon />
         {active ? (
           <span className="font-medium tabular-nums">{value}</span>
         ) : (
-          <span className="hidden sm:inline">Highlight</span>
+          <span>Highlight</span>
         )}
-        <ChevronIcon open={open} />
       </button>
 
       {open && (
