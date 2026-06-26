@@ -27,11 +27,12 @@ function ClearIcon() {
 /**
  * Dedicated highlight picker, decoupled from cell selection and value entry.
  *
- * The number pad's answer row is value-entry only, so the sole way to highlight
- * a digit board-wide — including digits not yet placed anywhere — is this
- * control. Keeping highlight on its own affordance removes the old overload
- * where the same number button meant "place" or "highlight" depending on
- * whether a cell happened to be selected, which could misfire as a wrong entry.
+ * The number pad's answer row is value-entry only, so highlighting a digit
+ * board-wide — including digits not yet placed anywhere — goes through this
+ * control (or the keyboard digit shortcut when no cell is selected). Keeping
+ * highlight on its own affordance removes the old overload where the same
+ * number button meant "place" or "highlight" depending on whether a cell
+ * happened to be selected, which could misfire as a wrong entry.
  */
 export function HighlightSelector({
   n,
@@ -51,8 +52,9 @@ export function HighlightSelector({
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        // Close only the popover; don't let Player's window-level Escape also
-        // clear the active highlight.
+        // Close only the popover; stop Player's window-level Escape from also
+        // acting on it — deselecting the current cell, or clearing the active
+        // highlight when no cell is selected.
         e.stopPropagation();
         setOpen(false);
       }
