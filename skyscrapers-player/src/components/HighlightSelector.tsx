@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+interface HighlightPillProps {
+  active: boolean;
+  value: number | null;
+  open: boolean;
+  onToggle: () => void;
+}
 
-interface HighlightSelectorProps {
+interface HighlightPanelProps {
   n: number;
   value: number | null;
-  onChange: (next: number | null) => void;
+  onSelect: (value: number) => void;
+  onClear: () => void;
 }
 
 function ClearIcon() {
@@ -24,130 +30,100 @@ function ClearIcon() {
   );
 }
 
+const pillBase =
+  "flex items-center justify-center gap-1.5 w-full px-3 py-2 text-base border rounded-md transition-colors duration-100 touch-manipulation select-none cursor-pointer";
+const pillDefault =
+  "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300";
+const pillActive =
+  "border-purple-500 dark:border-purple-400 bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900/70 text-purple-800 dark:text-purple-200";
+
+const chipBase =
+  "w-9 h-9 border rounded-md text-base font-medium transition-colors duration-100 touch-manipulation select-none cursor-pointer";
+const chipDefault =
+  "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200";
+const chipActive =
+  "border-purple-500 dark:border-purple-400 bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900/70 text-purple-800 dark:text-purple-200";
+
 /**
- * Dedicated highlight picker, decoupled from cell selection and value entry.
+ * The button that opens the highlight picker. Shows "Highlight" when nothing is
+ * highlighted and the active number (in purple) otherwise.
  *
- * The number pad's answer row is value-entry only, so highlighting a digit
- * board-wide — including digits not yet placed anywhere — goes through this
- * control (or the keyboard digit shortcut when no cell is selected). Keeping
- * highlight on its own affordance removes the old overload where the same
- * number button meant "place" or "highlight" depending on whether a cell
- * happened to be selected, which could misfire as a wrong entry.
+ * Highlighting is decoupled from cell selection and value entry: the number
+ * pad's answer row is value-entry only, so highlighting a digit board-wide —
+ * including digits not yet placed anywhere — goes through this picker (or the
+ * keyboard digit shortcut when no cell is selected). Open state and dismissal
+ * live in GameControls so the panel can expand full-width in the controls flow
+ * (see HighlightPanel) rather than overlaying the rows below.
  */
-export function HighlightSelector({
+export function HighlightPill({
+  active,
+  value,
+  open,
+  onToggle,
+}: HighlightPillProps) {
+  return (
+    <button
+      type="button"
+      className={`${pillBase} ${active ? pillActive : pillDefault}`}
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-label={
+        active
+          ? `Highlighting ${value}. Change highlight`
+          : "Highlight a number"
+      }
+    >
+      {active ? (
+        <span className="font-medium tabular-nums">{value}</span>
+      ) : (
+        <span>Highlight</span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * The 1..n chips (plus clear) for picking the highlighted number. Rendered
+ * in-flow by GameControls between the control rows so it pushes the rows below
+ * down instead of overlapping them. Re-selecting the active number clears it.
+ */
+export function HighlightPanel({
   n,
   value,
-  onChange,
-}: HighlightSelectorProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  onSelect,
+  onClear,
+}: HighlightPanelProps) {
   const active = value !== null;
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        // Close only the popover; stop Player's window-level Escape from also
-        // acting on it — deselecting the current cell, or clearing the active
-        // highlight when no cell is selected.
-        e.stopPropagation();
-        setOpen(false);
-        return;
-      }
-      // With the popover open and focus inside the selector, keep keys that
-      // Player handles globally (digits, Space, Backspace/Delete, arrows, Tab)
-      // from bubbling to its window-level handler and mutating the board.
-      if (ref.current?.contains(document.activeElement)) {
-        e.stopPropagation();
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  const pillBase =
-    "flex items-center justify-center gap-1.5 w-full px-3 py-2 text-base border rounded-md transition-colors duration-100 touch-manipulation select-none cursor-pointer";
-  const pillDefault =
-    "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300";
-  const pillActive =
-    "border-purple-500 dark:border-purple-400 bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900/70 text-purple-800 dark:text-purple-200";
-
-  const chipBase =
-    "w-9 h-9 border rounded-md text-base font-medium transition-colors duration-100 touch-manipulation select-none cursor-pointer";
-  const chipDefault =
-    "border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200";
-  const chipActive =
-    "border-purple-500 dark:border-purple-400 bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900/70 text-purple-800 dark:text-purple-200";
-
-  const select = (v: number) => {
-    onChange(v === value ? null : v);
-    setOpen(false);
-  };
-
   return (
-    <div className="relative flex" ref={ref}>
+    <div
+      role="group"
+      aria-label="Highlight a number"
+      className="flex flex-wrap justify-center gap-1.5 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-2"
+    >
+      {Array.from({ length: n }, (_, i) => {
+        const v = i + 1;
+        const isActive = v === value;
+        return (
+          <button
+            key={v}
+            type="button"
+            className={`${chipBase} ${isActive ? chipActive : chipDefault}`}
+            onClick={() => onSelect(v)}
+            aria-pressed={isActive}
+          >
+            {v}
+          </button>
+        );
+      })}
       <button
         type="button"
-        className={`${pillBase} ${active ? pillActive : pillDefault}`}
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-label={
-          active
-            ? `Highlighting ${value}. Change highlight`
-            : "Highlight a number"
-        }
+        className={`${chipBase} flex items-center justify-center ${active ? `${chipDefault} text-red-600 dark:text-red-400` : "border-gray-300 dark:border-slate-700 text-gray-300 dark:text-slate-600 cursor-not-allowed"}`}
+        onClick={onClear}
+        disabled={!active}
+        aria-label="Clear highlight"
       >
-        {active ? (
-          <span className="font-medium tabular-nums">{value}</span>
-        ) : (
-          <span>Highlight</span>
-        )}
+        <ClearIcon />
       </button>
-
-      {open && (
-        <div
-          role="group"
-          aria-label="Highlight a number"
-          className="absolute right-0 z-10 mt-1 p-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-lg flex flex-wrap gap-1.5 w-max max-w-[calc(100vw-2.5rem)]"
-        >
-          {Array.from({ length: n }, (_, i) => {
-            const v = i + 1;
-            const isActive = v === value;
-            return (
-              <button
-                key={v}
-                type="button"
-                className={`${chipBase} ${isActive ? chipActive : chipDefault}`}
-                onClick={() => select(v)}
-                aria-pressed={isActive}
-              >
-                {v}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            className={`${chipBase} flex items-center justify-center ${active ? `${chipDefault} text-red-600 dark:text-red-400` : "border-gray-300 dark:border-slate-700 text-gray-300 dark:text-slate-600 cursor-not-allowed"}`}
-            onClick={() => {
-              onChange(null);
-              setOpen(false);
-            }}
-            disabled={!active}
-            aria-label="Clear highlight"
-          >
-            <ClearIcon />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
