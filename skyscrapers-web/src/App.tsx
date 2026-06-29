@@ -173,6 +173,11 @@ function App() {
           onNewPuzzle={handleNewPuzzle}
           onShowHowToPlay={() => setShowHowToPlay(true)}
         />
+        {lastSeed && (
+          <p className="text-center text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-6">
+            Seed: {lastSeed}
+          </p>
+        )}
         {showHowToPlay && (
           <HowToPlayModal onClose={() => setShowHowToPlay(false)} />
         )}
@@ -252,10 +257,7 @@ function App() {
         </button>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         {lastSeed && !current && (
-          <p className="mt-2 text-xs text-gray-500">
-            Last seed: {lastSeed}
-            {lastDifficulty ? ` · ${capitalize(lastDifficulty)}` : ""}
-          </p>
+          <p className="mt-2 text-xs text-gray-500">Last seed: {lastSeed}</p>
         )}
       </section>
     </div>
