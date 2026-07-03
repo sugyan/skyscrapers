@@ -117,6 +117,52 @@ enum Command {
         disable: Vec<String>,
     },
 
+    /// Reproduce a single puzzle (by seed/n/difficulty, same as the CLI
+    /// `generate`) and print its "difficulty texture": how the required
+    /// technique tiers are distributed across the solve. Beyond the headline
+    /// tier, it reports how many *separate* forced stalls need the top tier
+    /// (bursts), how long the longest stall is, and what tier the solver drops
+    /// to after each — i.e. how "grindy vs. flowing" the puzzle is.
+    Texture {
+        /// Grid size (1-9)
+        #[arg(short, long, default_value_t = 7, value_parser = clap::value_parser!(u64).range(1..=9))]
+        n: u64,
+
+        /// RNG seed (must match the seed used with the CLI `generate`)
+        #[arg(long)]
+        seed: u64,
+
+        /// Target difficulty (must match what was used with `generate`)
+        #[arg(long)]
+        difficulty: Option<Difficulty>,
+    },
+
+    /// Scan a seed range at a fixed (n, target difficulty), compute each
+    /// puzzle's difficulty texture, and rank within the tier — surfacing the
+    /// "grindiest" and "smoothest" seeds so only a handful need hand-solving
+    /// to check whether texture tracks felt difficulty.
+    TextureScan {
+        /// Grid size (1-9)
+        #[arg(short, long, value_parser = clap::value_parser!(u64).range(1..=9))]
+        n: u64,
+
+        /// Target difficulty for the puzzles to scan
+        #[arg(short, long)]
+        difficulty: Difficulty,
+
+        /// Number of seeds to test (0..samples)
+        #[arg(short, long, default_value_t = 100)]
+        samples: u64,
+
+        /// Maximum generation attempts per seed
+        #[arg(long, default_value_t = 500)]
+        max_attempts: usize,
+
+        /// How many extreme seeds to list at each end
+        #[arg(long, default_value_t = 5)]
+        top: usize,
+    },
+
     /// Run the full analysis suite and emit the data-driven sections of
     /// `docs/logic-solver-analysis.md` as Markdown (Target Yield, Technique
     /// Necessity, Batch Test Results, Technique Usage). Per-seed dumps and
@@ -160,6 +206,18 @@ fn main() {
             difficulty,
             disable,
         } => explain(n as usize, seed, difficulty, &disable),
+        Command::Texture {
+            n,
+            seed,
+            difficulty,
+        } => texture(n as usize, seed, difficulty),
+        Command::TextureScan {
+            n,
+            difficulty,
+            samples,
+            max_attempts,
+            top,
+        } => texture_scan(n as usize, difficulty, samples, max_attempts, top),
         Command::Report {
             samples,
             yield_attempts,
@@ -847,4 +905,294 @@ fn format_step(step: &Step) -> String {
     };
 
     format!("[{:?}] {}  ({reason})", step.technique, actions.join(", "))
+}
+
+/// Difficulty-texture profile derived purely from a solve trace: how the
+/// required technique tiers are spread across the solve. A "burst" is a
+/// maximal run of consecutive same-tier steps; the number of bursts at the
+/// top tier is the count of *separate* forced stalls that needed it.
+///
+/// All logic techniques are monotone eliminations, so the trace order is a
+/// faithful "easiest-available-first" walk: a tier-`t` step only fires when
+/// nothing cheaper could — which is what makes burst counting meaningful.
+struct TextureProfile {
+    /// Overall difficulty (max tier), `None` if unsolved by logic.
+    difficulty: Option<Difficulty>,
+    /// Total solving steps, excluding init-only CluePruning.
+    total_steps: usize,
+    /// Per tier: the length of each maximal same-tier run.
+    tier_bursts: BTreeMap<Difficulty, Vec<usize>>,
+    /// For each top-tier burst, the tier the solver dropped to immediately
+    /// after (the "relief"). Bursts that ended the solve are counted in
+    /// `solved_after` instead.
+    relief_hist: BTreeMap<Difficulty, usize>,
+    solved_after: usize,
+}
+
+impl TextureProfile {
+    fn top_bursts(&self) -> &[usize] {
+        self.difficulty
+            .and_then(|d| self.tier_bursts.get(&d))
+            .map_or(&[], Vec::as_slice)
+    }
+    /// Number of forced stalls at the top tier (= burst count).
+    fn depth(&self) -> usize {
+        self.top_bursts().len()
+    }
+    /// Total top-tier steps.
+    fn top_steps(&self) -> usize {
+        self.top_bursts().iter().sum()
+    }
+    /// Longest single top-tier stall.
+    fn max_burst(&self) -> usize {
+        self.top_bursts().iter().copied().max().unwrap_or(0)
+    }
+    /// Top-tier bursts whose relief was *not* all the way down to Easy — i.e.
+    /// the solver only dropped to a mid tier before needing the top tier again.
+    fn hard_reliefs(&self) -> usize {
+        self.relief_hist
+            .iter()
+            .filter(|(t, _)| **t != Difficulty::Easy)
+            .map(|(_, c)| *c)
+            .sum()
+    }
+    /// Ranking key: grindier textures sort first (descending) — more forced
+    /// stalls, then more top-tier work, then a longer single stall.
+    fn grind_key(&self) -> (usize, usize, usize) {
+        (self.depth(), self.top_steps(), self.max_burst())
+    }
+}
+
+fn compute_texture(steps: &[Step], difficulty: Option<Difficulty>) -> TextureProfile {
+    // CluePruning runs once at init and is not a "move you find" while
+    // solving, so it is not part of the flow.
+    let tiers: Vec<Difficulty> = steps
+        .iter()
+        .filter(|s| s.technique != Technique::CluePruning)
+        .map(|s| s.technique.difficulty())
+        .collect();
+
+    // Collapse into maximal same-tier runs.
+    let mut runs: Vec<(Difficulty, usize)> = Vec::new();
+    for &t in &tiers {
+        match runs.last_mut() {
+            Some(last) if last.0 == t => last.1 += 1,
+            _ => runs.push((t, 1)),
+        }
+    }
+
+    let mut tier_bursts: BTreeMap<Difficulty, Vec<usize>> = Default::default();
+    let mut relief_hist: BTreeMap<Difficulty, usize> = Default::default();
+    let mut solved_after = 0usize;
+    for (idx, &(tier, len)) in runs.iter().enumerate() {
+        tier_bursts.entry(tier).or_default().push(len);
+        if Some(tier) == difficulty {
+            match runs.get(idx + 1) {
+                Some(&(next, _)) => *relief_hist.entry(next).or_default() += 1,
+                None => solved_after += 1,
+            }
+        }
+    }
+
+    TextureProfile {
+        difficulty,
+        total_steps: tiers.len(),
+        tier_bursts,
+        relief_hist,
+        solved_after,
+    }
+}
+
+fn texture(n: usize, seed: u64, difficulty: Option<Difficulty>) {
+    // Reproduce the puzzle exactly as `skyscrapers-cli generate` would.
+    let mut rng = ChaCha20Rng::seed_from_u64(seed);
+    let mut params = GeneratorParams::new(n);
+    if let Some(d) = difficulty {
+        params = params.with_target_difficulty(d);
+    }
+    let (puzzle, _sol, _diff) = match generate(&mut rng, &params) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("error: generation failed: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    println!("{puzzle}");
+    let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+    let prof = compute_texture(&result.steps, result.difficulty);
+
+    println!("\n=== Difficulty texture (n={n}, seed={seed}) ===");
+    let Some(d) = prof.difficulty else {
+        println!("  overall difficulty: UNSOLVABLE (by logic)");
+        return;
+    };
+    println!("  overall difficulty: {d}");
+    println!("  solving steps (excl. CluePruning): {}", prof.total_steps);
+
+    println!("\n  --- top tier: {d} ---");
+    println!(
+        "  forced stalls (bursts): {}   top-tier steps: {}   longest stall: {}",
+        prof.depth(),
+        prof.top_steps(),
+        prof.max_burst()
+    );
+    println!("  burst sizes: {:?}", prof.top_bursts());
+    let mut relief: Vec<String> = prof
+        .relief_hist
+        .iter()
+        .map(|(t, c)| format!("{t} x{c}"))
+        .collect();
+    if prof.solved_after > 0 {
+        relief.push(format!("solved x{}", prof.solved_after));
+    }
+    println!(
+        "  relief after each stall: {}",
+        if relief.is_empty() {
+            "—".to_string()
+        } else {
+            relief.join(", ")
+        }
+    );
+
+    println!("\n  --- all tiers ---");
+    for (tier, sizes) in &prof.tier_bursts {
+        let total: usize = sizes.iter().sum();
+        // Pad a String, not the Display value directly — `Difficulty`'s
+        // Display ignores fill/width, so `{tier:<7}` would not align.
+        let tier = tier.to_string();
+        println!(
+            "  {tier:<7} bursts={:<3} steps={:<3} sizes={sizes:?}",
+            sizes.len(),
+            total,
+        );
+    }
+}
+
+fn texture_scan(n: usize, difficulty: Difficulty, samples: u64, max_attempts: usize, top: usize) {
+    let mut rows: Vec<(u64, TextureProfile)> = Vec::new();
+    let mut gen_failed = 0u64;
+    let mut off_target = 0u64;
+    for seed in 0..samples {
+        let mut rng = ChaCha20Rng::seed_from_u64(seed);
+        let params = GeneratorParams::new(n)
+            .with_target_difficulty(difficulty)
+            .with_max_attempts(max_attempts);
+        let Ok((puzzle, _sol, _diff)) = generate(&mut rng, &params) else {
+            gen_failed += 1;
+            continue;
+        };
+        let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+        let prof = compute_texture(&result.steps, result.difficulty);
+        // Only compare texture within the same achieved tier.
+        if prof.difficulty != Some(difficulty) {
+            off_target += 1;
+            continue;
+        }
+        rows.push((seed, prof));
+    }
+
+    println!("=== Texture scan (n={n}, target={difficulty}, samples={samples}) ===");
+    println!(
+        "  on-target: {}   gen_failed: {gen_failed}   off_target: {off_target}\n",
+        rows.len()
+    );
+    // Raw per-seed columns (already in seed order) — left deliberately
+    // un-fused so the score weighting can be tuned outside this tool.
+    println!("  seed | steps | stalls | topSteps | maxStall | midRelief");
+    println!("  -----+-------+--------+----------+----------+----------");
+    for (seed, p) in &rows {
+        println!(
+            "  {seed:>4} | {:>5} | {:>6} | {:>8} | {:>8} | {:>9}",
+            p.total_steps,
+            p.depth(),
+            p.top_steps(),
+            p.max_burst(),
+            p.hard_reliefs(),
+        );
+    }
+
+    if rows.is_empty() {
+        return;
+    }
+    let mut order: Vec<usize> = (0..rows.len()).collect();
+    order.sort_by(|&a, &b| rows[b].1.grind_key().cmp(&rows[a].1.grind_key()));
+    let k = top.min(order.len());
+    let line = |i: usize| {
+        let (seed, p) = &rows[i];
+        format!(
+            "    seed={seed}  stalls={} topSteps={} maxStall={}",
+            p.depth(),
+            p.top_steps(),
+            p.max_burst()
+        )
+    };
+    println!("\n  grindiest {k} (hand-solve these — expect 'harder within {difficulty}'):");
+    for &i in order.iter().take(k) {
+        println!("{}", line(i));
+    }
+    println!("\n  smoothest {k} (expect 'flows'):");
+    for &i in order.iter().rev().take(k) {
+        println!("{}", line(i));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// compute_texture only reads `technique`, so a dummy reason/actions is fine.
+    fn step(t: Technique) -> Step {
+        Step {
+            technique: t,
+            actions: Vec::new(),
+            reason: Reason::SingleCandidate { row: 0, col: 0 },
+        }
+    }
+
+    #[test]
+    fn bursts_relief_and_clue_pruning_excluded() {
+        use Technique::*;
+        // CluePruning is dropped; then 2 easy, a 3-long hard stall, relief to
+        // easy, then a 1-long hard stall that ends the solve.
+        let steps: Vec<Step> = [
+            CluePruning,
+            NakedSingles,
+            HiddenSingles,
+            NakedSets,
+            XWing,
+            SimplePermutation,
+            HiddenSingles,
+            NakedSets,
+        ]
+        .into_iter()
+        .map(step)
+        .collect();
+
+        let p = compute_texture(&steps, Some(Difficulty::Hard));
+        assert_eq!(p.total_steps, 7, "CluePruning excluded from the flow");
+        assert_eq!(p.top_bursts(), &[3, 1]);
+        assert_eq!(p.depth(), 2);
+        assert_eq!(p.top_steps(), 4);
+        assert_eq!(p.max_burst(), 3);
+        // First hard stall relieved to Easy; the second ended the solve.
+        assert_eq!(p.relief_hist.get(&Difficulty::Easy).copied(), Some(1));
+        assert_eq!(p.solved_after, 1);
+        assert_eq!(
+            p.tier_bursts.get(&Difficulty::Easy).map(Vec::as_slice),
+            Some([2usize, 1].as_slice()),
+        );
+    }
+
+    #[test]
+    fn unsolved_has_no_top_tier() {
+        let steps: Vec<Step> = [Technique::NakedSingles, Technique::HiddenSingles]
+            .into_iter()
+            .map(step)
+            .collect();
+        let p = compute_texture(&steps, None);
+        assert_eq!(p.depth(), 0);
+        assert!(p.top_bursts().is_empty());
+        assert_eq!(p.solved_after, 0);
+    }
 }
