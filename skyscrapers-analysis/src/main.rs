@@ -161,6 +161,17 @@ enum Command {
         /// How many extreme seeds to list at each end
         #[arg(long, default_value_t = 5)]
         top: usize,
+
+        /// Emit the markdown subsection used in docs/logic-solver-analysis.md
+        /// (distribution + grindiest/smoothest tables) instead of the plain
+        /// text explorer output.
+        #[arg(long)]
+        markdown: bool,
+
+        /// Always include this seed as a labelled reference row (e.g. a puzzle
+        /// you played), even if it is outside `0..samples`. Markdown mode only.
+        #[arg(long)]
+        reference: Option<u64>,
     },
 
     /// Run the full analysis suite and emit the data-driven sections of
@@ -217,7 +228,17 @@ fn main() {
             samples,
             max_attempts,
             top,
-        } => texture_scan(n as usize, difficulty, samples, max_attempts, top),
+            markdown,
+            reference,
+        } => texture_scan(
+            n as usize,
+            difficulty,
+            samples,
+            max_attempts,
+            top,
+            markdown,
+            reference,
+        ),
         Command::Report {
             samples,
             yield_attempts,
@@ -718,6 +739,8 @@ fn report(samples: u64, yield_attempts: usize, necessity_attempts: usize) {
         &sizes,
         |b| &b.tech_puzzles,
     );
+
+    report_texture_section(samples, necessity_attempts);
     eprintln!("done.");
 }
 
@@ -1069,10 +1092,33 @@ fn texture(n: usize, seed: u64, difficulty: Option<Difficulty>) {
     }
 }
 
-fn texture_scan(n: usize, difficulty: Difficulty, samples: u64, max_attempts: usize, top: usize) {
-    let mut rows: Vec<(u64, TextureProfile)> = Vec::new();
-    let mut gen_failed = 0u64;
-    let mut off_target = 0u64;
+/// The n=5 hard puzzle whose grindy middle first motivated this metric.
+const TEXTURE_REFERENCE_SEED: u64 = 20260702;
+
+/// Intro prose for the generated "Difficulty Texture" doc section. Kept in
+/// code so `report` and the committed doc stay in sync.
+const TEXTURE_INTRO: &str = "\"Difficulty texture\" looks past the headline tier at how the \
+top-tier work is spread across the solve. Grouping the trace into maximal same-tier runs \
+(\"bursts\", excluding init-only CluePruning), we report, for the top tier: **stalls** = the \
+number of *separate* forced stalls that needed it, **topSteps** = total top-tier steps, and \
+**longest stall** = the largest single burst. Many/long stalls with little relief feel grindier \
+than a single hard move that unlocks an easy cascade — so two puzzles at the same tier can differ \
+widely here. Ranking is **stalls-first** (then topSteps, then longest stall); note this puts a \
+single long unbroken burst (1 stall but high topSteps) at the \"smooth\" end even though it is a \
+long slog — how to weight stall *count* against burst *length* is an open question these numbers \
+are meant to help settle. Use `explain` / `texture` (see Reproduction) to inspect a listed seed.";
+
+/// Generate `0..samples` puzzles at `(n, difficulty)`, solve each, and keep
+/// the texture profiles of those that landed on the target tier. Returns the
+/// rows plus generation-failure / off-target counts.
+fn collect_texture(
+    n: usize,
+    difficulty: Difficulty,
+    samples: u64,
+    max_attempts: usize,
+) -> (Vec<(u64, TextureProfile)>, u64, u64) {
+    let mut rows = Vec::new();
+    let (mut gen_failed, mut off_target) = (0u64, 0u64);
     for seed in 0..samples {
         let mut rng = ChaCha20Rng::seed_from_u64(seed);
         let params = GeneratorParams::new(n)
@@ -1085,11 +1131,53 @@ fn texture_scan(n: usize, difficulty: Difficulty, samples: u64, max_attempts: us
         let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
         let prof = compute_texture(&result.steps, result.difficulty);
         // Only compare texture within the same achieved tier.
-        if prof.difficulty != Some(difficulty) {
+        if prof.difficulty == Some(difficulty) {
+            rows.push((seed, prof));
+        } else {
             off_target += 1;
-            continue;
         }
-        rows.push((seed, prof));
+    }
+    (rows, gen_failed, off_target)
+}
+
+/// Texture profile of a single reproduced puzzle (same seed scheme as
+/// `skyscrapers-cli generate`). `None` if generation fails.
+fn texture_of(n: usize, seed: u64, difficulty: Option<Difficulty>) -> Option<TextureProfile> {
+    let mut rng = ChaCha20Rng::seed_from_u64(seed);
+    let mut params = GeneratorParams::new(n);
+    if let Some(d) = difficulty {
+        params = params.with_target_difficulty(d);
+    }
+    let (puzzle, _sol, _diff) = generate(&mut rng, &params).ok()?;
+    let result = LogicSolver.solve_with_difficulty(&puzzle, 1);
+    Some(compute_texture(&result.steps, result.difficulty))
+}
+
+/// `(min, median, max)` of a list (0s if empty).
+fn stats(mut v: Vec<usize>) -> (usize, usize, usize) {
+    v.sort_unstable();
+    (
+        v.first().copied().unwrap_or(0),
+        v.get(v.len() / 2).copied().unwrap_or(0),
+        v.last().copied().unwrap_or(0),
+    )
+}
+
+fn texture_scan(
+    n: usize,
+    difficulty: Difficulty,
+    samples: u64,
+    max_attempts: usize,
+    top: usize,
+    markdown: bool,
+    reference: Option<u64>,
+) {
+    let (rows, gen_failed, off_target) = collect_texture(n, difficulty, samples, max_attempts);
+
+    if markdown {
+        let ref_prof = reference.and_then(|s| texture_of(n, s, Some(difficulty)));
+        format_texture_tier(difficulty, &rows, reference.zip(ref_prof.as_ref()));
+        return;
     }
 
     println!("=== Texture scan (n={n}, target={difficulty}, samples={samples}) ===");
@@ -1134,6 +1222,97 @@ fn texture_scan(n: usize, difficulty: Difficulty, samples: u64, max_attempts: us
     println!("\n  smoothest {k} (expect 'flows'):");
     for &i in order.iter().rev().take(k) {
         println!("{}", line(i));
+    }
+}
+
+/// One tier's markdown subsection for the doc: a distribution line, then the
+/// grindiest / smoothest tables, then an optional labelled reference row.
+fn format_texture_tier(
+    difficulty: Difficulty,
+    rows: &[(u64, TextureProfile)],
+    reference: Option<(u64, &TextureProfile)>,
+) {
+    println!("### {difficulty}\n");
+    if rows.is_empty() {
+        println!("_No puzzles generated at this tier in the sampled seeds._\n");
+        return;
+    }
+    let (smin, smed, smax) = stats(rows.iter().map(|(_, p)| p.depth()).collect());
+    let (_, tmed, _) = stats(rows.iter().map(|(_, p)| p.top_steps()).collect());
+    let (_, bmed, _) = stats(rows.iter().map(|(_, p)| p.max_burst()).collect());
+    let mut hist: BTreeMap<usize, usize> = Default::default();
+    for (_, p) in rows {
+        *hist.entry(p.depth()).or_default() += 1;
+    }
+    let hist_str: Vec<String> = hist.iter().map(|(k, v)| format!("{k}:{v}")).collect();
+    println!(
+        "{} puzzles. Forced stalls min/median/max = {smin}/{smed}/{smax} \
+         (stalls:count → {}); median topSteps {tmed}, median longest stall {bmed}.\n",
+        rows.len(),
+        hist_str.join(", "),
+    );
+
+    let mut order: Vec<usize> = (0..rows.len()).collect();
+    order.sort_by(|&a, &b| rows[b].1.grind_key().cmp(&rows[a].1.grind_key()));
+    let k = 10.min(order.len());
+    let table = |title: &str, idxs: &[usize]| {
+        println!("{title}\n");
+        println!("| seed | stalls | topSteps | longest stall |");
+        println!("|------|--------|----------|---------------|");
+        for &i in idxs {
+            let (s, p) = &rows[i];
+            println!(
+                "| {s} | {} | {} | {} |",
+                p.depth(),
+                p.top_steps(),
+                p.max_burst()
+            );
+        }
+        println!();
+    };
+    let grind: Vec<usize> = order.iter().take(k).copied().collect();
+    let smooth: Vec<usize> = order.iter().rev().take(k).copied().collect();
+    table(
+        &format!("**Grindiest {k}** (expect these to feel hardest):"),
+        &grind,
+    );
+    table(
+        &format!("**Smoothest {k}** (expect these to flow):"),
+        &smooth,
+    );
+
+    if let Some((seed, p)) = reference {
+        println!(
+            "_Reference — the puzzle that first motivated this metric_: `seed={seed}` → \
+             {} stalls, {} topSteps, longest stall {}.\n",
+            p.depth(),
+            p.top_steps(),
+            p.max_burst(),
+        );
+    }
+}
+
+/// Difficulty-texture section for `docs/logic-solver-analysis.md`, emitted as
+/// part of `report`. n=5 only (the size with hand-solving intuition), for the
+/// two tiers where texture actually varies.
+fn report_texture_section(samples: u64, max_attempts: usize) {
+    let n = 5usize;
+    println!("\n## Difficulty Texture (n={n}, {samples} seeds per tier)\n");
+    println!("{TEXTURE_INTRO}\n");
+    for difficulty in [Difficulty::Hard, Difficulty::Expert] {
+        eprintln!("texture n={n} {difficulty}…");
+        let (rows, _gen_failed, _off_target) =
+            collect_texture(n, difficulty, samples, max_attempts);
+        let ref_prof = if difficulty == Difficulty::Hard {
+            texture_of(n, TEXTURE_REFERENCE_SEED, Some(Difficulty::Hard))
+        } else {
+            None
+        };
+        format_texture_tier(
+            difficulty,
+            &rows,
+            ref_prof.as_ref().map(|p| (TEXTURE_REFERENCE_SEED, p)),
+        );
     }
 }
 
