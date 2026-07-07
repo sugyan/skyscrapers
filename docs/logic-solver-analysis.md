@@ -2,7 +2,8 @@
 
 A snapshot of the logic solver's behavior under the generator. The
 numeric sections (Target Yield, Technique Necessity, Batch Test Results,
-Technique Usage) are **generated** — regenerate them with:
+Technique Usage, Difficulty Texture) are **generated** — regenerate them
+with:
 
 ```bash
 cargo run -p skyscrapers-analysis --release -- report > /tmp/report.md
@@ -162,6 +163,81 @@ unaffected).
 | SimpleForcingChain | 4 | 16 | 38 | 55 |
 | FullForcingChain | 1 | 10 | 40 | 74 |
 | DualCluePermutation | — | 3 | 11 | 24 |
+
+## Difficulty Texture (n=5, 100 seeds per tier)
+
+"Difficulty texture" looks past the headline tier at how the top-tier work is spread across the solve. Grouping the trace into maximal same-tier runs ("bursts", excluding init-only CluePruning), we report, for the top tier: **stalls** = the number of *separate* forced stalls that needed it, **topSteps** = total top-tier steps, and **longest stall** = the largest single burst. Many/long stalls with little relief feel grindier than a single hard move that unlocks an easy cascade — so two puzzles at the same tier can differ widely here. Ranking is **stalls-first** (then topSteps, then longest stall); note this puts a single long unbroken burst (1 stall but high topSteps) at the "smooth" end even though it is a long slog — how to weight stall *count* against burst *length* is an open question these numbers are meant to help settle. Use `explain` / `texture` (see Reproduction) to inspect a listed seed.
+
+### hard
+
+100 puzzles. Forced stalls min/median/max = 1/3/7 (stalls:count → 1:10, 2:25, 3:37, 4:18, 5:8, 6:1, 7:1); median topSteps 5, median longest stall 3.
+
+**Grindiest 10** (expect these to feel hardest):
+
+| seed | stalls | topSteps | longest stall |
+|------|--------|----------|---------------|
+| 25 | 7 | 14 | 6 |
+| 63 | 6 | 11 | 5 |
+| 81 | 5 | 9 | 3 |
+| 48 | 5 | 8 | 3 |
+| 17 | 5 | 8 | 2 |
+| 5 | 5 | 7 | 3 |
+| 95 | 5 | 7 | 3 |
+| 74 | 5 | 6 | 2 |
+| 8 | 5 | 5 | 1 |
+| 86 | 5 | 5 | 1 |
+
+**Smoothest 10** (expect these to flow):
+
+| seed | stalls | topSteps | longest stall |
+|------|--------|----------|---------------|
+| 98 | 1 | 1 | 1 |
+| 36 | 1 | 1 | 1 |
+| 28 | 1 | 1 | 1 |
+| 53 | 1 | 2 | 2 |
+| 50 | 1 | 2 | 2 |
+| 82 | 1 | 3 | 3 |
+| 73 | 1 | 4 | 4 |
+| 41 | 1 | 6 | 6 |
+| 21 | 1 | 11 | 11 |
+| 7 | 1 | 12 | 12 |
+
+_Reference — the puzzle that first motivated this metric_: `seed=20260702` → 3 stalls, 12 topSteps, longest stall 6.
+
+### expert
+
+100 puzzles. Forced stalls min/median/max = 1/1/5 (stalls:count → 1:67, 2:22, 3:10, 5:1); median topSteps 2, median longest stall 2.
+
+**Grindiest 10** (expect these to feel hardest):
+
+| seed | stalls | topSteps | longest stall |
+|------|--------|----------|---------------|
+| 99 | 5 | 10 | 4 |
+| 49 | 3 | 8 | 4 |
+| 70 | 3 | 7 | 4 |
+| 80 | 3 | 6 | 3 |
+| 46 | 3 | 5 | 3 |
+| 97 | 3 | 5 | 3 |
+| 11 | 3 | 5 | 2 |
+| 25 | 3 | 5 | 2 |
+| 45 | 3 | 4 | 2 |
+| 63 | 3 | 4 | 2 |
+
+**Smoothest 10** (expect these to flow):
+
+| seed | stalls | topSteps | longest stall |
+|------|--------|----------|---------------|
+| 98 | 1 | 1 | 1 |
+| 89 | 1 | 1 | 1 |
+| 87 | 1 | 1 | 1 |
+| 86 | 1 | 1 | 1 |
+| 82 | 1 | 1 | 1 |
+| 81 | 1 | 1 | 1 |
+| 78 | 1 | 1 | 1 |
+| 75 | 1 | 1 | 1 |
+| 69 | 1 | 1 | 1 |
+| 67 | 1 | 1 | 1 |
+
 <!-- END GENERATED -->
 
 ## Observations
@@ -198,6 +274,15 @@ unaffected).
    puzzles where even `FullForcingChain` cannot finish without nested
    assumptions.
 
+7. **Texture varies widely inside a single tier** (see Difficulty
+   Texture). At n=5 Hard, forced top-tier stalls range 1–7 (median 3)
+   and total Hard steps 1–14, so the one "Hard" label hides a real
+   spread in how grindy a puzzle feels. A single long unbroken Hard
+   burst (e.g. `seed=21`: 1 stall / 11 steps) is a distinct texture from
+   many short stalls (`seed=25`: 7 stalls / 14 steps); which feels
+   harder is an open weighting question the section is meant to inform.
+   The motivating puzzle `seed=20260702` sits at 3 stalls / 12 steps.
+
 ## Reproduction
 
 ```bash
@@ -207,6 +292,12 @@ cargo run --release -p skyscrapers-analysis -- report > /tmp/report.md
 # Inspect a single puzzle's logic trace (optionally without a technique)
 cargo run --release -p skyscrapers-analysis -- explain \
   -n <SIZE> --seed <SEED> --difficulty <LEVEL> [--disable <TECH>[,<TECH>...]]
+
+# Difficulty texture: one puzzle's profile, or scan a tier for extremes
+cargo run --release -p skyscrapers-analysis -- texture \
+  -n <SIZE> --seed <SEED> --difficulty <LEVEL>
+cargo run --release -p skyscrapers-analysis -- texture-scan \
+  -n <SIZE> --difficulty <LEVEL> [--markdown --reference <SEED>]
 
 # Individual sweeps (report runs all of these internally)
 cargo run --release -p skyscrapers-analysis -- batch-difficulty -n <SIZE> -s <SEEDS>
