@@ -12,6 +12,7 @@ use rand_chacha::ChaCha20Rng;
 use skyscrapers_core::Puzzle;
 use skyscrapers_generator::{GeneratorParams, generate};
 use skyscrapers_solver::logic::analysis_hooks;
+use skyscrapers_solver::logic::bottleneck::compute_bottlenecks;
 use skyscrapers_solver::logic::difficulty::{Action, Line, Reason, Step, Technique};
 use skyscrapers_solver::{Difficulty, LogicSolver};
 
@@ -174,6 +175,25 @@ enum Command {
         reference: Option<u64>,
     },
 
+    /// Reproduce one or more puzzles (by seed/n/difficulty, same as the CLI
+    /// `generate`) and report the *bottleneck-count* difficulty metric (Stage 2
+    /// texture): how many times the solver must reach for the top tier before a
+    /// cheaper cascade finishes the surrounding work. Exploratory — prints one
+    /// row per seed so felt difficulty can be checked against the count.
+    Bottleneck {
+        /// Grid size (1-9)
+        #[arg(short, long, default_value_t = 7, value_parser = clap::value_parser!(u64).range(1..=9))]
+        n: u64,
+
+        /// Target difficulty (must match what was used with `generate`)
+        #[arg(short, long)]
+        difficulty: Option<Difficulty>,
+
+        /// One or more RNG seeds to analyse (must match seeds used with `generate`)
+        #[arg(required = true)]
+        seeds: Vec<u64>,
+    },
+
     /// Run the full analysis suite and emit the data-driven sections of
     /// `docs/logic-solver-analysis.md` as Markdown (Target Yield, Technique
     /// Necessity, Batch Test Results, Technique Usage). Per-seed dumps and
@@ -239,6 +259,11 @@ fn main() {
             markdown,
             reference,
         ),
+        Command::Bottleneck {
+            n,
+            difficulty,
+            seeds,
+        } => bottleneck(n as usize, difficulty, seeds),
         Command::Report {
             samples,
             yield_attempts,
@@ -1088,6 +1113,60 @@ fn texture(n: usize, seed: u64, difficulty: Option<Difficulty>) {
             "  {tier:<7} bursts={:<3} steps={:<3} sizes={sizes:?}",
             sizes.len(),
             total,
+        );
+    }
+}
+
+/// Reproduce each seed's puzzle and print its bottleneck-count profile
+/// (Stage 2 texture). One row per seed.
+///
+/// `bneck` = number of top-tier rounds (waves of hard reasoning needed to
+/// break each stall) — the headline metric. `rel`/`bld` split those into
+/// release rounds (`cascade > 0`, a placement was unlocked) vs buildup rounds
+/// (`cascade == 0`, candidate-only grind) — texture that explains *why* a
+/// puzzle is hard (staged vs grind-then-flow). The `rounds (width->cascade)`
+/// column shows each round's available keys and the cells its cascade placed.
+fn bottleneck(n: usize, difficulty: Option<Difficulty>, seeds: Vec<u64>) {
+    println!("=== Bottleneck metric (n={n}) ===");
+    println!(
+        "  {:>6}  {:<7}  {:>5}  {:>3}  {:>3}  {:>9}  rounds (width->cascade)",
+        "seed", "tier", "bneck", "rel", "bld", "top_steps"
+    );
+    for seed in seeds {
+        // Reproduce the puzzle exactly as `skyscrapers-cli generate` would.
+        let mut rng = ChaCha20Rng::seed_from_u64(seed);
+        let mut params = GeneratorParams::new(n);
+        if let Some(d) = difficulty {
+            params = params.with_target_difficulty(d);
+        }
+        let puzzle = match generate(&mut rng, &params) {
+            Ok((puzzle, _sol, _diff)) => puzzle,
+            Err(e) => {
+                println!("  {seed:>6}  generation failed: {e}");
+                continue;
+            }
+        };
+
+        let prof = compute_bottlenecks(&puzzle);
+        let Some(tier) = prof.top_tier else {
+            println!("  {seed:>6}  UNSOLVABLE (by logic)");
+            continue;
+        };
+        // `Difficulty`'s Display ignores fill/width, so stringify before padding.
+        let tier = tier.to_string();
+        let rounds: Vec<String> = prof
+            .rounds
+            .iter()
+            .map(|r| format!("{}->{}", r.width, r.cascade))
+            .collect();
+        let unsolved = if prof.solved { "" } else { "  [UNSOLVED]" };
+        println!(
+            "  {seed:>6}  {tier:<7}  {:>5}  {:>3}  {:>3}  {:>9}  [{}]{unsolved}",
+            prof.bottlenecks(),
+            prof.releases(),
+            prof.buildup_rounds(),
+            prof.total_top_steps(),
+            rounds.join(", "),
         );
     }
 }

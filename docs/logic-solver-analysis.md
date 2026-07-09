@@ -283,6 +283,50 @@ _Reference — the puzzle that first motivated this metric_: `seed=20260702` →
    harder is an open weighting question the section is meant to inform.
    The motivating puzzle `seed=20260702` sits at 3 stalls / 12 steps.
 
+## Bottleneck Count (Stage 2, exploratory — reference value only)
+
+A second within-tier signal, computed by the `bottleneck` subcommand. It
+does **not** use the greedy solve trace. Instead, exploiting the fact that
+every technique is a monotone, sound elimination (so any tier subset closes to
+a unique fixpoint), it counts **top-tier rounds**: close the puzzle under all
+techniques *below* the top tier `D`, then repeatedly (a) apply *every*
+available tier-`D` deduction at once, (b) re-close under `< D`, until solved.
+The number of these rounds is the **bottleneck count** — how many times the
+cheap techniques stall and hard reasoning must be injected. Each round also
+records a *width* (how many tier-`D` keys were available — forgiveness) and a
+*cascade* (cells the following cheap closure placed).
+
+**What it captures (validated against a single solver's felt difficulty, n=5
+Hard).** The headline count cleanly separates the *smooth* Hard puzzles
+(`bneck = 1`: one stall, find one of several keys, everything flows) from the
+*grindy* ones (`bneck ≥ 2`). Hand-solving confirmed the easy end: `bneck = 1`
+puzzles felt clearly easier, and a long forced grind of candidate-only rounds
+(e.g. `seed=21`, five rounds, four of them placing nothing before a final
+20-cell cascade) genuinely feels hard — so buildup rounds must be counted, not
+collapsed into their eventual release.
+
+**Ceilings (why it is a reference value, not a shippable difficulty score).**
+
+1. *Findability noise dominates above the first bottleneck.* Whether a solver
+   spots the key at a stall depends on mood/skill and varies run to run, so the
+   fine ordering among `bneck = 2, 3, 4, 5` was not reliably felt in testing —
+   only the `1` vs `≥ 2` split was.
+2. *Not portable as an absolute value across sizes.* The scale grows with the
+   grid: n=5 Hard peaks at `bneck = 1` (~50% of puzzles), but n=7 Hard peaks at
+   `bneck = 3–4` with almost none at `1`. The same number means "easy" at one
+   size and "typical" at another.
+3. *Tier-relative, not portable across difficulties.* Because it counts waves
+   of the *top* tier specifically, n=5 Expert skews to `bneck = 1` (~84%): one
+   Expert insight usually unlocks a full Hard-and-below cascade. Expert and Hard
+   counts are therefore not directly comparable.
+
+**Status / future.** Kept as a dev-analysis tool only; nothing is surfaced to
+players. It could become a real felt-difficulty metric with (a) solve-time data
+from *multiple* solvers to average out findability noise, and (b) per-`(n,
+tier)` normalization (e.g. a percentile / rank rather than a raw count). Until
+then it is a within-`(n, tier)` "smooth vs grindy" relative signal, useful for
+puzzle selection but not as a cross-size/cross-difficulty absolute label.
+
 ## Reproduction
 
 ```bash
@@ -298,6 +342,10 @@ cargo run --release -p skyscrapers-analysis -- texture \
   -n <SIZE> --seed <SEED> --difficulty <LEVEL>
 cargo run --release -p skyscrapers-analysis -- texture-scan \
   -n <SIZE> --difficulty <LEVEL> [--markdown --reference <SEED>]
+
+# Bottleneck count (Stage 2, exploratory): one row per seed
+cargo run --release -p skyscrapers-analysis -- bottleneck \
+  -n <SIZE> -d <LEVEL> <SEED> [<SEED> ...]
 
 # Individual sweeps (report runs all of these internally)
 cargo run --release -p skyscrapers-analysis -- batch-difficulty -n <SIZE> -s <SEEDS>
