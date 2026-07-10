@@ -151,11 +151,18 @@ pub(crate) fn propagate_with(state: &mut SolveState, techniques: &[Technique]) -
 /// monotone, sound elimination, the collected steps are all valid at `state` and
 /// can be replayed onto it (see [`apply_step`]). Used only by the dev-only
 /// bottleneck metric; keep it off the early-terminating solve/hint hot paths.
+///
+/// Honors the same per-thread `analysis_hooks` disable mask as
+/// [`apply_next_technique`] / [`propagate_with`], so a technique disabled for a
+/// necessity run is not enumerated here either.
 #[cfg(feature = "analysis-hooks")]
 pub(crate) fn find_all_for_tier(state: &SolveState, tier: Difficulty) -> Vec<Step> {
     let mut steps = Vec::new();
     for &technique in TECHNIQUES {
         if technique.difficulty() != tier {
+            continue;
+        }
+        if analysis_hooks::is_disabled(technique) {
             continue;
         }
         let mut clone = state.clone();
