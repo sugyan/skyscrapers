@@ -213,6 +213,20 @@ outcomes are unaffected).
    puzzles where even `FullForcingChain` cannot finish without nested
    assumptions.
 
+   The depth-1, non-recursive forcing chains are mildly **order-sensitive**:
+   they only inspect 2–3 candidate cells, so a sound but *earlier*
+   elimination (e.g. from `PrefixPermutation` at Hard, before the chains
+   run) can reshape the mid-solve candidate structure enough that the
+   specific assumption which would have cracked a borderline puzzle is no
+   longer reachable at depth 1. Introducing `PrefixPermutation` nudged one
+   n=7 baseline puzzle (seed 87) across this boundary — it now reports
+   Unsolved where it previously finished at Master. This is a completeness
+   artifact of the depth-1 solver, not a soundness issue: every step
+   remains sound, the puzzle stays uniquely solvable (the backtracking
+   solver finds its single solution), and shipped puzzles are unaffected —
+   target-difficulty generation only accepts puzzles the logic solver
+   fully solves (`is_removal_ok`).
+
 ## Reproduction
 
 ```bash
