@@ -2,7 +2,8 @@
 
 A snapshot of the logic solver's behavior under the generator. The
 numeric sections (Target Yield, Technique Necessity, Batch Test Results,
-Technique Usage) are **generated** — regenerate them with:
+Technique Usage, Difficulty Texture) are **generated** — regenerate them
+with:
 
 ```bash
 cargo run -p skyscrapers-analysis --release -- report > /tmp/report.md
@@ -171,6 +172,81 @@ outcomes are unaffected).
 | SimpleForcingChain | 4 | 16 | 39 | 52 |
 | FullForcingChain | 1 | 10 | 40 | 73 |
 | DualCluePermutation | — | 3 | 11 | 25 |
+
+## Difficulty Texture (n=5, 100 seeds per tier)
+
+"Difficulty texture" looks past the headline tier at how the top-tier work is spread across the solve. Grouping the trace into maximal same-tier runs ("bursts", excluding init-only CluePruning), we report, for the top tier: **stalls** = the number of *separate* forced stalls that needed it, **topSteps** = total top-tier steps, and **longest stall** = the largest single burst. Many/long stalls with little relief feel grindier than a single hard move that unlocks an easy cascade — so two puzzles at the same tier can differ widely here. Ranking is **stalls-first** (then topSteps, then longest stall); note this puts a single long unbroken burst (1 stall but high topSteps) at the "smooth" end even though it is a long slog — how to weight stall *count* against burst *length* is an open question these numbers are meant to help settle. Use `explain` / `texture` (see Reproduction) to inspect a listed seed.
+
+### hard
+
+100 puzzles. Forced stalls min/median/max = 1/3/8 (stalls:count → 1:8, 2:21, 3:28, 4:22, 5:14, 6:5, 7:1, 8:1); median topSteps 6, median longest stall 2.
+
+**Grindiest 10** (expect these to feel hardest):
+
+| seed | stalls | topSteps | longest stall |
+|------|--------|----------|---------------|
+| 63 | 8 | 11 | 2 |
+| 49 | 7 | 11 | 2 |
+| 90 | 6 | 18 | 11 |
+| 25 | 6 | 13 | 5 |
+| 95 | 6 | 10 | 4 |
+| 81 | 6 | 9 | 3 |
+| 75 | 6 | 6 | 1 |
+| 26 | 5 | 13 | 4 |
+| 17 | 5 | 12 | 4 |
+| 91 | 5 | 11 | 3 |
+
+**Smoothest 10** (expect these to flow):
+
+| seed | stalls | topSteps | longest stall |
+|------|--------|----------|---------------|
+| 98 | 1 | 1 | 1 |
+| 53 | 1 | 1 | 1 |
+| 36 | 1 | 1 | 1 |
+| 28 | 1 | 1 | 1 |
+| 82 | 1 | 2 | 2 |
+| 41 | 1 | 7 | 7 |
+| 21 | 1 | 12 | 12 |
+| 7 | 1 | 12 | 12 |
+| 94 | 2 | 2 | 1 |
+| 76 | 2 | 2 | 1 |
+
+_Reference — the puzzle that first motivated this metric_: `seed=20260702` → 4 stalls, 11 topSteps, longest stall 5.
+
+### expert
+
+100 puzzles. Forced stalls min/median/max = 1/1/4 (stalls:count → 1:77, 2:20, 3:2, 4:1); median topSteps 1, median longest stall 1.
+
+**Grindiest 10** (expect these to feel hardest):
+
+| seed | stalls | topSteps | longest stall |
+|------|--------|----------|---------------|
+| 99 | 4 | 9 | 4 |
+| 61 | 3 | 4 | 2 |
+| 46 | 3 | 3 | 1 |
+| 7 | 2 | 5 | 4 |
+| 72 | 2 | 4 | 3 |
+| 73 | 2 | 4 | 3 |
+| 79 | 2 | 4 | 3 |
+| 23 | 2 | 3 | 2 |
+| 25 | 2 | 3 | 2 |
+| 41 | 2 | 3 | 2 |
+
+**Smoothest 10** (expect these to flow):
+
+| seed | stalls | topSteps | longest stall |
+|------|--------|----------|---------------|
+| 98 | 1 | 1 | 1 |
+| 92 | 1 | 1 | 1 |
+| 89 | 1 | 1 | 1 |
+| 88 | 1 | 1 | 1 |
+| 87 | 1 | 1 | 1 |
+| 84 | 1 | 1 | 1 |
+| 83 | 1 | 1 | 1 |
+| 82 | 1 | 1 | 1 |
+| 81 | 1 | 1 | 1 |
+| 78 | 1 | 1 | 1 |
+
 <!-- END GENERATED -->
 
 ## Observations
@@ -227,6 +303,59 @@ outcomes are unaffected).
    target-difficulty generation only accepts puzzles the logic solver
    fully solves (`is_removal_ok`).
 
+7. **Texture varies widely inside a single tier** (see Difficulty
+   Texture). At n=5 Hard, forced top-tier stalls range 1–8 (median 3,
+   median 6 top-tier steps), so the one "Hard" label hides a real
+   spread in how grindy a puzzle feels. A single long unbroken Hard
+   burst (e.g. `seed=21`: 1 stall / 12 steps) is a distinct texture from
+   many short stalls (`seed=25`: 6 stalls / 13 steps); which feels
+   harder is an open weighting question the section is meant to inform.
+   The motivating puzzle `seed=20260702` sits at 4 stalls / 11 steps.
+
+## Bottleneck Count (Stage 2, exploratory — reference value only)
+
+A second within-tier signal, computed by the `bottleneck` subcommand. It
+does **not** use the greedy solve trace. Instead, exploiting the fact that
+every technique is a monotone, sound elimination (so any tier subset closes to
+a unique fixpoint), it counts **top-tier rounds**: close the puzzle under all
+techniques *below* the top tier `D`, then repeatedly (a) apply *every*
+available tier-`D` deduction at once, (b) re-close under `< D`, until solved.
+The number of these rounds is the **bottleneck count** — how many times the
+cheap techniques stall and hard reasoning must be injected. Each round also
+records a *width* (how many tier-`D` keys were available — forgiveness) and a
+*cascade* (cells the following cheap closure placed).
+
+**What it captures (validated against a single solver's felt difficulty, n=5
+Hard).** The headline count cleanly separates the *smooth* Hard puzzles
+(`bneck = 1`: one stall, find one of several keys, everything flows) from the
+*grindy* ones (`bneck ≥ 2`). Hand-solving confirmed the easy end: `bneck = 1`
+puzzles felt clearly easier, and a long forced grind of candidate-only rounds
+(e.g. `seed=21`, five rounds, four of them placing nothing before a final
+20-cell cascade) genuinely feels hard — so buildup rounds must be counted, not
+collapsed into their eventual release.
+
+**Ceilings (why it is a reference value, not a shippable difficulty score).**
+
+1. *Findability noise dominates above the first bottleneck.* Whether a solver
+   spots the key at a stall depends on mood/skill and varies run to run, so the
+   fine ordering among `bneck = 2, 3, 4, 5` was not reliably felt in testing —
+   only the `1` vs `≥ 2` split was.
+2. *Not portable as an absolute value across sizes.* The scale grows with the
+   grid: n=5 Hard peaks at `bneck = 1` (~50% of puzzles), but n=7 Hard peaks at
+   `bneck = 3–4` with almost none at `1`. The same number means "easy" at one
+   size and "typical" at another.
+3. *Tier-relative, not portable across difficulties.* Because it counts waves
+   of the *top* tier specifically, n=5 Expert skews to `bneck = 1` (~84%): one
+   Expert insight usually unlocks a full Hard-and-below cascade. Expert and Hard
+   counts are therefore not directly comparable.
+
+**Status / future.** Kept as a dev-analysis tool only; nothing is surfaced to
+players. It could become a real felt-difficulty metric with (a) solve-time data
+from *multiple* solvers to average out findability noise, and (b) per-`(n,
+tier)` normalization (e.g. a percentile / rank rather than a raw count). Until
+then it is a within-`(n, tier)` "smooth vs grindy" relative signal, useful for
+puzzle selection but not as a cross-size/cross-difficulty absolute label.
+
 ## Reproduction
 
 ```bash
@@ -236,6 +365,16 @@ cargo run --release -p skyscrapers-analysis -- report > /tmp/report.md
 # Inspect a single puzzle's logic trace (optionally without a technique)
 cargo run --release -p skyscrapers-analysis -- explain \
   -n <SIZE> --seed <SEED> --difficulty <LEVEL> [--disable <TECH>[,<TECH>...]]
+
+# Difficulty texture: one puzzle's profile, or scan a tier for extremes
+cargo run --release -p skyscrapers-analysis -- texture \
+  -n <SIZE> --seed <SEED> --difficulty <LEVEL>
+cargo run --release -p skyscrapers-analysis -- texture-scan \
+  -n <SIZE> --difficulty <LEVEL> [--markdown --reference <SEED>]
+
+# Bottleneck count (Stage 2, exploratory): one row per seed
+cargo run --release -p skyscrapers-analysis -- bottleneck \
+  -n <SIZE> -d <LEVEL> <SEED> [<SEED> ...]
 
 # Individual sweeps (report runs all of these internally)
 cargo run --release -p skyscrapers-analysis -- batch-difficulty -n <SIZE> -s <SEEDS>

@@ -161,8 +161,11 @@ export function reasonText(hint: HintResult): string {
       const cells = reason.chain.map(([r, c]) => cellLabel(r, c)).join(" → ");
       return `XY-Chain ${cells} forces ${reason.eliminated_value} into one of its endpoints, eliminating it from cells seeing both ends.`;
     }
-    case "als-xz-elimination":
-      return `ALS-XZ on value ${reason.rcc_value} eliminates ${reason.eliminated_value} from cells seeing both sets.`;
+    case "als-xz-elimination": {
+      const setA = reason.als_a.map(([r, c]) => cellLabel(r, c)).join(", ");
+      const setB = reason.als_b.map(([r, c]) => cellLabel(r, c)).join(", ");
+      return `ALS-XZ: groups {${setA}} and {${setB}} link through ${reason.rcc_value}, forcing ${reason.eliminated_value} into one of them — so ${reason.eliminated_value} is removed from cells seeing both.`;
+    }
     case "forcing-chain-elimination":
       return `Assuming ${reason.assumed_value} at ${cellLabel(reason.assumed_cell[0], reason.assumed_cell[1])} leads to a contradiction, so it can be eliminated.`;
     case "initial-clue-constraint":

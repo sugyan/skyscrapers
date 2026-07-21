@@ -31,6 +31,12 @@ export function normalizeDifficultyParam(
 export interface GenerateResult {
   puzzle: Puzzle;
   solution: number[][];
+  /**
+   * The difficulty the solver rated the generated puzzle at. `null` when the
+   * puzzle is harder than the logic solver can rate (only possible when no
+   * target difficulty was requested).
+   */
+  difficulty: Difficulty | null;
 }
 
 export type Technique =

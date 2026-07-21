@@ -67,8 +67,8 @@ fn main() {
                 params = params.with_target_difficulty(d);
             }
             match generate(&mut rng, &params) {
-                Ok((puzzle, _solution)) => {
-                    if let Some(d) = difficulty {
+                Ok((puzzle, _solution, detected)) => {
+                    if let Some(d) = detected {
                         eprintln!("difficulty: {d}");
                     }
                     println!("{puzzle}");

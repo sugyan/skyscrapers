@@ -14,6 +14,8 @@ pub(crate) mod xy_chain;
 
 #[cfg(feature = "analysis-hooks")]
 use super::analysis_hooks;
+#[cfg(feature = "analysis-hooks")]
+use super::difficulty::{Action, Difficulty};
 use super::difficulty::{Step, Technique};
 use super::state::SolveState;
 
@@ -28,7 +30,7 @@ pub(crate) enum TechniqueResult {
 }
 
 /// The ordered list of techniques to try.
-const TECHNIQUES: &[Technique] = &[
+pub(crate) const TECHNIQUES: &[Technique] = &[
     Technique::NakedSingles,
     Technique::HiddenSingles,
     Technique::VisibilityAnalysis,
@@ -60,7 +62,7 @@ pub(crate) fn apply_next_technique(state: &mut SolveState) -> TechniqueResult {
     TechniqueResult::NoProgress
 }
 
-fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueResult {
+pub(crate) fn apply_technique(technique: Technique, state: &mut SolveState) -> TechniqueResult {
     match technique {
         Technique::NakedSingles => naked_singles::apply(state),
         Technique::HiddenSingles => hidden_singles::apply(state),
@@ -112,7 +114,7 @@ pub(crate) fn propagate(state: &mut SolveState) -> bool {
 /// Repeatedly apply the given techniques in order until no technique makes progress.
 /// Returns false if a contradiction is detected during propagation, if any unassigned
 /// cell has no remaining candidates, or if the grid is complete but violates a clue.
-fn propagate_with(state: &mut SolveState, techniques: &[Technique]) -> bool {
+pub(crate) fn propagate_with(state: &mut SolveState, techniques: &[Technique]) -> bool {
     loop {
         let mut progress = false;
         for &technique in techniques {
@@ -140,6 +142,55 @@ fn propagate_with(state: &mut SolveState, techniques: &[Technique]) -> bool {
     }
     if state.is_complete() && !state.verify_clues() {
         return false;
+    }
+    true
+}
+
+/// Enumerate every step available at `state` for techniques of exactly `tier`,
+/// without mutating `state`.
+///
+/// Implemented by *clone-saturation*: for each technique in that tier, clone the
+/// state and drive its (mutating) `apply` in a loop until it stops making
+/// progress, collecting each produced `Step`. Because every technique is a
+/// monotone, sound elimination, the collected steps are all valid at `state` and
+/// can be replayed onto it (see [`apply_step`]). Used only by the dev-only
+/// bottleneck metric; keep it off the early-terminating solve/hint hot paths.
+///
+/// Honors the same per-thread `analysis_hooks` disable mask as
+/// [`apply_next_technique`] / [`propagate_with`], so a technique disabled for a
+/// necessity run is not enumerated here either.
+#[cfg(feature = "analysis-hooks")]
+pub(crate) fn find_all_for_tier(state: &SolveState, tier: Difficulty) -> Vec<Step> {
+    let mut steps = Vec::new();
+    for &technique in TECHNIQUES {
+        if technique.difficulty() != tier {
+            continue;
+        }
+        if analysis_hooks::is_disabled(technique) {
+            continue;
+        }
+        let mut clone = state.clone();
+        while let TechniqueResult::Progress(step) = apply_technique(technique, &mut clone) {
+            steps.push(step);
+        }
+    }
+    steps
+}
+
+/// Replay a `Step`'s actions onto `state`. Returns false on contradiction.
+///
+/// Sound steps produced by [`find_all_for_tier`] never empty a cell's candidate
+/// set, so this succeeds in practice; the bool is a defensive guard.
+#[cfg(feature = "analysis-hooks")]
+pub(crate) fn apply_step(state: &mut SolveState, step: &Step) -> bool {
+    for action in &step.actions {
+        let ok = match *action {
+            Action::Place { row, col, value } => state.assign(row, col, value),
+            Action::Eliminate { row, col, value } => state.eliminate(row, col, value),
+        };
+        if !ok {
+            return false;
+        }
     }
     true
 }

@@ -261,6 +261,37 @@ describe("reasonText", () => {
     expect(reasonText(hint)).toContain("row 1, row 3");
     expect(reasonText(hint)).toContain("column 2, column 5");
   });
+
+  it("names both ALS groups and the link/eliminated values", () => {
+    const hint: HintResult = {
+      step: {
+        technique: "als-xz",
+        actions: [{ kind: "eliminate", row: 1, col: 4, value: 4 }],
+        reason: {
+          kind: "als-xz-elimination",
+          als_a: [
+            [1, 0],
+            [1, 1],
+            [1, 3],
+          ],
+          als_b: [
+            [2, 0],
+            [2, 1],
+            [2, 3],
+            [2, 4],
+          ],
+          rcc_value: 5,
+          eliminated_value: 4,
+        },
+      },
+      candidates,
+    };
+    expect(reasonText(hint)).toBe(
+      "ALS-XZ: groups {R2C1, R2C2, R2C4} and {R3C1, R3C2, R3C4, R3C5} " +
+        "link through 5, forcing 4 into one of them — so 4 is removed " +
+        "from cells seeing both.",
+    );
+  });
 });
 
 describe("candidateDiffs and hasCandidateMismatch", () => {

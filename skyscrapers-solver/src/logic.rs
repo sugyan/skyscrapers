@@ -4,6 +4,8 @@
 // `cfg`-gated to match.
 #[cfg(feature = "analysis-hooks")]
 pub mod analysis_hooks;
+#[cfg(feature = "analysis-hooks")]
+pub mod bottleneck;
 pub mod difficulty;
 mod state;
 mod techniques;
