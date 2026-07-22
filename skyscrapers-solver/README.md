@@ -23,7 +23,7 @@ Applies human-traceable techniques in order of difficulty. Does not use backtrac
 | NakedSets | Hard | k cells in a line sharing exactly k candidates |
 | XWing / Swordfish | Hard | Fish pattern elimination (k=2, k=3) |
 | PrefixPermutation | Hard | Forward (prefix-only) visibility: cells up to the target fix how many buildings are visible so far, ruling out values that make the clue unreachable |
-| ALS-XZ | Hard | Two almost locked sets with a restricted common candidate |
+| ALS-XZ | Expert | Two almost locked sets with a restricted common candidate |
 | PermutationEnumeration | Expert | Enumerate valid permutations for a single clue |
 | DualCluePermutation | Expert | Enumerate permutations using both opposing clues |
 | SimpleForcingChain | Master | Assume a candidate, propagate with basic techniques |
@@ -33,8 +33,8 @@ Applies human-traceable techniques in order of difficulty. Does not use backtrac
 
 - **Easy** — Naked/hidden singles only (init-time CluePruning is implicit from clue geometry and does not bump the rating)
 - **Medium** — Requires visibility analysis
-- **Hard** — Requires set-based, fish, or ALS techniques
-- **Expert** — Requires clue permutation enumeration
+- **Hard** — Requires set-based, fish, or forward clue reasoning
+- **Expert** — Requires ALS or clue permutation enumeration
 - **Master** — Requires forcing-chain reasoning (assumption-based)
 
 See [docs/logic-solver-analysis.md](https://github.com/sugyan/skyscrapers/blob/main/docs/logic-solver-analysis.md) for the full target-yield and technique-necessity analysis.

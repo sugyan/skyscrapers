@@ -2,10 +2,13 @@ use crate::logic::difficulty::{Action, Reason, Step, Technique};
 use crate::logic::state::SolveState;
 use crate::logic::techniques::TechniqueResult;
 
-/// Cap on the number of *free* cells in the prefix being enumerated. Keeps the
-/// per-target search bounded (≤ `PREFIX_CAP!` arrangements) and limits the
-/// technique to the short, humanly-tractable forward deductions. Targets whose
-/// prefix has more free cells are left for the full permutation techniques.
+/// Cap on the number of *free* cells in the prefix being enumerated (the
+/// target counts as one). Keeps the per-target backtracking small — at most
+/// `PREFIX_CAP - 1` other free cells, each drawn from its ≤ n candidates with
+/// distinct values (so worst case is on the order of `(n-1)·(n-2)·…`, i.e.
+/// (n-1)-permute-(PREFIX_CAP-1), not `PREFIX_CAP!`) — and limits the technique
+/// to the short, humanly-tractable forward deductions. Targets whose prefix has
+/// more free cells are left for the full permutation techniques.
 const PREFIX_CAP: usize = 4;
 
 /// Forward (prefix-only) visibility pruning.
@@ -116,10 +119,20 @@ fn prefix_allows_clue(
     value_used[target_val as usize] = true;
     let mut assignment = vec![0u8; free_prefix.len()];
 
+    // Map each free prefix position to its slot in `assignment`, so
+    // `prefix_visibility` can look up an assigned value in O(1) rather than
+    // scanning `free_prefix` (and without an `unwrap`). Positions that are
+    // fixed or the target stay `usize::MAX` and are never indexed.
+    let mut pos_to_depth = vec![usize::MAX; p + 1];
+    for (depth, &pos) in free_prefix.iter().enumerate() {
+        pos_to_depth[pos] = depth;
+    }
+
     search(
         state,
         indices,
         free_prefix,
+        &pos_to_depth,
         p,
         target_val,
         n,
@@ -136,6 +149,7 @@ fn search(
     state: &SolveState,
     indices: &[usize],
     free_prefix: &[usize],
+    pos_to_depth: &[usize],
     p: usize,
     target_val: u8,
     n: u8,
@@ -146,7 +160,7 @@ fn search(
     assignment: &mut [u8],
 ) -> bool {
     if depth == free_prefix.len() {
-        let (vis, m) = prefix_visibility(state, indices, free_prefix, p, target_val, assignment);
+        let (vis, m) = prefix_visibility(state, indices, pos_to_depth, p, target_val, assignment);
         let lo_suf = if m < n { 1 } else { 0 };
         let hi_suf = (n - m).min(suffix_cells);
         return vis + lo_suf <= k && k <= vis + hi_suf;
@@ -163,6 +177,7 @@ fn search(
             state,
             indices,
             free_prefix,
+            pos_to_depth,
             p,
             target_val,
             n,
@@ -182,11 +197,11 @@ fn search(
 
 /// Compute `(visible_count, max_height)` over the prefix `[0..=p]` in viewing
 /// order, taking fixed cells from the grid, `target_val` at position `p`, and
-/// the remaining free prefix cells from `assignment`.
+/// the remaining free prefix cells from `assignment` (via `pos_to_depth`).
 fn prefix_visibility(
     state: &SolveState,
     indices: &[usize],
-    free_prefix: &[usize],
+    pos_to_depth: &[usize],
     p: usize,
     target_val: u8,
     assignment: &[u8],
@@ -199,9 +214,8 @@ fn prefix_visibility(
         } else if let Some(v) = state.grid[idx] {
             v
         } else {
-            // Position is a free prefix cell — find its assigned value.
-            let depth = free_prefix.iter().position(|&fp| fp == pos).unwrap();
-            assignment[depth]
+            // Position is a free prefix cell — read its assigned value directly.
+            assignment[pos_to_depth[pos]]
         };
         if height > max_height {
             count += 1;
@@ -216,7 +230,6 @@ mod tests {
     use skyscrapers_core::{Board, Clues, Puzzle};
 
     use super::*;
-    use crate::candidates::Candidates;
     use crate::logic::difficulty::Technique;
 
     #[test]
@@ -296,11 +309,9 @@ mod tests {
         let puzzle = Puzzle { board, clues };
         let mut state = SolveState::new(&puzzle).unwrap();
         let _ = apply(&mut state);
-        let c0 = state.candidates[state.idx(0, 0)];
-        for v in [1u8, 2, 3] {
-            assert!(c0.contains(v), "{v} must remain a candidate at R0C0");
-        }
-        // sanity: Candidates import used
-        assert_eq!(Candidates::single(1).singleton(), Some(1));
+        // R0C0 keeps exactly {1,2,3}: only 4 is removed (by init clue pruning
+        // for Left=2), and PrefixPermutation removes nothing further here.
+        let c0: Vec<u8> = state.candidates[state.idx(0, 0)].iter().collect();
+        assert_eq!(c0, vec![1, 2, 3], "R0C0 should retain exactly {{1,2,3}}");
     }
 }
