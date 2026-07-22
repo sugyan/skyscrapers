@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.1.4](https://github.com/sugyan/skyscrapers/compare/skyscrapers-tauri/v0.1.3...skyscrapers-tauri/v0.1.4) - 2026-07-22
+- Name both ALS groups in the ALS-XZ hint text by @sugyan in https://github.com/sugyan/skyscrapers/pull/67
+- Auto-detect and display difficulty for "Any" generation by @sugyan in https://github.com/sugyan/skyscrapers/pull/69
+- Add dedicated highlight selector to decouple highlighting from value entry by @sugyan in https://github.com/sugyan/skyscrapers/pull/70
+- Expand the highlight picker inline instead of overlaying controls by @sugyan in https://github.com/sugyan/skyscrapers/pull/71
+- Show generation seed on web puzzle page by @sugyan in https://github.com/sugyan/skyscrapers/pull/72
+- Add difficulty-texture analysis to skyscrapers-analysis by @sugyan in https://github.com/sugyan/skyscrapers/pull/73
+- Add bottleneck-count difficulty analysis (Stage 2, exploratory) by @sugyan in https://github.com/sugyan/skyscrapers/pull/74
+- Add PrefixPermutation (Hard) forward-visibility logic technique by @sugyan in https://github.com/sugyan/skyscrapers/pull/75
+
 ## [v0.1.3](https://github.com/sugyan/skyscrapers/compare/skyscrapers-tauri/v0.1.2...skyscrapers-tauri/v0.1.3) - 2026-06-05
 - Fix player-dist workflow after transport-neutral player refactor by @sugyan in https://github.com/sugyan/skyscrapers/pull/63
 - Cap XY-Chain at the XY-Wing and rank difficulty by tier by @sugyan in https://github.com/sugyan/skyscrapers/pull/64
