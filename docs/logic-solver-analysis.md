@@ -42,6 +42,12 @@ notes on dispatch ordering that aren't visible from the table:
   are split by `is_simple_enumeration` (≤3 free cells, or ≤8 valid
   permutations) so `AlsXz` does not shadow trivial enumerations and
   inflate the reported tier.
+- `PrefixPermutation` is dispatched just before `SimplePermutation`. It
+  is a cheap, suffix-ignoring subset of permutation enumeration, so it
+  adds no solving power over `PermutationEnumeration`; its purpose is to
+  claim the forward clue-only eliminations a human makes at Hard, keeping
+  them from being absorbed by the Expert-tier `PermutationEnumeration` /
+  `AlsXz` passes.
 
 Difficulty is the tier of the hardest technique the solve actually
 needs, ranked by `Technique::difficulty()` (not by enum declaration
@@ -56,6 +62,7 @@ order), so an Expert technique can never be masked by a lower-tier one.
 | NakedSets | Hard | k cells sharing k values |
 | XWing / Swordfish | Hard | Fish pattern elimination |
 | XyChain | Hard | XY-Wing: a length-3 bivalue chain (pivot + two wings). Longer chains are not searched — they fall through to AlsXz |
+| PrefixPermutation | Hard | Forward (prefix-only) visibility: the cells up to the target fix how many buildings are visible so far; values that make the clue's count unreachable are eliminated. A cheap, suffix-ignoring subset of permutation enumeration |
 | SimplePermutation | Hard | Single-clue permutation check on a line trivial enough to enumerate by hand (≤3 free cells, or ≤8 valid permutations) |
 | AlsXz | Expert | Two almost locked sets + restricted common candidate (size ≥ 2). Includes the size-2 ALS patterns that longer bivalue chains form, now that XyChain is capped at the XY-Wing |
 | PermutationEnumeration | Expert | Single-clue permutation check on a non-trivial line |
@@ -78,7 +85,7 @@ Generator success rate when a target difficulty is requested with
 
 | n | easy | medium | hard | expert | master |
 |---|------|--------|------|--------|--------|
-| 4 | 100 | 100 | 100 | 99 | 100 |
+| 4 | 100 | 100 | 100 | 98 | 100 |
 | 5 | 100 | 100 | 100 | 100 | 100 |
 | 6 | 100 | 100 | 100 | 100 | 100 |
 | 7 | 100 | 100 | 100 | 100 | 100 |
@@ -87,64 +94,65 @@ Generator success rate when a target difficulty is requested with
 
 Each cell shows `used / harder / unsolvable` for puzzles generated at
 the target difficulty and re-solved with the technique disabled
-(`max_attempts=500`). Counts are over the seeds that successfully
-generated a puzzle at the target — failed seeds are skipped, so the
-per-cell denominator is the matching Target Yield above (every seed, for
-the tiers shown here). `used` counts only techniques that surface as
-top-level solve steps; a technique firing solely inside forcing-chain
-propagation is not counted (the `harder`/`unsolvable` outcomes are
-unaffected).
+(`max_attempts=500`). Counts are over the seeds that
+successfully generated a puzzle at the target — failed seeds are skipped,
+so the per-cell denominator is the matching Target Yield above (every
+seed, for the tiers shown here). `used` counts only techniques that
+surface as top-level solve steps; a technique firing solely inside
+forcing-chain propagation is not counted (the `harder`/`unsolvable`
+outcomes are unaffected).
 
 ### Disable XyChain
 
 | n | hard | expert | master |
 |---|------|--------|--------|
-| 5 | 13/7/0 | 26/6/0 | 22/0/0 |
-| 6 | 9/1/0 | 18/0/0 | 14/0/0 |
-| 7 | 18/5/0 | 20/0/0 | 13/0/0 |
+| 5 | 10/7/0 | 30/6/0 | 20/0/0 |
+| 6 | 7/2/0 | 22/0/0 | 15/0/0 |
+| 7 | 14/6/0 | 19/0/0 | 13/0/0 |
 
 ### Disable AlsXz
 
 | n | hard | expert | master |
 |---|------|--------|--------|
-| 5 | 0/0/0 | 58/48/0 | 48/0/0 |
-| 6 | 0/0/0 | 40/22/0 | 47/0/0 |
-| 7 | 0/0/0 | 44/24/0 | 66/0/0 |
+| 5 | 0/0/0 | 78/72/0 | 48/0/0 |
+| 6 | 0/0/0 | 52/31/0 | 49/0/0 |
+| 7 | 0/0/0 | 42/24/0 | 63/0/1 |
 
 ### Disable DualCluePermutation
 
 | n | hard | expert | master |
 |---|------|--------|--------|
-| 5 | 0/0/0 | 10/10/0 | 6/0/0 |
-| 6 | 0/0/0 | 7/7/0 | 24/0/0 |
-| 7 | 0/0/0 | 16/16/0 | 30/0/2 |
+| 5 | 0/0/0 | 13/13/0 | 6/0/0 |
+| 6 | 0/0/0 | 11/11/0 | 24/0/0 |
+| 7 | 0/0/0 | 17/17/0 | 31/0/3 |
 
 ## Batch Test Results (seeds 0-99, 100 seeds per size)
 
 | n | Easy | Medium | Hard | Expert | Master | Unsolved | Success |
 |---|------|--------|------|--------|--------|----------|---------|
 | 4 | 7 | 13 | 75 | 1 | 4 | 0 | 100% |
-| 5 | 0 | 1 | 69 | 11 | 19 | 0 | 100% |
-| 6 | 0 | 0 | 19 | 29 | 50 | 2 | 98% |
-| 7 | 0 | 0 | 0 | 16 | 76 | 8 | 92% |
+| 5 | 0 | 1 | 72 | 8 | 19 | 0 | 100% |
+| 6 | 0 | 0 | 28 | 20 | 50 | 2 | 98% |
+| 7 | 0 | 0 | 0 | 16 | 75 | 9 | 91% |
 
 ## Technique Usage (total step count across 100 seeds per size)
 
 | Technique | n=4 | n=5 | n=6 | n=7 |
 |-----------|-----|-----|-----|-----|
-| NakedSingles | 1115 | 1769 | 2467 | 3109 |
+| NakedSingles | 1075 | 1657 | 2317 | 2921 |
 | CluePruning | 378 | 646 | 948 | 1333 |
-| HiddenSingles | 260 | 501 | 771 | 971 |
-| SimplePermutation | 186 | 409 | 646 | 729 |
-| VisibilityAnalysis | 51 | 105 | 112 | 100 |
-| PermutationEnumeration | 1 | 68 | 361 | 1013 |
-| NakedSets | 11 | 63 | 101 | 151 |
-| XyChain | 11 | 18 | 13 | 17 |
-| AlsXz | 4 | 45 | 63 | 111 |
-| XWing | 5 | 34 | 67 | 98 |
-| SimpleForcingChain | 5 | 28 | 113 | 157 |
-| FullForcingChain | 1 | 21 | 78 | 281 |
-| DualCluePermutation | — | 4 | 15 | 33 |
+| HiddenSingles | 300 | 613 | 921 | 1122 |
+| PrefixPermutation | 168 | 307 | 623 | 790 |
+| SimplePermutation | 33 | 199 | 375 | 526 |
+| VisibilityAnalysis | 51 | 107 | 116 | 99 |
+| PermutationEnumeration | — | 27 | 223 | 748 |
+| NakedSets | 11 | 70 | 116 | 149 |
+| XyChain | 9 | 16 | 13 | 16 |
+| AlsXz | 4 | 44 | 63 | 100 |
+| XWing | 4 | 33 | 74 | 103 |
+| SimpleForcingChain | 5 | 28 | 118 | 143 |
+| FullForcingChain | 1 | 20 | 75 | 274 |
+| DualCluePermutation | — | 4 | 15 | 35 |
 
 ## Technique Usage (puzzles in which it appears across 100 seeds per size)
 
@@ -152,17 +160,18 @@ unaffected).
 |-----------|-----|-----|-----|-----|
 | NakedSingles | 100 | 100 | 98 | 97 |
 | CluePruning | 100 | 100 | 100 | 100 |
-| HiddenSingles | 83 | 98 | 99 | 98 |
-| SimplePermutation | 80 | 99 | 98 | 96 |
-| VisibilityAnalysis | 47 | 71 | 63 | 63 |
-| PermutationEnumeration | 1 | 23 | 75 | 100 |
-| NakedSets | 10 | 44 | 59 | 73 |
-| XyChain | 9 | 16 | 12 | 14 |
-| AlsXz | 2 | 18 | 35 | 56 |
-| XWing | 5 | 31 | 49 | 62 |
-| SimpleForcingChain | 4 | 16 | 38 | 55 |
-| FullForcingChain | 1 | 10 | 40 | 74 |
-| DualCluePermutation | — | 3 | 11 | 24 |
+| HiddenSingles | 85 | 99 | 99 | 97 |
+| PrefixPermutation | 78 | 98 | 100 | 99 |
+| SimplePermutation | 23 | 79 | 95 | 94 |
+| VisibilityAnalysis | 47 | 72 | 63 | 61 |
+| PermutationEnumeration | — | 16 | 65 | 98 |
+| NakedSets | 10 | 46 | 67 | 78 |
+| XyChain | 7 | 15 | 11 | 14 |
+| AlsXz | 2 | 18 | 37 | 53 |
+| XWing | 4 | 30 | 51 | 66 |
+| SimpleForcingChain | 4 | 16 | 39 | 52 |
+| FullForcingChain | 1 | 10 | 40 | 73 |
+| DualCluePermutation | — | 3 | 11 | 25 |
 
 ## Difficulty Texture (n=5, 100 seeds per tier)
 
@@ -170,73 +179,73 @@ unaffected).
 
 ### hard
 
-100 puzzles. Forced stalls min/median/max = 1/3/7 (stalls:count → 1:10, 2:25, 3:37, 4:18, 5:8, 6:1, 7:1); median topSteps 5, median longest stall 3.
+100 puzzles. Forced stalls min/median/max = 1/3/8 (stalls:count → 1:8, 2:21, 3:28, 4:22, 5:14, 6:5, 7:1, 8:1); median topSteps 6, median longest stall 2.
 
 **Grindiest 10** (expect these to feel hardest):
 
 | seed | stalls | topSteps | longest stall |
 |------|--------|----------|---------------|
-| 25 | 7 | 14 | 6 |
-| 63 | 6 | 11 | 5 |
-| 81 | 5 | 9 | 3 |
-| 48 | 5 | 8 | 3 |
-| 17 | 5 | 8 | 2 |
-| 5 | 5 | 7 | 3 |
-| 95 | 5 | 7 | 3 |
-| 74 | 5 | 6 | 2 |
-| 8 | 5 | 5 | 1 |
-| 86 | 5 | 5 | 1 |
+| 63 | 8 | 11 | 2 |
+| 49 | 7 | 11 | 2 |
+| 90 | 6 | 18 | 11 |
+| 25 | 6 | 13 | 5 |
+| 95 | 6 | 10 | 4 |
+| 81 | 6 | 9 | 3 |
+| 75 | 6 | 6 | 1 |
+| 26 | 5 | 13 | 4 |
+| 17 | 5 | 12 | 4 |
+| 91 | 5 | 11 | 3 |
 
 **Smoothest 10** (expect these to flow):
 
 | seed | stalls | topSteps | longest stall |
 |------|--------|----------|---------------|
 | 98 | 1 | 1 | 1 |
+| 53 | 1 | 1 | 1 |
 | 36 | 1 | 1 | 1 |
 | 28 | 1 | 1 | 1 |
-| 53 | 1 | 2 | 2 |
-| 50 | 1 | 2 | 2 |
-| 82 | 1 | 3 | 3 |
-| 73 | 1 | 4 | 4 |
-| 41 | 1 | 6 | 6 |
-| 21 | 1 | 11 | 11 |
+| 82 | 1 | 2 | 2 |
+| 41 | 1 | 7 | 7 |
+| 21 | 1 | 12 | 12 |
 | 7 | 1 | 12 | 12 |
+| 94 | 2 | 2 | 1 |
+| 76 | 2 | 2 | 1 |
 
-_Reference — the puzzle that first motivated this metric_: `seed=20260702` → 3 stalls, 12 topSteps, longest stall 6.
+_Reference — the puzzle that first motivated this metric_: `seed=20260702` → 4 stalls, 11 topSteps, longest stall 5.
 
 ### expert
 
-100 puzzles. Forced stalls min/median/max = 1/1/5 (stalls:count → 1:67, 2:22, 3:10, 5:1); median topSteps 2, median longest stall 2.
+100 puzzles. Forced stalls min/median/max = 1/1/4 (stalls:count → 1:77, 2:20, 3:2, 4:1); median topSteps 1, median longest stall 1.
 
 **Grindiest 10** (expect these to feel hardest):
 
 | seed | stalls | topSteps | longest stall |
 |------|--------|----------|---------------|
-| 99 | 5 | 10 | 4 |
-| 49 | 3 | 8 | 4 |
-| 70 | 3 | 7 | 4 |
-| 80 | 3 | 6 | 3 |
-| 46 | 3 | 5 | 3 |
-| 97 | 3 | 5 | 3 |
-| 11 | 3 | 5 | 2 |
-| 25 | 3 | 5 | 2 |
-| 45 | 3 | 4 | 2 |
-| 63 | 3 | 4 | 2 |
+| 99 | 4 | 9 | 4 |
+| 61 | 3 | 4 | 2 |
+| 46 | 3 | 3 | 1 |
+| 7 | 2 | 5 | 4 |
+| 72 | 2 | 4 | 3 |
+| 73 | 2 | 4 | 3 |
+| 79 | 2 | 4 | 3 |
+| 23 | 2 | 3 | 2 |
+| 25 | 2 | 3 | 2 |
+| 41 | 2 | 3 | 2 |
 
 **Smoothest 10** (expect these to flow):
 
 | seed | stalls | topSteps | longest stall |
 |------|--------|----------|---------------|
 | 98 | 1 | 1 | 1 |
+| 92 | 1 | 1 | 1 |
 | 89 | 1 | 1 | 1 |
+| 88 | 1 | 1 | 1 |
 | 87 | 1 | 1 | 1 |
-| 86 | 1 | 1 | 1 |
+| 84 | 1 | 1 | 1 |
+| 83 | 1 | 1 | 1 |
 | 82 | 1 | 1 | 1 |
 | 81 | 1 | 1 | 1 |
 | 78 | 1 | 1 | 1 |
-| 75 | 1 | 1 | 1 |
-| 69 | 1 | 1 | 1 |
-| 67 | 1 | 1 | 1 |
 
 <!-- END GENERATED -->
 
@@ -247,15 +256,21 @@ _Reference — the puzzle that first motivated this metric_: `seed=20260702` →
    pipeline strips far enough that almost every n ≥ 5 puzzle needs at
    least one Hard-tier technique. Conversely Master dominates n=7.
 
-2. **`SimplePermutation` is the workhorse Hard-tier technique**, firing
-   in ≥96% of n=5..7 puzzles. `PermutationEnumeration` covers the
-   non-trivial cases (up to 100% at n=7), so the two-label split keeps
-   trivial firings at Hard and lets only non-trivial enumerations
-   escalate to Expert.
+2. **The permutation family is the Hard-tier workhorse, now split three
+   ways.** `PrefixPermutation` — the cheap forward (prefix-only)
+   deduction — fires in 78–100% of puzzles and claims most single-clue
+   eliminations at Hard. `SimplePermutation` mops up the residual trivial
+   lines it doesn't (23% at n=4, ~79–95% at n=5..7), and
+   `PermutationEnumeration` handles the non-trivial enumerations that
+   genuinely need Expert (up to ~98% at n=7). The three-label split keeps
+   forward and trivial clue reasoning at Hard and lets only non-trivial
+   enumeration escalate to Expert — puzzles whose only "Expert" step was
+   actually a forward clue deduction (e.g. n=4 seed=20260605) now rate
+   Hard.
 
 3. **`AlsXz` is the primary Expert-tier workhorse.** It absorbed the
    longer-chain eliminations that `XyChain` used to report, rising from
-   a few % at n=4 to ~56% of n=7 puzzles, and it is load-bearing
+   a few % at n=4 to ~53% of n=7 puzzles, and it is load-bearing
    wherever it fires (a large share of Expert puzzles reclassify upward
    when it is disabled). It never appears in Hard puzzles, confirming
    the tier separation.
@@ -274,14 +289,28 @@ _Reference — the puzzle that first motivated this metric_: `seed=20260702` →
    puzzles where even `FullForcingChain` cannot finish without nested
    assumptions.
 
+   The depth-1, non-recursive forcing chains are mildly **order-sensitive**:
+   they only inspect 2–3 candidate cells, so a sound but *earlier*
+   elimination (e.g. from `PrefixPermutation` at Hard, before the chains
+   run) can reshape the mid-solve candidate structure enough that the
+   specific assumption which would have cracked a borderline puzzle is no
+   longer reachable at depth 1. Introducing `PrefixPermutation` nudged one
+   n=7 baseline puzzle (seed 87) across this boundary — it now reports
+   Unsolved where it previously finished at Master. This is a completeness
+   artifact of the depth-1 solver, not a soundness issue: every step
+   remains sound, the puzzle stays uniquely solvable (the backtracking
+   solver finds its single solution), and shipped puzzles are unaffected —
+   target-difficulty generation only accepts puzzles the logic solver
+   fully solves (`is_removal_ok`).
+
 7. **Texture varies widely inside a single tier** (see Difficulty
-   Texture). At n=5 Hard, forced top-tier stalls range 1–7 (median 3)
-   and total Hard steps 1–14, so the one "Hard" label hides a real
+   Texture). At n=5 Hard, forced top-tier stalls range 1–8 (median 3,
+   median 6 top-tier steps), so the one "Hard" label hides a real
    spread in how grindy a puzzle feels. A single long unbroken Hard
-   burst (e.g. `seed=21`: 1 stall / 11 steps) is a distinct texture from
-   many short stalls (`seed=25`: 7 stalls / 14 steps); which feels
+   burst (e.g. `seed=21`: 1 stall / 12 steps) is a distinct texture from
+   many short stalls (`seed=25`: 6 stalls / 13 steps); which feels
    harder is an open weighting question the section is meant to inform.
-   The motivating puzzle `seed=20260702` sits at 3 stalls / 12 steps.
+   The motivating puzzle `seed=20260702` sits at 4 stalls / 11 steps.
 
 ## Bottleneck Count (Stage 2, exploratory — reference value only)
 

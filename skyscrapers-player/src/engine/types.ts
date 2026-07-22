@@ -48,6 +48,7 @@ export type Technique =
   | "x-wing"
   | "xy-chain"
   | "als-xz"
+  | "prefix-permutation"
   | "simple-permutation"
   | "permutation-enumeration"
   | "dual-clue-permutation"
