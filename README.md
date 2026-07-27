@@ -57,11 +57,17 @@ The hosted version of the same app is at <https://sugyan.com/skyscrapers/>.
 
 ```bash
 cargo test --workspace
-cargo clippy --workspace --all-targets
+cargo clippy --all-targets -- -D warnings
 cargo fmt --check
 ```
 
-The solver crate also ships a benchmark suite that uses the nightly `#![feature(test)]` harness: `cargo +nightly bench -p skyscrapers-solver`.
+These commands cover the workspace's `default-members`, which excludes `skyscrapers-tauri/src-tauri` — it pulls in platform webview dependencies (webkit2gtk/GTK on Linux). Adding `--workspace` includes it too, and works wherever those dependencies are installed; CI builds that crate separately via `tauri-check.yml`.
+
+The solver crate also ships a benchmark suite that uses the nightly `#![feature(test)]` harness. It sits behind the `nightly-bench` feature so that stable `--all-targets` builds skip it:
+
+```bash
+cargo +nightly bench -p skyscrapers-solver --features nightly-bench
+```
 
 ## License
 

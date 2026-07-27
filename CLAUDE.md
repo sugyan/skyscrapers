@@ -134,8 +134,21 @@ The web build additionally depends on the WASM artifact produced by `wasm-pack b
 
 ```bash
 cargo test --workspace
-cargo clippy --workspace
+cargo clippy --all-targets -- -D warnings
 cargo fmt --check
+```
+
+These are the same checks `.github/workflows/rust.yml` enforces. They target the
+workspace's `default-members`, which excludes `skyscrapers-tauri/src-tauri`
+(platform webview dependencies); `tauri-check.yml` builds that crate on three
+OSes instead.
+
+`skyscrapers-solver` ships a benchmark suite behind the `nightly-bench` feature,
+because it uses the unstable `#![feature(test)]` harness. The feature gate is what
+keeps stable `--all-targets` builds working:
+
+```bash
+cargo +nightly bench -p skyscrapers-solver --features nightly-bench
 ```
 
 ## CLI Usage
