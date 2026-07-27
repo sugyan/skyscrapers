@@ -45,11 +45,11 @@ import { PuzzleApp } from "skyscrapers-player";
 
 This is what both `skyscrapers-web` and `skyscrapers-tauri` render, so the two stay in sync by construction. Anything platform-specific stays in the host and is wired through optional callbacks — `skyscrapers-web` uses them to keep the current puzzle's parameters in the URL:
 
-| Prop | Purpose |
-|---|---|
-| `initialRequest` | A `{ n, seed, difficulty? }` to generate on first render. Only the first render's value is read. |
-| `onGenerated(n, seed, difficulty)` | Fired after the user generates from the form (not for `initialRequest`). |
-| `onCleared()` | Fired when the user leaves a puzzle via "New Puzzle". |
+| Prop                               | Purpose                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `initialRequest`                   | A `{ n, seed, difficulty? }` to generate on first render. Only the first render's value is read. |
+| `onGenerated(n, seed, difficulty)` | Fired after the user generates from the form (not for `initialRequest`).                         |
+| `onCleared()`                      | Fired when the user leaves a puzzle via "New Puzzle".                                            |
 
 `HowToPlayModal` is exported separately for hosts that want to surface the rules outside `PuzzleApp`.
 
