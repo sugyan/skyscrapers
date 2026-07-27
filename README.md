@@ -19,8 +19,9 @@ This project targets `n = 7` and `n = 8` as the primary sizes for human play, wh
 | [skyscrapers-generator](skyscrapers-generator/README.md) | Two-stage puzzle generator (Latin-square sampling + greedy clue/cell removal) with optional WebAssembly bindings. |
 | [skyscrapers-cli](skyscrapers-cli/README.md) | `skyscrapers` binary exposing `generate` and `solve` subcommands. |
 | [skyscrapers-analysis](skyscrapers-analysis/README.md) | Dev-only workspace analyses (target-yield, technique necessity, batch difficulty). Not published. |
-| [skyscrapers-player](skyscrapers-player/README.md) | React component plus a transport-neutral `SkyscrapersEngine` interface (no engine implementation shipped). |
-| [skyscrapers-web](skyscrapers-web/README.md) | Demo web app — owns a local `WasmEngine` that runs the Rust solver in-process via WebAssembly, wired to `<Player>` with a generation form. |
+| [skyscrapers-player](skyscrapers-player/README.md) | React components (`<Player>` board, `<PuzzleApp>` full app) plus a transport-neutral `SkyscrapersEngine` interface (no engine implementation shipped). |
+| [skyscrapers-web](skyscrapers-web/README.md) | Demo web app — owns a local `WasmEngine` that runs the Rust solver in-process via WebAssembly, and keeps the current puzzle's parameters in the URL. |
+| [skyscrapers-tauri](skyscrapers-tauri/README.md) | Desktop app (Tauri v2) — owns a `TauriEngine` that calls the same Rust crates natively over IPC. Released via `tagpr` + `tauri-release.yml`. |
 
 Crates form a layered DAG (no cycles): `skyscrapers-core` is foundational; `skyscrapers-solver` builds on `core`; `skyscrapers-generator` builds on `core` + `solver`; `skyscrapers-cli` and `skyscrapers-analysis` build on `core` + `solver` + `generator`.
 

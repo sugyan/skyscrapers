@@ -2,6 +2,14 @@
 export { Player } from "./components/Player";
 export type { PlayerProps } from "./components/Player";
 
+// Ready-made single-puzzle app: generation form + `<Player>` + How to Play.
+// Hosts that want the whole demo experience mount this and inject an engine;
+// hosts that only want the board mount `<Player>` directly. Platform-specific
+// concerns (the web app's URL query string) stay outside via callbacks.
+export { PuzzleApp } from "./components/PuzzleApp";
+export type { PuzzleAppProps, PuzzleRequest } from "./components/PuzzleApp";
+export { HowToPlayModal } from "./components/HowToPlayModal";
+
 // Engine interface + shared engine types.
 //
 // The player package is transport-neutral: it exposes the
