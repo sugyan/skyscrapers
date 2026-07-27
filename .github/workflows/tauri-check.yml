@@ -65,6 +65,28 @@ jobs:
         working-directory: skyscrapers-tauri
         run: npm ci
 
+      # Run the cheap frontend checks before the multi-minute Rust build, so a
+      # lint or type error fails in seconds instead of after a full compile.
+      # These mirror what `web.yml` already runs against `skyscrapers-web`.
+      #
+      # Linux only: the results are platform-independent, and running
+      # `prettier --check` on the Windows runner would fail on line endings
+      # (its git checkout converts to CRLF, while Prettier expects LF).
+      - name: Tauri frontend lint
+        if: matrix.platform == 'ubuntu-22.04'
+        working-directory: skyscrapers-tauri
+        run: npm run lint
+
+      - name: Tauri frontend format check
+        if: matrix.platform == 'ubuntu-22.04'
+        working-directory: skyscrapers-tauri
+        run: npm run format:check
+
+      - name: Tauri frontend typecheck
+        if: matrix.platform == 'ubuntu-22.04'
+        working-directory: skyscrapers-tauri
+        run: npm run typecheck
+
       # `--no-bundle` skips the heavy DMG / MSI / AppImage assembly while
       # still exercising the full Rust + frontend build, which is what
       # we want for a PR smoke check.

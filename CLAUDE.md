@@ -118,15 +118,22 @@ The generator has two stages:
 - **`skyscrapers-player`** — React 19 component (`<Player>`) + `SkyscrapersEngine` interface. Bundled `WasmEngine` runs the solver in-process via WebAssembly; consumers can swap in their own remote-API engine. Not published to npm. Two install paths: the monorepo uses `file:../skyscrapers-player`, and external projects install from the `player-dist` Git branch (`npm install github:sugyan/skyscrapers#player-dist`), which is rebuilt on every push to `main` by `.github/workflows/player-dist.yml`.
 - **`skyscrapers-web`** — Demo application that wires up `WasmEngine` + generation form around `<Player>`. Tailwind v4 styling lives in the player; the web app just imports `skyscrapers-player/styles.css`.
 
+- **`skyscrapers-tauri`** — Desktop app (Tauri v2) whose `TauriEngine` calls the same Rust crates natively over IPC instead of WebAssembly. Renders the same `<PuzzleApp>` as the web app.
+
 Install + check (run in each package as needed):
 
 ```bash
-# In skyscrapers-player/ or skyscrapers-web/
+# In skyscrapers-player/, skyscrapers-web/, or skyscrapers-tauri/
 npm ci
 npm run lint
 npm run format:check
-npm test
+npm run typecheck   # player + tauri (the web app typechecks via `npm run build`)
+npm test            # player + web
 ```
+
+All three packages are linted and format-checked in CI: `web.yml` covers the
+player and web app, `tauri-check.yml` covers the Tauri frontend before its
+(much slower) Rust build.
 
 The web build additionally depends on the WASM artifact produced by `wasm-pack build --target web skyscrapers-generator` — CI builds this before `npm ci` so the `file:../skyscrapers-generator/pkg` dependency resolves.
 
