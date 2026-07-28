@@ -91,7 +91,7 @@ start the build manually via `tauri-release.yml`'s "Run workflow" button.
 
 This repository has **immutable releases** enabled, so once published a
 release can no longer be edited and its assets are locked. The pipeline is
-built around this: the build matrix only ever touches a *draft*, and the
+built around this: the build matrix only ever touches a _draft_, and the
 separate `finalize` job flips it to published after every matrix job
 succeeds (publishing mid-matrix would lock out the remaining uploads). If a
 release turns out to be broken, bump the version and re-cut it rather than

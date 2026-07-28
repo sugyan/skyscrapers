@@ -1,0 +1,6 @@
+# Prettier only reads the `.gitignore` next to the working directory, not
+# nested ones, so `src-tauri/.gitignore` does not reach it. Re-state the
+# generated paths here: `gen/schemas` is rewritten by Tauri on every build and
+# `target/` is Cargo's output — formatting either would be undone immediately.
+src-tauri/gen/
+src-tauri/target/
