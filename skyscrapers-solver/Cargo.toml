@@ -12,7 +12,19 @@ serde = ["dep:serde", "skyscrapers-core/serde"]
 # intended for end-user crates: enables a thread-local switch that lets
 # analysis runs disable individual techniques to measure their necessity.
 analysis-hooks = []
+# Opt-in for `benches/solvers.rs`, which uses the unstable `#![feature(test)]`
+# harness. Without this gate the bench target is compiled by any
+# `--all-targets` invocation and fails on stable with E0554, which broke
+# `cargo clippy --all-targets`. `required-features` below skips the target
+# entirely unless this feature is enabled, so benching stays a deliberate
+# `cargo +nightly bench --features nightly-bench` step.
+nightly-bench = []
 
 [dependencies]
 skyscrapers-core = { path = "../skyscrapers-core" }
 serde = { version = "1.0", features = ["derive"], optional = true }
+
+[[bench]]
+name = "solvers"
+path = "benches/solvers.rs"
+required-features = ["nightly-bench"]
