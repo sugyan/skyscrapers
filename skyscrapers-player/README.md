@@ -33,6 +33,26 @@ function App({ puzzle, solution }: { puzzle: Puzzle; solution: number[][] }) {
 
 `Player` is purely the play surface — it takes a puzzle + solution + engine and renders the grid, number pad, controls, and hint panel. Puzzle generation lives on the consumer side; call `engine.generatePuzzle(n, seed, difficulty?)` to obtain a `{ puzzle, solution }` pair.
 
+### `PuzzleApp` — the whole app, not just the board
+
+If you want the full experience rather than just the grid, mount `<PuzzleApp>`: it wraps `<Player>` with the generation form (size / seed / difficulty), the seed footer, and the How to Play modal, and only needs an engine.
+
+```tsx
+import { PuzzleApp } from "skyscrapers-player";
+
+<PuzzleApp engine={engine} />;
+```
+
+This is what both `skyscrapers-web` and `skyscrapers-tauri` render, so the two stay in sync by construction. Anything platform-specific stays in the host and is wired through optional callbacks — `skyscrapers-web` uses them to keep the current puzzle's parameters in the URL:
+
+| Prop                               | Purpose                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `initialRequest`                   | A `{ n, seed, difficulty? }` to generate on first render. Only the first render's value is read. |
+| `onGenerated(n, seed, difficulty)` | Fired after the user generates from the form (not for `initialRequest`).                         |
+| `onCleared()`                      | Fired when the user leaves a puzzle via "New Puzzle".                                            |
+
+`HowToPlayModal` is exported separately for hosts that want to surface the rules outside `PuzzleApp`.
+
 ## Engine interface
 
 ```ts
